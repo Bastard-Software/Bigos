@@ -1,0 +1,4 @@
+# Ignore output directories
+cmake_build/
+bin/
+lib/
