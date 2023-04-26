@@ -9,9 +9,13 @@ set(ROOT_DIR "${CMAKE_SOURCE_DIR}")
 set(SOURCE_DIR "${CMAKE_SOURCE_DIR}/src")
 set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/Samples")
+set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/src/ThirdParty")
+
+if(BGS_VULKAN_API)
+    add_subdirectory(${THIRD_PARTY_DIR}/volk)
+endif()
  
 add_subdirectory(${SOURCE_DIR}/Core)
-add_subdirectory(${SOURCE_DIR}/Containers)
 add_subdirectory(${SOURCE_DIR}/Driver)
 add_subdirectory(${SOURCE_DIR}/Platform)
 

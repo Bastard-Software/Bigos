@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 project(Driver)
 
 include ("${ROOT_DIR}/CMakeScripts/CompilerSettings.cmake" NO_POLICY_SCOPE)
+include ("${ROOT_DIR}/CMakeScripts/CompilerDefinitions.cmake" NO_POLICY_SCOPE)
 
 set(INC_DIRS
     "${INCLUDE_DIR}/${PROJECT_NAME}/*.h"
@@ -22,6 +23,18 @@ message(STATUS "Generating project file for ${PROJECT_NAME} in ${PROJECT_SOURCE_
 add_library(${PROJECT_NAME} STATIC
     ${INCLUDE_FILES}
     ${SOURCE_FILES}
+)
+
+target_include_directories(Driver PRIVATE 
+    ${THIRD_PARTY_DIR}/vulkan/include
+    ${THIRD_PARTY_DIR}/volk
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    d3d12
+    dxgi
+    dxguid
+    volk
 )
 
 include ("${ROOT_DIR}/CMakeScripts/TargetProperties.cmake" NO_POLICY_SCOPE)

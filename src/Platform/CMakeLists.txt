@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 project(Platform)
 
 include ("${ROOT_DIR}/CMakeScripts/CompilerSettings.cmake" NO_POLICY_SCOPE)
+include ("${ROOT_DIR}/CMakeScripts/CompilerDefinitions.cmake" NO_POLICY_SCOPE)
 
 set(INC_DIRS
     "${INCLUDE_DIR}/${PROJECT_NAME}/*.h"
