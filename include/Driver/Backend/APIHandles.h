@@ -3,6 +3,6 @@
 
 namespace BIGOS::Driver::Backend
 {
-	BGS_DECLARE_HANDLE(Adapter);
-	BGS_DECLARE_HANDLE(Factory);
-}
+    BGS_DECLARE_HANDLE( Adapter );
+    BGS_DECLARE_HANDLE( Factory );
+} // namespace BIGOS::Driver::Backend

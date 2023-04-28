@@ -4,15 +4,15 @@
 
 namespace BIGOS
 {
-	namespace Driver
-	{
-		namespace Frontend
-		{
+    namespace Driver
+    {
+        namespace Frontend
+        {
 
-			struct DriverSystemDesc
-			{
-				BIGOS::Driver::Backend::FactoryDesc factoryDesc;
-			};
-		}
-	}
-}
+            struct DriverSystemDesc
+            {
+                BIGOS::Driver::Backend::FactoryDesc factoryDesc;
+            };
+        } // namespace Frontend
+    }     // namespace Driver
+} // namespace BIGOS

@@ -3,8 +3,8 @@
 
 namespace BIGOS
 {
-	namespace Core
-	{
+    namespace Core
+    {
 
-	}
-}
+    }
+} // namespace BIGOS

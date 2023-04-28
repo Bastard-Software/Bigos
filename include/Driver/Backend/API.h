@@ -3,43 +3,43 @@
 
 namespace BIGOS
 {
-	namespace Driver
-	{
-		namespace Backend
-		{
-			using AdapterArray = HeapArray<IAdapter*>;
+    namespace Driver
+    {
+        namespace Backend
+        {
+            using AdapterArray = HeapArray<IAdapter*>;
 
-			class BGS_API BGS_API_INTERFACE IAdapter
-			{
-			public:
-				virtual ~IAdapter() = default;
+            class BGS_API BGS_API_INTERFACE IAdapter
+            {
+            public:
+                virtual ~IAdapter() = default;
 
-				BGS_FORCEINLINE const AdapterInfo& GetDesc() const { return m_info; }
+                BGS_FORCEINLINE const AdapterInfo& GetDesc() const { return m_info; }
 
-				BGS_FORCEINLINE AdapterHandle GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE AdapterHandle GetHandle() const { return m_handle; }
 
-			private:
-				AdapterInfo m_info;
-				AdapterHandle m_handle;
-			};
+            private:
+                AdapterInfo   m_info;
+                AdapterHandle m_handle;
+            };
 
-			class BGS_API BGS_API_INTERFACE IFactory
-			{
-			public:
-				virtual ~IFactory() = default;
+            class BGS_API BGS_API_INTERFACE IFactory
+            {
+            public:
+                virtual ~IFactory() = default;
 
-				virtual RESULT CreateDevice(const DeviceDesc& desc, IDevice** ppDevice) = 0;
-				virtual void DestroyDevice(IDevice** ppDevice) = 0;
+                virtual RESULT CreateDevice( const DeviceDesc& desc, IDevice** ppDevice ) = 0;
+                virtual void   DestroyDevice( IDevice** ppDevice )                        = 0;
 
-				BGS_FORCEINLINE const AdapterArray& GetAdapters() const { return m_adapters; }
-				BGS_FORCEINLINE const FactoryDesc& GetDesc() const { return m_desc; }
-				BGS_FORCEINLINE const FactoryHandle GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const AdapterArray& GetAdapters() const { return m_adapters; }
+                BGS_FORCEINLINE const FactoryDesc&  GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const FactoryHandle GetHandle() const { return m_handle; }
 
-			private:
-				FactoryDesc m_desc;
-				AdapterArray m_adapters;
-				FactoryHandle m_handle;
-			};
-		}
-	}
-}
+            private:
+                FactoryDesc   m_desc;
+                AdapterArray  m_adapters;
+                FactoryHandle m_handle;
+            };
+        } // namespace Backend
+    }     // namespace Driver
+} // namespace BIGOS

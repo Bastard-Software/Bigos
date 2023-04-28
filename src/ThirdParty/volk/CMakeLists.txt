@@ -55,6 +55,9 @@ if (NOT WIN32)
   target_link_libraries(volk_headers INTERFACE dl)
 endif()
 
+# Temp - building fix
+set_property(TARGET volk PROPERTY FOLDER "ThirdParty")
+
 # -----------------------------------------------------
 # Vulkan transitive dependency
 
