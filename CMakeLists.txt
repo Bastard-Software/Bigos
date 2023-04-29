@@ -19,6 +19,12 @@ add_subdirectory(${SOURCE_DIR}/Core)
 add_subdirectory(${SOURCE_DIR}/Driver)
 add_subdirectory(${SOURCE_DIR}/Platform)
 
+add_subdirectory(${SOURCE_DIR}/BigosFramework)
 add_subdirectory(${SOURCE_DIR}/BigosEngine)
 
 add_subdirectory(${SAMPLES_DIR}/DraftSandbox)
+
+# TODO: Needs to be included 2 times, dont know why, bug.
+if(BGS_VULKAN_API)
+    add_subdirectory(${THIRD_PARTY_DIR}/volk)
+endif()

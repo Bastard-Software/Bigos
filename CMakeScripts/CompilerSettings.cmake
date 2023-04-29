@@ -19,7 +19,7 @@ endif()
 if(MSVC)
     add_definitions("/MP /W4 /WX")
     add_definitions("/std:c++latest")
-    add_definitions("-Dbgs_VISUAL_STUDIO")
+    add_definitions("-DBGS_VISUAL_STUDIO")
 
     add_definitions("/wd4251") # warning with derived classes and dll interfaces (exporting stl) TODO: Remove after creating own containers
     add_definitions("/wd4201") # allow for unnamed struct/unions
