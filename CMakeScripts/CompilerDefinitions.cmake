@@ -22,7 +22,7 @@ option(BGS_D3D12_API "Enable DirectX12 API" ON)
 option(BGS_SHADER_DEBUG "Enable shader debug features" ON)
 option(BGS_RENDER_DEBUG "Enable render debug features" ON)
 
-option(BGS_DETECT_MEMORY_LEAKS "Enable detecting memory leaks feature" ON)
+option(BGS_MEMORY_DEBUG "Enable memory debug feature" ON)
 
 # platform
 EnableOption(BGS_WINDOWS)
@@ -37,7 +37,7 @@ EnableOption(BGS_D3D12_API)
 EnableOption(BGS_SHADER_DEBUG)
 EnableOption(BGS_RENDER_DEBUG)
 
-EnableOption(BGS_DETECT_MEMORY_LEAKS)
+EnableOption(BGS_MEMORY_DEBUG)
 
 if(BGS_VULKAN_API)
 set(VOLK_STATIC_DEFINES 1)

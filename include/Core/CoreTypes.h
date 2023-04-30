@@ -35,9 +35,14 @@
 #    define BGS_FORCEINLINE inline
 #endif
 
-// TODO: Implement
-#define BGS_ASSERT_DEBUG( ... )
-#define BGS_ASSERT_RELEASE( ... )
+// TODO: Implement better
+#define BGS_ASSERT_DEBUG( x, ... )                                                                                     \
+    {                                                                                                                  \
+        if( !( x ) )                                                                                                   \
+        {                                                                                                              \
+            __debugbreak();                                                                                            \
+        }                                                                                                              \
+    }
 
 #if( BGS_DEBUG )
 #    define BGS_ASSERT BGS_ASSERT_DEBUG
@@ -45,8 +50,13 @@
 #    define BGS_ASSERT BGS_ASSERT_RELEASE
 #endif // BGS_DEBUG
 
+#define BGS_FAILED( result )  ( ( result ) != BIGOS::Core::Results::OK )
+#define BGS_SUCCESS( result ) ( ( result ) == BIGOS::Core::Results::OK )
+
 namespace BIGOS
 {
+    class BigosFramework;
+
     inline namespace Core
     {
         using handle_t = uint64_t;
@@ -56,11 +66,13 @@ namespace BIGOS
 
         static constexpr uint32_t MAX_UINT32 = ( static_cast<uint32_t>( ~0 ) );
         static constexpr uint64_t MAX_UINT64 = ( static_cast<uint64_t>( ~0 ) );
+        static constexpr size_t   MAX_SIZET  = ( static_cast<size_t>( ~0 ) );
 
-        static constexpr handle_t INVALID_HANDLE   = ( static_cast<handle_t>( MAX_UINT64 ) );
-        static constexpr index_t  INVALID_POSITION = ( static_cast<index_t>( ~0 ) );
-        static constexpr uint64_t INVALID_SIZE     = MAX_UINT64;
-        static constexpr uint64_t INVALID_OFFSET   = MAX_UINT64;
+        static constexpr handle_t INVALID_HANDLE    = ( static_cast<handle_t>( MAX_UINT64 ) );
+        static constexpr index_t  INVALID_POSITION  = ( static_cast<index_t>( ~0 ) );
+        static constexpr uint64_t INVALID_SIZE      = MAX_UINT64;
+        static constexpr uint64_t INVALID_OFFSET    = MAX_UINT64;
+        static constexpr size_t   DEFAULT_ALIGNMENT = MAX_SIZET;
 
         // TODO: Use own container implementations
         using String  = std::string;

@@ -25,7 +25,7 @@ namespace BIGOS
             {
                 VULKAN,
                 D3D12,
-                _MAX_ENUM
+                _MAX_ENUM,
             };
             using API_TYPE = APITypes;
 

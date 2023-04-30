@@ -13,9 +13,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 ) 
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-  Core
-  Driver
-  Platform
+  BigosFramework
 )
 
 include("${SAMPLES_DIR}/CMakeScripts/SampleProperties.cmake" NO_POLICY_SCOPE)
