@@ -98,4 +98,4 @@ AllowShortLambdasOnASingleLine: Inline
 AllowShortLoopsOnASingleLine : false
 
 MaxEmptyLinesToKeep: 1
-ColumnLimit: 120
+ColumnLimit: 150

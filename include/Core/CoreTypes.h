@@ -22,11 +22,11 @@
 
 #define BGS_HANDLE_TAG_NAME( name ) name##T
 
-#define BGS_DECLARE_HANDLE( name )                                                                                     \
-    namespace Private                                                                                                  \
-    {                                                                                                                  \
-        struct BGS_HANDLE_TAG_NAME( name );                                                                            \
-    }                                                                                                                  \
+#define BGS_DECLARE_HANDLE( name )                                                                                                                   \
+    namespace Private                                                                                                                                \
+    {                                                                                                                                                \
+        struct BGS_HANDLE_TAG_NAME( name );                                                                                                          \
+    }                                                                                                                                                \
     using name##Handle = BIGOS::Core::Handle<Private::BGS_HANDLE_TAG_NAME( name )>
 
 #if( BGS_VISUAL_STUDIO )
@@ -36,12 +36,12 @@
 #endif
 
 // TODO: Implement better
-#define BGS_ASSERT_DEBUG( x, ... )                                                                                     \
-    {                                                                                                                  \
-        if( !( x ) )                                                                                                   \
-        {                                                                                                              \
-            __debugbreak();                                                                                            \
-        }                                                                                                              \
+#define BGS_ASSERT_DEBUG( x, ... )                                                                                                                   \
+    {                                                                                                                                                \
+        if( !( x ) )                                                                                                                                 \
+        {                                                                                                                                            \
+            __debugbreak();                                                                                                                          \
+        }                                                                                                                                            \
     }
 
 #if( BGS_DEBUG )
@@ -104,8 +104,7 @@ namespace BIGOS
             template<typename HandleType>
             BGS_FORCEINLINE constexpr explicit Handle( HandleType nativeHandle )
             {
-                static_assert( sizeof( HandleType ) <= sizeof( handle_t ),
-                               "Native handle to big to be stored in the Handle<T>." );
+                static_assert( sizeof( HandleType ) <= sizeof( handle_t ), "Native handle to big to be stored in the Handle<T>." );
 
                 HandleConverter<HandleType> converter;
                 converter.nativeHandle = nativeHandle;

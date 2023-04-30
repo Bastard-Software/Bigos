@@ -8,11 +8,11 @@
 #include <dxgidebug.h>
 
 #if BGS_USE_D3D12_HANDLES
-#    define BGS_DECLARE_D3D12_HANDLE( name, type )                                                                     \
-        template<>                                                                                                     \
-        struct BIGOS::Core::Handle<BIGOS::Driver::Backend::Private::BGS_HANDLE_TAG_NAME( name )>                       \
-        {                                                                                                              \
-            using NativeHandleTypes = type;                                                                            \
+#    define BGS_DECLARE_D3D12_HANDLE( name, type )                                                                                                   \
+        template<>                                                                                                                                   \
+        struct BIGOS::Core::Handle<BIGOS::Driver::Backend::Private::BGS_HANDLE_TAG_NAME( name )>                                                     \
+        {                                                                                                                                            \
+            using NativeHandleTypes = type;                                                                                                          \
         };
 
 BGS_DECLARE_D3D12_HANDLE( Factory, IDXGIFactory4* );

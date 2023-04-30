@@ -4,11 +4,11 @@
 #include <volk.h>
 
 #if BGS_USE_VULKAN_HANDLES
-#    define BGS_DECLARE_VULKAN_HANDLE( name, type )                                                                    \
-        template<>                                                                                                     \
-        struct BIGOS::Core::Handle<BIGOS::Driver::Backend::Private::BGS_HANDLE_TAG_NAME( name )>                       \
-        {                                                                                                              \
-            using NativeHandleTypes = type;                                                                            \
+#    define BGS_DECLARE_VULKAN_HANDLE( name, type )                                                                                                  \
+        template<>                                                                                                                                   \
+        struct BIGOS::Core::Handle<BIGOS::Driver::Backend::Private::BGS_HANDLE_TAG_NAME( name )>                                                     \
+        {                                                                                                                                            \
+            using NativeHandleTypes = type;                                                                                                          \
         };
 
 BGS_DECLARE_VULKAN_HANDLE( Factory, VkInstance );

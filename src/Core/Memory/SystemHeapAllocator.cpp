@@ -37,8 +37,7 @@ namespace BIGOS
                 return Results::OK;
             }
 
-            RESULT SystemHeapAllocator::AllocateAligned( size_t size, size_t alignment, void** ppMemory,
-                                                         const char* pFile, uint32_t line )
+            RESULT SystemHeapAllocator::AllocateAligned( size_t size, size_t alignment, void** ppMemory, const char* pFile, uint32_t line )
             {
                 BGS_ASSERT( ( ppMemory != nullptr ) && ( *ppMemory == nullptr ) );
 
