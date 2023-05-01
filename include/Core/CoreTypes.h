@@ -44,10 +44,11 @@
         }                                                                                                                                            \
     }
 
+
 #if( BGS_DEBUG )
 #    define BGS_ASSERT BGS_ASSERT_DEBUG
 #else
-#    define BGS_ASSERT BGS_ASSERT_RELEASE
+#    define BGS_ASSERT
 #endif // BGS_DEBUG
 
 #define BGS_FAILED( result )  ( ( result ) != BIGOS::Core::Results::OK )

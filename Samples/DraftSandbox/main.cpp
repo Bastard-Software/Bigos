@@ -8,7 +8,7 @@ int main()
 
     BIGOS::BigosFramework*                 pFramework    = nullptr;
     BIGOS::BigosFrameworkDesc              frameworkDesc;
-    frameworkDesc.driverSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::VULKAN;
+    frameworkDesc.driverSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::D3D12;
 
     if( BGS_FAILED( CreateBigosFramework( frameworkDesc, &pFramework ) ) )
     {

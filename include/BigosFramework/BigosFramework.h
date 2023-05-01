@@ -30,7 +30,9 @@ namespace BIGOS
         BigosFramework()  = default;
         ~BigosFramework() = default;
 
+        // TODO: Should that be private and create with framework?
         RESULT CreateDriverSystem( const Driver::Frontend::DriverSystemDesc& desc, Driver::Frontend::DriverSystem** ppSystem );
+        void   DestroyDriverSystem( Driver::Frontend::DriverSystem** ppSystem );
 
         Core::Memory::MemorySystem*     GetMemorySystemPtr() { return &m_memorySystem; }
         Driver::Frontend::DriverSystem* GetDriverSystemPtr() { return m_pDriverSystem; }
