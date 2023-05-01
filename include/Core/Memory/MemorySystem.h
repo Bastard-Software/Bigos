@@ -21,7 +21,7 @@ namespace BIGOS
                 MemorySystem()  = default;
                 ~MemorySystem() = default;
 
-                SystemHeapAllocator* GetSystemHeapAllocator() { return &m_systemHeapAllocator; }
+                SystemHeapAllocator* GetSystemHeapAllocatorPtr() { return &m_systemHeapAllocator; }
 
                 const MemorySystemDesc& GetDesc() { return m_desc; }
 
