@@ -7,6 +7,7 @@ namespace BIGOS
     {
         namespace Backend
         {
+
             using AdapterArray = HeapArray<IAdapter*>;
 
             class BGS_API BGS_API_INTERFACE IAdapter
@@ -18,7 +19,7 @@ namespace BIGOS
 
                 BGS_FORCEINLINE AdapterHandle GetHandle() const { return m_handle; }
 
-            private:
+            protected:
                 AdapterInfo   m_info;
                 AdapterHandle m_handle;
             };
@@ -35,11 +36,12 @@ namespace BIGOS
                 BGS_FORCEINLINE const FactoryDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const FactoryHandle GetHandle() const { return m_handle; }
 
-            private:
+            protected:
                 FactoryDesc   m_desc;
                 AdapterArray  m_adapters;
                 FactoryHandle m_handle;
             };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
