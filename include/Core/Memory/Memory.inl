@@ -73,7 +73,7 @@ void* BIGOS::Core::Memory::MallocAlignedDebug( size_t size, size_t alignment )
     BGS_ASSERT( alignment > 0, "Alignment must be greater than 0." );
     BGS_ASSERT( ( alignment & ( alignment - 1 ) ) == 0, "Alignment must be the power of 2." );
 
-    uint8_t* pBlock = static_cast<uint8_t*>( MallocAligned( size + sizeof( MemoryBlockInfo ), alignment ) );
+    byte_t* pBlock = static_cast<byte_t*>( MallocAligned( size + sizeof( MemoryBlockInfo ), alignment ) );
 
     return pBlock + sizeof( MemoryBlockInfo );
 }
@@ -83,8 +83,8 @@ void* BIGOS::Core::Memory::ReallocDebug( void* pMem, size_t size )
     BGS_ASSERT( pMem != nullptr, "Memory block (pMem) must be valid pointer." );
     BGS_ASSERT( size > 0, "New block size must be greater than 0." );
 
-    uint8_t* pBlock    = static_cast<uint8_t*>( pMem ) - sizeof( MemoryBlockInfo );
-    uint8_t* pNewBlock = static_cast<uint8_t*>( Realloc( pBlock, size ) );
+    byte_t* pBlock    = static_cast<byte_t*>( pMem ) - sizeof( MemoryBlockInfo );
+    byte_t* pNewBlock = static_cast<byte_t*>( Realloc( pBlock, size ) );
 
     return pNewBlock + sizeof( MemoryBlockInfo );
 }
@@ -96,22 +96,22 @@ void* BIGOS::Core::Memory::ReallocAlignedDebug( void* pMem, size_t size, size_t 
     BGS_ASSERT( alignment > 0, "Alignment must be greater than 0." );
     BGS_ASSERT( ( alignment & ( alignment - 1 ) ) == 0, "Alignment must be the power of 2." );
 
-    uint8_t* pBlock    = static_cast<uint8_t*>( pMem ) - sizeof( MemoryBlockInfo );
-    uint8_t* pNewBlock = static_cast<uint8_t*>( ReallocAligned( pBlock, size, alignment ) );
+    byte_t* pBlock    = static_cast<byte_t*>( pMem ) - sizeof( MemoryBlockInfo );
+    byte_t* pNewBlock = static_cast<byte_t*>( ReallocAligned( pBlock, size, alignment ) );
 
     return pNewBlock + sizeof( MemoryBlockInfo );
 }
 
 void BIGOS::Core::Memory::FreeDebug( void* pMem )
 {
-    uint8_t* pBlock = static_cast<uint8_t*>( pMem ) - sizeof( MemoryBlockInfo );
+    byte_t* pBlock = static_cast<byte_t*>( pMem ) - sizeof( MemoryBlockInfo );
 
     return Free( pBlock );
 }
 
 void BIGOS::Core::Memory::FreeAlignedDebug( void* pMem )
 {
-    uint8_t* pBlock = static_cast<uint8_t*>( pMem ) - sizeof( MemoryBlockInfo );
+    byte_t* pBlock = static_cast<byte_t*>( pMem ) - sizeof( MemoryBlockInfo );
 
     return FreeAligned( pBlock );
 }

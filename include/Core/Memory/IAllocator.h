@@ -9,6 +9,7 @@ namespace BIGOS
     {
         namespace Memory
         {
+            // TODO: Do we need that interface or we can just use template allocators.
             class BGS_API BGS_API_INTERFACE IAllocator
             {
                 friend class MemorySystem;

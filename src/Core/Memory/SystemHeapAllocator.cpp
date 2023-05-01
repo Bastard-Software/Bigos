@@ -1,5 +1,5 @@
+#include "Core/Memory/IAllocator.h"
 #include "Core/Memory/SystemHeapAllocator.h"
-
 #include "Core/Memory/MemorySystem.h"
 
 namespace BIGOS
@@ -17,7 +17,7 @@ namespace BIGOS
 #if( BGS_MEMORY_DEBUG )
                 pMemory = Core::Memory::MallocDebug( size );
 
-                uint8_t*         pHeader    = reinterpret_cast<uint8_t*>( pMemory ) - sizeof( MemoryBlockInfo );
+                byte_t*          pHeader    = reinterpret_cast<byte_t*>( pMemory ) - sizeof( MemoryBlockInfo );
                 MemoryBlockInfo* pBlockInfo = reinterpret_cast<MemoryBlockInfo*>( pHeader );
 
                 // Fill debug info
@@ -46,7 +46,7 @@ namespace BIGOS
 #if( BGS_MEMORY_DEBUG )
                 pMemory = Core::Memory::MallocAlignedDebug( size, alignment );
 
-                uint8_t*         pHeader    = reinterpret_cast<uint8_t*>( pMemory ) - sizeof( MemoryBlockInfo );
+                byte_t*          pHeader    = reinterpret_cast<byte_t*>( pMemory ) - sizeof( MemoryBlockInfo );
                 MemoryBlockInfo* pBlockInfo = reinterpret_cast<MemoryBlockInfo*>( pHeader );
 
                 // Fill debug info
@@ -71,7 +71,7 @@ namespace BIGOS
                 BGS_ASSERT( ( ppMemory != nullptr ) && ( *ppMemory != nullptr ) );
 
 #if( BGS_MEMORY_DEBUG )
-                uint8_t*         pHeader    = reinterpret_cast<uint8_t*>( *ppMemory ) - sizeof( MemoryBlockInfo );
+                byte_t*          pHeader    = reinterpret_cast<byte_t*>( *ppMemory ) - sizeof( MemoryBlockInfo );
                 MemoryBlockInfo* pBlockInfo = reinterpret_cast<MemoryBlockInfo*>( pHeader );
 
                 BGS_ASSERT( pBlockInfo->allocType == AllocationBlockTypes::NORMAL );
@@ -90,7 +90,7 @@ namespace BIGOS
                 BGS_ASSERT( ( ppMemory != nullptr ) && ( *ppMemory != nullptr ) );
 
 #if( BGS_MEMORY_DEBUG )
-                uint8_t*         pHeader    = reinterpret_cast<uint8_t*>( *ppMemory ) - sizeof( MemoryBlockInfo );
+                byte_t*          pHeader    = reinterpret_cast<byte_t*>( *ppMemory ) - sizeof( MemoryBlockInfo );
                 MemoryBlockInfo* pBlockInfo = reinterpret_cast<MemoryBlockInfo*>( pHeader );
 
                 BGS_ASSERT( pBlockInfo->allocType == AllocationBlockTypes::ALIGNED );

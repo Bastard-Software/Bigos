@@ -15,7 +15,7 @@ int main()
         return -1;
     }
 
-    auto allocator = pFramework->GetMemorySystem()->GetSystemHeapAllocator();
+    auto allocator = pFramework->GetMemorySystem()->GetSystemHeapAllocatorPtr();
 
     void* pBlock        = nullptr;
     void* pAlignedBlock = nullptr;
