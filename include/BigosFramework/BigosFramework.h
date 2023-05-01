@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/CoreTypes.h"
+#include "Driver/Frontend/DriverSystemTypes.h"
 
 #include "Core/Memory/MemorySystem.h"
 
@@ -7,7 +8,8 @@ namespace BIGOS
 {
     struct BigosFrameworkDesc
     {
-        BIGOS::Core::Memory::MemorySystemDesc memorySystemDesc;
+        Core::Memory::MemorySystemDesc     memorySystemDesc;
+        Driver::Frontend::DriverSystemDesc driverSystemDesc;
     };
 
     class BigosFramework;
@@ -28,12 +30,16 @@ namespace BIGOS
         BigosFramework()  = default;
         ~BigosFramework() = default;
 
-        BIGOS::Core::Memory::MemorySystem* GetMemorySystem() { return &m_memorySystem; }
+        RESULT CreateDriverSystem( const Driver::Frontend::DriverSystemDesc& desc, Driver::Frontend::DriverSystem** ppSystem );
+
+        Core::Memory::MemorySystem*     GetMemorySystemPtr() { return &m_memorySystem; }
+        Driver::Frontend::DriverSystem* GetDriverSystemPtr() { return m_pDriverSystem; }
 
         RESULT Create( const BigosFrameworkDesc& desc );
         void   Destroy();
 
     private:
-        BIGOS::Core::Memory::MemorySystem m_memorySystem;
+        Core::Memory::MemorySystem      m_memorySystem;
+        Driver::Frontend::DriverSystem* m_pDriverSystem = nullptr;
     };
 } // namespace BIGOS

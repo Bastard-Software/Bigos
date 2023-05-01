@@ -129,7 +129,8 @@ namespace BIGOS
         {
             OK,
             FAIL,
-            NO_MEMORY
+            NO_MEMORY,
+            NOT_FOUND,
             // TODO: Add more during development
         };
         using RESULT = Results;

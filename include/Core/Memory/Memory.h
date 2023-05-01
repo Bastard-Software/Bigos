@@ -88,7 +88,7 @@ namespace BIGOS
                 if( *ppObj != nullptr )
                 {
                     ( *ppObj )->~T();
-                    pAllocator->Free( static_cast<void**>( ppObj ) );
+                    pAllocator->Free( reinterpret_cast<void**>( ppObj ) );
                 }
             }
 
