@@ -29,6 +29,22 @@ namespace BIGOS
 
             void DriverSystem::Destroy()
             {
+                if(m_pFactory != nullptr)
+                {
+                    if(m_desc.factoryDesc.apiType == Backend::APITypes::VULKAN)
+                    {
+                        DestroyFactory( reinterpret_cast<Backend::VulkanFactory**>( & m_pFactory) );
+                    }
+                    else if( m_desc.factoryDesc.apiType == Backend::APITypes::D3D12 )
+                    {
+                        DestroyFactory( reinterpret_cast<Backend::D3D12Factory**>( &m_pFactory ) );
+                    }
+                    else
+                    {
+                        BGS_ASSERT( 0 );
+                    }
+                }
+
                 m_pDefaultAllocator = nullptr;
                 m_pParent           = nullptr;
             }

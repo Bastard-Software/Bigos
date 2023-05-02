@@ -41,10 +41,13 @@ namespace BIGOS
             {
                 BGS_ASSERT( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ) );
 
-                FactoryT* pFactory = *ppFactory;
-                pFactory->Destroy();
-                Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
-                m_pFactory = nullptr;
+                if( *ppFactory != nullptr )
+                {
+                    FactoryT* pFactory = *ppFactory;
+                    pFactory->Destroy();
+                    Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
+                    pFactory = nullptr;
+                }
             }
 
         } // namespace Frontend

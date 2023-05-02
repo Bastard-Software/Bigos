@@ -37,7 +37,9 @@ namespace BIGOS
                 m_systemHeapAllocator.Destroy();
 
 #if( BGS_MEMORY_DEBUG )
-                // TODO: Check if there is no leaks and raport?
+                // TODO: Check if there is no leaks and report (assert for now)
+                BGS_ASSERT( m_memoryBlockInfoPtrs.size() == 0 );
+
                 m_memoryBlockInfoPtrs.clear();
 #endif // ( BGS_MEMORY_DEBUG )
             }
