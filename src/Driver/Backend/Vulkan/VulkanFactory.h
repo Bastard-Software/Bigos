@@ -27,7 +27,19 @@ namespace BIGOS
                 void   Destroy();
 
             private:
+                RESULT CheckValidationLayersSupport();
+                RESULT CheckVkExtSupport( const uint32_t count, const char* const* ppNames );
+                RESULT CreateVkInstance();
+
+                RESULT EnumAdapters();
+
+            private:
                 BIGOS::Driver::Frontend::DriverSystem* m_pParent;
+
+#if( BGS_RENDER_DEBUG )
+                VkDebugUtilsMessengerEXT m_nativeDebug;
+                const char*              m_debugLayers[ 1 ];
+#endif // ( BGS_RENDER_DEBUG )
             };
         } // namespace Backend
     }     // namespace Driver

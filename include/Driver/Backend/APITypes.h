@@ -16,6 +16,8 @@ namespace BIGOS
             class ICommandBuffer;
             class ISwapchain;
 
+            using AdapterArray = HeapArray<IAdapter*>;
+
             struct AdapterInfo
             {
                 // TODO: Fill
@@ -29,15 +31,47 @@ namespace BIGOS
             };
             using API_TYPE = APITypes;
 
+            enum class FactoryFlagBits : uint32_t
+            {
+                NONE                                    = 0x00000000,
+                ENABLE_DEBUG_LAYERS                     = 0x00000001,
+                ENABLE_DEBUG_LAYERS_IF_AVAILABLE        = 0x00000002,
+                ENABLE_GPU_BASED_VALIDATION             = 0x00000004,   // Those flags implicitly declares ENABLE_DEBUG_LAYER
+                ENABLE_QUEUE_SYNCHRONIZATION_VALIDATION = 0x00000008,   // Those flags implicitly declares ENABLE_DEBUG_LAYER
+            };
+            using FactoryFlags = uint32_t;
+
             struct FactoryDesc
             {
-                API_TYPE apiType;
-                // TODO: Debug flags
+                FactoryFlags flags;
+                API_TYPE     apiType;
             };
 
             struct DeviceDesc
             {
                 // TODO: Fill
+            };
+
+            enum class QueueTypes : uint8_t
+            {
+                GENERAL,
+                COMPUTE,
+                COPY,
+                _MAX_ENUM,
+            };
+            using QUEUE_TYPE = QueueTypes;
+
+            enum class QueuePriority : uint8_t
+            {
+                NORMAL,
+                HIGH,
+                _MAX_ENUM,
+            };
+            using QUEUE_PRIORITY = QueuePriority;
+
+            struct QueueDesc
+            {
+                QUEUE_TYPE type;
             };
         } // namespace Backend
     }     // namespace Driver

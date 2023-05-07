@@ -19,7 +19,10 @@ namespace BIGOS
                 void   Destroy();
 
             private:
-                D3D12Factory* m_pFactory = nullptr;
+                RESULT GetInternalInfo();
+
+            private:
+                D3D12Factory* m_pParent = nullptr;
             };
         } // namespace Backend
     }     // namespace Driver

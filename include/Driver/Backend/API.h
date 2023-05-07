@@ -8,14 +8,12 @@ namespace BIGOS
         namespace Backend
         {
 
-            using AdapterArray = HeapArray<IAdapter*>;
-
             class BGS_API BGS_API_INTERFACE IAdapter
             {
             public:
                 virtual ~IAdapter() = default;
 
-                BGS_FORCEINLINE const AdapterInfo& GetDesc() const { return m_info; }
+                BGS_FORCEINLINE const AdapterInfo& GetInfo() const { return m_info; }
 
                 BGS_FORCEINLINE AdapterHandle GetHandle() const { return m_handle; }
 

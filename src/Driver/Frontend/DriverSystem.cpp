@@ -1,5 +1,6 @@
 #include "Driver/Frontend/DriverSystem.h"
 
+#include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Driver/Backend/D3D12/D3D12Factory.h"
 #include "Driver/Backend/Vulkan/VulkanFactory.h"
@@ -29,20 +30,9 @@ namespace BIGOS
 
             void DriverSystem::Destroy()
             {
-                if(m_pFactory != nullptr)
+                if( m_pFactory != nullptr )
                 {
-                    if(m_desc.factoryDesc.apiType == Backend::APITypes::VULKAN)
-                    {
-                        DestroyFactory( reinterpret_cast<Backend::VulkanFactory**>( & m_pFactory) );
-                    }
-                    else if( m_desc.factoryDesc.apiType == Backend::APITypes::D3D12 )
-                    {
-                        DestroyFactory( reinterpret_cast<Backend::D3D12Factory**>( &m_pFactory ) );
-                    }
-                    else
-                    {
-                        BGS_ASSERT( 0 );
-                    }
+                    DestroyFactory( &m_pFactory );
                 }
 
                 m_pDefaultAllocator = nullptr;
@@ -96,6 +86,29 @@ namespace BIGOS
                 *ppFactory = m_pFactory;
 
                 return Results::OK;
+            }
+
+            void DriverSystem::DestroyFactory( Backend::IFactory** ppFactory )
+            {
+                const Backend::API_TYPE apiType = m_desc.factoryDesc.apiType;
+                if( apiType == Backend::APITypes::VULKAN )
+                {
+                    Backend::VulkanFactory* pFactory = static_cast<Backend::VulkanFactory*>( *ppFactory );
+                    pFactory->Destroy();
+                    Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
+                    pFactory = nullptr;
+                }
+                else if( apiType == Backend::APITypes::D3D12 )
+                {
+                    Backend::D3D12Factory* pFactory = static_cast<Backend::D3D12Factory*>( *ppFactory );
+                    pFactory->Destroy();
+                    Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
+                    pFactory = nullptr;
+                }
+                else
+                {
+                    BGS_ASSERT( 0 );
+                }
             }
 
         } // namespace Frontend
