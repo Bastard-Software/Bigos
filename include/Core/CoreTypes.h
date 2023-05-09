@@ -44,7 +44,6 @@
         }                                                                                                                                            \
     }
 
-
 #if( BGS_DEBUG )
 #    define BGS_ASSERT BGS_ASSERT_DEBUG
 #else
@@ -64,6 +63,10 @@ namespace BIGOS
         using hash_t   = uint64_t;
         using index_t  = size_t;
         using byte_t   = std::byte;
+        using bool_t   = uint32_t;
+
+        static constexpr bool_t BGS_TRUE  = 1u;
+        static constexpr bool_t BGS_FALSE = 0u;
 
         static constexpr uint32_t MAX_UINT32 = ( static_cast<uint32_t>( ~0 ) );
         static constexpr uint64_t MAX_UINT64 = ( static_cast<uint64_t>( ~0 ) );
