@@ -28,7 +28,7 @@ namespace BIGOS
 
             private:
                 RESULT CheckValidationLayersSupport();
-                RESULT CheckVkExtSupport( const uint32_t count, const char* const* ppNames );
+                RESULT CheckVkExtSupport( uint32_t extCount, const char* const* ppExts );
                 RESULT CreateVkInstance();
 
                 RESULT EnumAdapters();

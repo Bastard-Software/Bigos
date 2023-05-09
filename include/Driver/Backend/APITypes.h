@@ -18,9 +18,24 @@ namespace BIGOS
 
             using AdapterArray = HeapArray<IAdapter*>;
 
+            enum class AdapterTypes : uint8_t
+            {
+                UNKNOWN,
+                INTEGRATED,
+                DISCRETE,
+                SOFTWARE,
+                _MAX_ENUM,
+            };
+            using ADAPTER_TYPE = AdapterTypes;
+
             struct AdapterInfo
             {
-                // TODO: Fill
+                char         description[ 256 ]; // TODO: Make config file
+                VersionDesc  apiVersion;
+                VersionDesc  driverVersion;
+                uint32_t     vendorID;
+                uint32_t     deviceID;
+                ADAPTER_TYPE type;
             };
 
             enum class APITypes : uint8_t
@@ -36,8 +51,8 @@ namespace BIGOS
                 NONE                                    = 0x00000000,
                 ENABLE_DEBUG_LAYERS                     = 0x00000001,
                 ENABLE_DEBUG_LAYERS_IF_AVAILABLE        = 0x00000002,
-                ENABLE_GPU_BASED_VALIDATION             = 0x00000004,   // Those flags implicitly declares ENABLE_DEBUG_LAYER
-                ENABLE_QUEUE_SYNCHRONIZATION_VALIDATION = 0x00000008,   // Those flags implicitly declares ENABLE_DEBUG_LAYER
+                ENABLE_GPU_BASED_VALIDATION             = 0x00000004, // Those flags implicitly declares ENABLE_DEBUG_LAYER
+                ENABLE_QUEUE_SYNCHRONIZATION_VALIDATION = 0x00000008, // Those flags implicitly declares ENABLE_DEBUG_LAYER
             };
             using FactoryFlags = uint32_t;
 

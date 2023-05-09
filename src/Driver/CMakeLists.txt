@@ -35,6 +35,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     dxgi
     dxguid
     volk
+    setupapi
 )
 
 include ("${ROOT_DIR}/CMakeScripts/TargetProperties.cmake" NO_POLICY_SCOPE)
