@@ -70,6 +70,8 @@ namespace BIGOS
                 m_info.type          = MapD3D12AdapterTypeTypeToBIGOSAdapterType( pNativeAdapter4 );
                 m_info.driverVersion = GetD3D12AdapterDriverVersion( desc );
 
+                RELEASE_COM_PTR( pNativeAdapter4 );
+
                 return Results::OK;
             }
 
