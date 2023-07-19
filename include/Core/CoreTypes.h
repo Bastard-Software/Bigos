@@ -89,6 +89,12 @@ namespace BIGOS
         using StackArray = std::array<T, S>;
 
         template<typename T>
+        struct HandleTraits
+        {
+            using NativeHandleTypes = handle_t;
+        };
+
+        template<typename T>
         class Handle final
         {
         private:
@@ -116,7 +122,7 @@ namespace BIGOS
                 m_value = converter.handle;
             }
 
-            template<typename HandleType = T>
+            template<typename HandleType = HandleTraits<T>::NativeHandleTypes>
             BGS_FORCEINLINE HandleType GetNativeHandle() const
             {
                 HandleConverter<HandleType> converter;
@@ -124,6 +130,9 @@ namespace BIGOS
 
                 return converter.nativeHandle;
             }
+
+            BGS_FORCEINLINE bool operator==( const Handle<T>& other ) const { return m_value == other.m_value; }
+            BGS_FORCEINLINE bool operator!=( const Handle<T>& other ) const { return m_value != other.m_value; }
 
         private:
             handle_t m_value;

@@ -19,7 +19,10 @@ namespace BIGOS
                 void   Destroy();
 
             private:
-                VulkanFactory* m_pFactory = nullptr;
+                RESULT GetInternalInfo();
+
+            private:
+                VulkanFactory* m_pParent = nullptr;
             };
 
         } // namespace Backend

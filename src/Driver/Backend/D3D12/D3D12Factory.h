@@ -28,7 +28,17 @@ namespace BIGOS
                 void   Destroy();
 
             private:
+                RESULT EnumAdapters();
+
+                RESULT CreateD3D12Factory();
+
+            private:
                 BIGOS::Driver::Frontend::DriverSystem* m_pParent;
+
+#if( BGS_RENDER_DEBUG )
+                ID3D12Debug1*   m_pNativeDebug;
+                IDXGIInfoQueue* m_pNativeInfoQueue;
+#endif // ( BGS_RENDER_DEBUG )
             };
 
         } // namespace Backend

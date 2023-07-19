@@ -56,6 +56,62 @@ size_t BIGOS::Core::Utils::String::Utf8ToUtf16( wchar_t* pDst, size_t dstSize, c
     return length;
 }
 
+template<typename... ArgsT>
+int32_t BIGOS::Core::Utils::String::Format( char* pDst, uint32_t bufferSize, const char* pFormat, ArgsT&&... args )
+{
+    BGS_ASSERT( pDst != nullptr, "Buffer (pDst) must be a valid buffer." );
+    BGS_ASSERT( bufferSize > 0, "Buffer size (bufferSize) must be greater than zero." );
+    BGS_ASSERT( pFormat != nullptr, "String (pFormat) must be a valid string." );
+
+#if( BGS_VISUAL_STUDIO )
+    return sprintf_s( pDst, bufferSize, pFormat, std::forward<ArgsT>( args )... );
+#else
+#    error
+#endif // ( BGS_VISUAL_STUDIO
+}
+
+template<typename... ArgsT>
+int32_t BIGOS::Core::Utils::String::Format( wchar_t* pDst, uint32_t bufferSize, const wchar_t* pFormat, ArgsT&&... args )
+{
+    BGS_ASSERT( pDst != nullptr, "Buffer (pDst) must be a valid buffer." );
+    BGS_ASSERT( bufferSize > 0, "Buffer size (bufferSize) must be greater than zero." );
+    BGS_ASSERT( pFormat != nullptr, "String (pFormat) must be a valid string." );
+
+#if( BGS_VISUAL_STUDIO )
+    return swprintf_s( pDst, bufferSize, pFormat, std::forward<ArgsT>( args )... );
+#else
+#    error
+#endif // ( BGS_VISUAL_STUDIO
+}
+
+template<typename... ArgsT>
+int32_t BIGOS::Core::Utils::String::Parse( const char* pSrc, uint32_t bufferSize, const char* pFormat, ArgsT&&... args )
+{
+    BGS_ASSERT( pSrc != nullptr, "Buffer (pSrc) must be a valid buffer." );
+    BGS_ASSERT( bufferSize > 0, "Buffer size (bufferSize) must be greater than zero." );
+    BGS_ASSERT( pFormat != nullptr, "String (pFormat) must be a valid string." );
+
+#if( BGS_VISUAL_STUDIO )
+    return _snscanf_s( pSrc, bufferSize, pFormat, std::forward<ArgsT>( args )... );
+#else
+#    error
+#endif // ( BGS_VISUAL_STUDIO
+}
+
+template<typename... ArgsT>
+int32_t BIGOS::Core::Utils::String::Parse( const wchar_t* pSrc, uint32_t bufferSize, const wchar_t* pFormat, ArgsT&&... args )
+{
+    BGS_ASSERT( pSrc != nullptr, "Buffer (pSrc) must be a valid buffer." );
+    BGS_ASSERT( bufferSize > 0, "Buffer size (bufferSize) must be greater than zero." );
+    BGS_ASSERT( pFormat != nullptr, "String (pFormat) must be a valid string." );
+
+#if( BGS_VISUAL_STUDIO )
+    return _snwscanf_s( pSrc, bufferSize, pFormat, std::forward<ArgsT>( args )... );
+#else
+#    error
+#endif // ( BGS_VISUAL_STUDIO
+}
+
 size_t BIGOS::Core::Utils::String::Length( const char* pStr )
 {
     BGS_ASSERT( pStr != nullptr, "String (pStr) must be a valid string." );

@@ -1,7 +1,6 @@
 #pragma once
+#include "Core/Memory/MemoryTypes.h"
 #include "Driver/Frontend/DriverSystemTypes.h"
-
-#include "Core/Memory/IAllocator.h"
 
 namespace BIGOS
 {
@@ -16,9 +15,11 @@ namespace BIGOS
                 friend class Backend::VulkanFactory;
                 friend class Backend::D3D12Factory;
 
-                const DriverSystemDesc& GetDesc() const { return m_desc; }
+                BigosFramework*     GetParentPtr() { return m_pParent; }
+                Memory::IAllocator* GetDefaultAllocatorPtr() { return m_pDefaultAllocator; }
+                Backend::IFactory*  GetFactoryPtr() { return m_pFactory; }
 
-                BigosFramework* GetParentPtr() { return m_pParent; }
+                const DriverSystemDesc& GetDesc() const { return m_desc; }
 
             protected:
                 RESULT Create( const DriverSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent );
@@ -26,8 +27,7 @@ namespace BIGOS
 
             private:
                 RESULT CreateFactory( const Backend::FactoryDesc& desc, Backend::IFactory** ppFactory );
-                template<class FactoryT>
-                void DestroyFactory( FactoryT** ppFactory );
+                void   DestroyFactory( Backend::IFactory** ppFactory );
 
             private:
                 DriverSystemDesc    m_desc;
@@ -35,20 +35,6 @@ namespace BIGOS
                 BigosFramework*     m_pParent;
                 Memory::IAllocator* m_pDefaultAllocator;
             };
-
-            template<class FactoryT>
-            void DriverSystem::DestroyFactory( FactoryT** ppFactory )
-            {
-                BGS_ASSERT( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ) );
-
-                if( *ppFactory != nullptr )
-                {
-                    FactoryT* pFactory = *ppFactory;
-                    pFactory->Destroy();
-                    Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
-                    pFactory = nullptr;
-                }
-            }
 
         } // namespace Frontend
     }     // namespace Driver

@@ -1,4 +1,5 @@
-#include "Core/CoreTypes.h"
+#include "Core/Memory/MemoryTypes.h"
+#include "Core/Memory/Memory.h"
 
 void* BIGOS::Core::Memory::Malloc( size_t size )
 {
@@ -118,7 +119,7 @@ void BIGOS::Core::Memory::FreeAlignedDebug( void* pMem )
 
 #endif // ( BGS_MEMORY_DEBUG )
 
-void BIGOS::Core::Memory::CopyMemory( const void* pSrc, size_t srcSize, void* pDst, size_t dstSize )
+void BIGOS::Core::Memory::Copy( const void* pSrc, size_t srcSize, void* pDst, size_t dstSize )
 {
     BGS_ASSERT( pSrc != nullptr, "Memory block (pSrc) must be valid pointer." );
     BGS_ASSERT( srcSize > 0, "Block size (srcSize) must be greater than 0." );
@@ -132,7 +133,7 @@ void BIGOS::Core::Memory::CopyMemory( const void* pSrc, size_t srcSize, void* pD
 #endif // ( BGS_VISUAL_STUDIO )
 }
 
-void BIGOS::Core::Memory::SetMemory( void* pDst, int32_t val, size_t size )
+void BIGOS::Core::Memory::Set( void* pDst, int32_t val, size_t size )
 {
     BGS_ASSERT( pDst != nullptr, "Memory block (pDst) must be valid pointer." );
     BGS_ASSERT( size > 0, "Block size must be greater than 0." );
@@ -140,7 +141,7 @@ void BIGOS::Core::Memory::SetMemory( void* pDst, int32_t val, size_t size )
     memset( pDst, val, size );
 }
 
-int32_t BIGOS::Core::Memory::CompareMemory( const void* pMem1, const void* pMem2, size_t size )
+int32_t BIGOS::Core::Memory::Compare( const void* pMem1, const void* pMem2, size_t size )
 {
     BGS_ASSERT( pMem1 != nullptr, "Memory block (pSrc) must be valid pointer." );
     BGS_ASSERT( pMem2 != nullptr, "Memory block (pSrc) must be valid pointer." );

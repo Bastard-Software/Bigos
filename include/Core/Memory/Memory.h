@@ -31,9 +31,9 @@ namespace BIGOS
 
 #endif // ( BGS_MEMORY_DEBUG )
 
-            BGS_FORCEINLINE void    CopyMemory( const void* pSrc, size_t srcSize, void* pDst, size_t dstSize );
-            BGS_FORCEINLINE void    SetMemory( void* pDst, int32_t val, size_t size );
-            BGS_FORCEINLINE int32_t CompareMemory( const void* pMem1, const void* pMem2, size_t size );
+            BGS_FORCEINLINE void    Copy( const void* pSrc, size_t srcSize, void* pDst, size_t dstSize );
+            BGS_FORCEINLINE void    Set( void* pDst, int32_t val, size_t size );
+            BGS_FORCEINLINE int32_t Compare( const void* pMem1, const void* pMem2, size_t size );
 
             template<typename T, class AllocatorT>
             BGS_FORCEINLINE RESULT Allocate( AllocatorT* pAllocator, T** ppMem )
