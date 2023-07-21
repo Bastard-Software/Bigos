@@ -4,6 +4,7 @@
 #include "Core/Memory/Memory.h"
 #include "Driver/Backend/D3D12/D3D12Factory.h"
 #include "Driver/Backend/Vulkan/VulkanFactory.h"
+#include "Driver/Frontend/Device.h"
 
 namespace BIGOS
 {
@@ -11,6 +12,75 @@ namespace BIGOS
     {
         namespace Frontend
         {
+
+            RESULT DriverSystem::CreateDevice( const DeviceDesc& desc, Device** ppDevice )
+            {
+                BGS_ASSERT( m_pFactory != nullptr,
+                            "Invalid factory (m_pFactory) pointer. Factory hasn't been created properly or has been destroyed during runtime." );
+                BGS_ASSERT( ppDevice != nullptr, "ppDevice must be a valid address." );
+
+                if( m_pFactory == nullptr )
+                {
+                    return Results::FAIL;
+                }
+
+                Device* pDevice = ( *ppDevice );
+                if( pDevice != nullptr )
+                {
+                    for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
+                    {
+                        // TODO: Find device in array using hash
+                        if( m_devices[ ndx ] == pDevice )
+                        {
+                            return Results::OK;
+                        }
+                    }
+
+                    // TDOD: Warrning that device wasn't created by framework?
+                    m_devices.push_back( pDevice );
+
+                    return Results::OK;
+                }
+                else
+                {
+                    if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pDevice ) ) )
+                    {
+                        return Results::NO_MEMORY;
+                    }
+
+                    if( BGS_FAILED( pDevice->Create( desc, m_pFactory, this ) ) )
+                    {
+                        Memory::FreeObject( m_pDefaultAllocator, &pDevice );
+                        return Results::FAIL;
+                    }
+                }
+
+                BGS_ASSERT( pDevice != nullptr );
+                m_devices.push_back( pDevice );
+                ( *ppDevice ) = pDevice;
+
+                return Results::OK;
+            }
+
+            void DriverSystem::DestroyDevice( Device** ppDevice )
+            {
+                BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice != nullptr ), "ppDevice must be an valid address of a valid pointer." );
+
+                Device* pDevice = ( *ppDevice );
+
+                for (index_t ndx = 0; ndx < m_devices.size(); ++ndx)
+                {
+                    // TODO: Find device in array using hash
+                    if (m_devices[ndx] == pDevice)
+                    {
+                        m_devices[ ndx ] = m_devices.back();
+                        m_devices.pop_back();
+                        pDevice->Destroy();
+                        Memory::FreeObject( m_pDefaultAllocator, &pDevice );
+                        break;
+                    }
+                }
+            }
 
             RESULT DriverSystem::Create( const DriverSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent )
             {
@@ -34,6 +104,14 @@ namespace BIGOS
                 {
                     DestroyFactory( &m_pFactory );
                 }
+
+                for (index_t ndx = 0; ndx < m_devices.size(); ++ndx)
+                {
+                    DestroyDevice( &m_devices[ ndx ] );
+                }
+
+                m_devices.clear();
+                m_adapters.clear();
 
                 m_pDefaultAllocator = nullptr;
                 m_pParent           = nullptr;
@@ -84,12 +162,15 @@ namespace BIGOS
 
                 BGS_ASSERT( m_pFactory != nullptr );
                 *ppFactory = m_pFactory;
+                m_adapters = m_pFactory->GetAdapters();
 
                 return Results::OK;
             }
 
             void DriverSystem::DestroyFactory( Backend::IFactory** ppFactory )
             {
+                BGS_ASSERT( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ), "ppDevice must be an valid address of a valid pointer." );
+
                 const Backend::API_TYPE apiType = m_desc.factoryDesc.apiType;
                 if( apiType == Backend::APITypes::VULKAN )
                 {

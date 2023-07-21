@@ -27,6 +27,7 @@ namespace BIGOS::Driver::Backend
 {
     class D3D12Adapter;
     class D3D12Factory;
+    class D3D12Device;
 } // namespace BIGOS::Driver::Backend
 
 #define RELEASE_COM_PTR( _x )                                                                                                                        \

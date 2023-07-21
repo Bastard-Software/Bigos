@@ -64,7 +64,7 @@ namespace BIGOS
 
             struct DeviceDesc
             {
-                // TODO: Fill
+                AdapterHandle h_adapter;
             };
 
             enum class QueueTypes : uint8_t
