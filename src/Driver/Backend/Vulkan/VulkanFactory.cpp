@@ -152,6 +152,8 @@ namespace BIGOS
 
             RESULT VulkanFactory::CreateVkInstance()
             {
+                VkInstance nativeInstance = VK_NULL_HANDLE;
+
                 // Required exts
                 HeapArray<const char*> instExt = {
                     VK_KHR_SURFACE_EXTENSION_NAME,
@@ -252,7 +254,6 @@ namespace BIGOS
                 instInfo.ppEnabledExtensionNames = instExt.data();
                 instInfo.enabledExtensionCount   = extCount;
 
-                VkInstance nativeInstance = VK_NULL_HANDLE;
                 if( vkCreateInstance( &instInfo, nullptr, &nativeInstance ) != VK_SUCCESS )
                 {
                     return Results::FAIL;

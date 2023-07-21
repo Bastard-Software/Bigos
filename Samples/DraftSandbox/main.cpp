@@ -19,10 +19,19 @@ int main()
     }
 
     BIGOS::Driver::Frontend::DriverSystem* pDriverSystem = nullptr;
-    if( BGS_FAILED(pFramework->CreateDriverSystem( frameworkDesc.driverSystemDesc, &pDriverSystem )))
+    if( BGS_FAILED( pFramework->CreateDriverSystem( frameworkDesc.driverSystemDesc, &pDriverSystem ) ) )
     {
         return -1;
     }
+
+    BIGOS::Driver::Frontend::DeviceDesc devDesc;
+    devDesc.adapter.index                    = 0;
+    BIGOS::Driver::Frontend::Device* pDevice = nullptr;
+    if( BGS_FAILED( pDriverSystem->CreateDevice( devDesc, &pDevice ) ) )
+    {
+        return -1;
+    }
+    pDevice;
 
     auto        allocator = pFramework->GetMemorySystemPtr()->GetSystemHeapAllocatorPtr();
     const auto& adapters  = pDriverSystem->GetFactoryPtr()->GetAdapters();

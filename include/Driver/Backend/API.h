@@ -40,6 +40,18 @@ namespace BIGOS
                 FactoryHandle m_handle;
             };
 
+            class BGS_API BGS_API_INTERFACE IDevice
+            {
+            public:
+                virtual ~IDevice() = default;
+
+                BGS_FORCEINLINE const DeviceDesc& GetDesc() const { return m_desc; }
+
+            protected:
+                DeviceDesc   m_desc;
+                DeviceHandle m_handle;
+            };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

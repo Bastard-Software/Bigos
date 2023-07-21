@@ -10,6 +10,7 @@ namespace BIGOS
 
     namespace Driver
     {
+
         namespace Backend
         {
 
@@ -20,11 +21,39 @@ namespace BIGOS
 
         namespace Frontend
         {
+
             class DriverSystem;
+            class Device;
+
+            using AdapterArray = Backend::AdapterArray;
+            using DeviceArray  = HeapArray<Device*>; // Framework allows to create only one device for each adapter
+
+            enum class AdapterTypes : uint8_t
+            {
+                FIRST_AVAILABLE,
+                HIGH_PERFORMANCE,
+                LOW_PERFORMANCE,
+                DISCRETE,
+                INTEGRATED,
+                _MAX_ENUM,
+            };
+            using ADAPTER_TYPE = AdapterTypes;
 
             struct DriverSystemDesc
             {
-                Backend::FactoryDesc             factoryDesc;
+                Backend::FactoryDesc factoryDesc;
+            };
+
+            struct DeviceDesc
+            {
+                struct
+                {
+                    uint8_t index = 0;
+                    /* TODO: Handle that better way
+                    ADAPTER_TYPE type  = AdapterTypes::FIRST_AVAILABLE;
+                    const char*  pText = nullptr;
+                    */
+                } adapter;
             };
 
         } // namespace Frontend
