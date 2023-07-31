@@ -18,6 +18,7 @@
 BGS_DECLARE_D3D12_HANDLE( Factory, IDXGIFactory4* );
 BGS_DECLARE_D3D12_HANDLE( Adapter, IDXGIAdapter1* );
 BGS_DECLARE_D3D12_HANDLE( Device, ID3D12Device* );
+BGS_DECLARE_D3D12_HANDLE( Queue, ID3D12CommandQueue* );
 
 #endif
 

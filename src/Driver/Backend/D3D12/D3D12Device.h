@@ -15,6 +15,9 @@ namespace BIGOS
                 friend class D3D12Factory;
 
             public:
+                virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
+                virtual void   DestroyQueue( IQueue** ppQueue ) override;
+
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );
                 void   Destroy();

@@ -12,9 +12,17 @@ namespace BIGOS
         {
             class BGS_API VulkanDevice final : public IDevice
             {
-                friend class D3D12Factory;
+                friend class VulkanFactory;
 
             public:
+                virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
+                virtual void   DestroyQueue( IQueue** ppQueue ) override;
+
+                // Funcions needed for Vulkan backend
+            public:
+                RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );
+                void   FreeNativeQueue( uint32_t familyIndex, uint32_t queueIndex );
+
             protected:
                 RESULT Create( const DeviceDesc& desc, VulkanFactory* pFactory );
                 void   Destroy();
@@ -22,9 +30,16 @@ namespace BIGOS
             private:
                 RESULT CreateVkDevice();
 
+                void EnumerateNativeQueues();
+
+                RESULT CheckVkExtensionSupport( uint32_t extCount, const char* const* ppQueriedExts );
+
             private:
-                VolkDeviceTable* m_pDeviceAPI = nullptr;
-                VulkanFactory*   m_pParent    = nullptr;
+                VulkanQueueProperties m_queueProperties;
+
+                VulkanFactory* m_pParent = nullptr;
+
+                // VolkDeviceTable m_deviceAPI;
             };
         } // namespace Backend
     }     // namespace Driver

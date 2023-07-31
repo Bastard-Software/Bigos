@@ -2,6 +2,14 @@
 
 #include "VulkanDevice.h"
 
+#include "Core/Memory/IAllocator.h"
+#include "Core/Memory/Memory.h"
+#include "Core/Utils/String.h"
+#include "Driver/Frontend/RenderSystem.h"
+#include "VulkanCommon.h"
+#include "VulkanFactory.h"
+#include "VulkanQueue.h"
+
 namespace BIGOS
 {
     namespace Driver
@@ -12,6 +20,13 @@ namespace BIGOS
             {
             public:
                 VkDeviceFeaturesHelper( const DeviceDesc& desc )
+                    : m_devDesc( desc )
+                    , m_devCoreFeatures()
+                    , m_dev11Features()
+                    , m_dev12Features()
+                    , m_dev13Features()
+                    , m_extensions()
+                    , m_pNext( nullptr )
                 {
                     m_devDesc = desc;
 
@@ -53,60 +68,336 @@ namespace BIGOS
             private:
                 DeviceDesc m_devDesc;
 
-                VkPhysicalDeviceFeatures         m_devCoreFeatures{};
-                VkPhysicalDeviceVulkan11Features m_dev11Features{};
-                VkPhysicalDeviceVulkan12Features m_dev12Features{};
-                VkPhysicalDeviceVulkan13Features m_dev13Features{};
+                VkPhysicalDeviceFeatures         m_devCoreFeatures;
+                VkPhysicalDeviceVulkan11Features m_dev11Features;
+                VkPhysicalDeviceVulkan12Features m_dev12Features;
+                VkPhysicalDeviceVulkan13Features m_dev13Features;
 
                 HeapArray<const char*> m_extensions;
 
-                // TODO: pNext chain structs
-                void* m_pNext = nullptr;
+                void* m_pNext;
             };
+
+            RESULT VulkanDevice::CreateQueue( const QueueDesc& desc, IQueue** ppQueue )
+            {
+                BGS_ASSERT( ppQueue != nullptr, "ppQueue must be a valid address." );
+                BGS_ASSERT( *ppQueue == nullptr, "There is a pointer at the given address. *ppQueue must be nullptr." );
+                if( ( ppQueue == nullptr ) && ( *ppQueue != nullptr ) )
+                {
+                    return Results::FAIL;
+                }
+
+                VulkanQueue* pQueue = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pQueue ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                BGS_ASSERT( pQueue != nullptr );
+
+                if( BGS_FAILED( pQueue->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pQueue );
+                    return Results::FAIL;
+                }
+
+                ( *ppQueue ) = pQueue;
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyQueue( IQueue** ppQueue )
+            {
+                BGS_ASSERT( ppQueue != nullptr, "ppQueue must be a valid address." );
+                BGS_ASSERT( *ppQueue != nullptr, "*ppQueue must be a valid pointer." );
+                if( ( ppQueue != nullptr ) && ( *ppQueue != nullptr ) )
+                {
+                    static_cast<VulkanQueue*>( *ppQueue )->Destroy();
+                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), ppQueue );
+                }
+            }
 
             RESULT VulkanDevice::Create( const DeviceDesc& desc, VulkanFactory* pFactory )
             {
                 BGS_ASSERT( pFactory != nullptr, "Factory (pFactory) must be a valid pointer." );
-                BGS_ASSERT( desc.h_adapter != AdapterHandle(), "Adapter handle (h_adapter) must be a valid adapter handle." );
+                BGS_ASSERT( desc.pAdapter != nullptr, "Adapter handle (pAdapter) must be a valid pointer." );
+                if( ( pFactory == nullptr ) || ( desc.pAdapter == nullptr ) )
+                {
+                    return Results::FAIL;
+                }
 
                 m_desc    = desc;
                 m_pParent = pFactory;
+
+                if( BGS_FAILED( CreateVkDevice() ) )
+                {
+                    return Results::FAIL;
+                }
 
                 return Results::OK;
             }
 
             void VulkanDevice::Destroy()
             {
+                BGS_ASSERT( m_handle != DeviceHandle() );
+
+                if( m_handle != DeviceHandle() )
+                {
+                    VkDevice nativeDevice = m_handle.GetNativeHandle();
+                    vkDestroyDevice( nativeDevice, nullptr );
+                    // m_deviceAPI.vkDestroyDevice( nativeDevice, nullptr );
+                }
+
+                for( index_t ndx = 0; ndx < m_queueProperties.size(); ++ndx )
+                {
+                    m_queueProperties[ ndx ].queueParams.clear();
+                }
+                m_queueProperties.clear();
+
                 m_pParent = nullptr;
                 m_handle  = DeviceHandle();
             }
 
             RESULT VulkanDevice::CreateVkDevice()
             {
-                VkPhysicalDevice       nativeAdapter = m_desc.h_adapter.GetNativeHandle();
+                VkPhysicalDevice       nativeAdapter = m_desc.pAdapter->GetHandle().GetNativeHandle();
                 VkDevice               nativeDevice  = VK_NULL_HANDLE;
                 VkDeviceFeaturesHelper deviceFeaturesHelper( m_desc );
 
+                EnumerateNativeQueues();
+                HeapArray<VkDeviceQueueCreateInfo> queueCreateInfos( m_queueProperties.size() );
+                static float                       queuePrios[ 4 ][ 64 ];
+
+                for( index_t ndx = 0; ndx < m_queueProperties.size(); ++ndx )
+                {
+                    for( index_t ndy = 0; ndy < m_queueProperties[ ndx ].queueParams.size(); ++ndy )
+                    {
+                        queuePrios[ ndx ][ ndy ] = MapBigosQueuePriorityToVulkanQueuePriority( m_queueProperties[ ndx ].queueParams[ ndy ].priority );
+                    }
+
+                    queueCreateInfos[ ndx ].sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                    queueCreateInfos[ ndx ].pNext            = nullptr;
+                    queueCreateInfos[ ndx ].flags            = 0;
+                    queueCreateInfos[ ndx ].queueFamilyIndex = static_cast<uint32_t>( ndx );
+                    queueCreateInfos[ ndx ].queueCount       = static_cast<uint32_t>( m_queueProperties[ ndx ].queueParams.size() );
+                    queueCreateInfos[ ndx ].pQueuePriorities = queuePrios[ ndx ];
+                }
+
+                const char* const* ppQueriedExt    = deviceFeaturesHelper.GetExtNames();
+                const uint32_t     queriedExtCount = deviceFeaturesHelper.GetExtCount();
+
+                if( BGS_FAILED( CheckVkExtensionSupport( queriedExtCount, ppQueriedExt ) ) )
+                {
+                    return Results::NOT_FOUND;
+                }
+
                 VkDeviceCreateInfo devInfo;
+                devInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
                 devInfo.pNext                   = deviceFeaturesHelper.GetExtChain();
-                devInfo.enabledExtensionCount   = deviceFeaturesHelper.GetExtCount();
-                devInfo.ppEnabledExtensionNames = deviceFeaturesHelper.GetExtNames();
+                devInfo.flags                   = 0;
+                devInfo.enabledExtensionCount   = queriedExtCount;
+                devInfo.ppEnabledExtensionNames = ppQueriedExt;
                 devInfo.pEnabledFeatures        = deviceFeaturesHelper.GetDeviceFeatures();
+                devInfo.pQueueCreateInfos       = queueCreateInfos.data();
+                devInfo.queueCreateInfoCount    = static_cast<uint32_t>( queueCreateInfos.size() );
+                devInfo.ppEnabledLayerNames     = nullptr;
+                devInfo.enabledLayerCount       = 0;
 
                 if( vkCreateDevice( nativeAdapter, &devInfo, nullptr, &nativeDevice ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
-                BGS_ASSERT( m_pDeviceAPI == nullptr );
-                volkLoadDeviceTable( m_pDeviceAPI, nativeDevice );
-                BGS_ASSERT( m_pDeviceAPI != nullptr );
-                if( m_pDeviceAPI == nullptr )
+                // TODO: Change to volkLOadDeviceTable() not working right now (24.07.2023)
+                // volkLoadDeviceTable( &m_deviceAPI, nativeDevice );
+                volkLoadDevice( nativeDevice );
+
+                m_handle = DeviceHandle( nativeDevice );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::EnumerateNativeQueues()
+            {
+                VkPhysicalDevice nativeAdapter = m_desc.pAdapter->GetHandle().GetNativeHandle();
+
+                uint32_t familyCount = 0;
+                vkGetPhysicalDeviceQueueFamilyProperties( nativeAdapter, &familyCount, nullptr );
+                VkQueueFamilyProperties nativeProps[ 4 ];
+                vkGetPhysicalDeviceQueueFamilyProperties( nativeAdapter, &familyCount, nativeProps );
+                m_queueProperties.resize( familyCount );
+
+                for( index_t ndx = 0; ndx < familyCount; ++ndx )
                 {
-                    vkDestroyDevice( nativeDevice, nullptr );
+                    const uint32_t qCnt = nativeProps[ ndx ].queueCount;
+                    m_queueProperties[ ndx ].queueParams.reserve( qCnt );
+                    m_queueProperties[ ndx ].familiyParams = nativeProps[ ndx ];
+
+                    // Decide about queue count
+                    if( qCnt == 1 )
+                    {
+                        VulkanQueueParams params;
+                        params.familyIndex = static_cast<uint32_t>( ndx );
+                        params.queueIndex  = 0;
+                        params.priority    = QueuePriorityTypes::NORMAL;
+                        params.free        = true;
+
+                        m_queueProperties[ ndx ].queueParams.push_back( params );
+                    }
+                    else if( qCnt == 2 )
+                    {
+                        VulkanQueueParams params;
+                        params.familyIndex = static_cast<uint32_t>( ndx );
+                        params.queueIndex  = 0;
+                        params.priority    = QueuePriorityTypes::NORMAL;
+                        params.free        = true;
+                        m_queueProperties[ ndx ].queueParams.push_back( params );
+
+                        params.queueIndex = 1;
+                        params.priority   = QueuePriorityTypes::HIGH;
+                        m_queueProperties[ ndx ].queueParams.push_back( params );
+                    }
+                    else if( qCnt == 3 )
+                    {
+                        VulkanQueueParams params;
+                        params.familyIndex = static_cast<uint32_t>( ndx );
+                        params.queueIndex  = 0;
+                        params.priority    = QueuePriorityTypes::NORMAL;
+                        params.free        = true;
+                        m_queueProperties[ ndx ].queueParams.push_back( params );
+
+                        params.queueIndex = 1;
+                        params.priority   = QueuePriorityTypes::HIGH;
+                        m_queueProperties[ ndx ].queueParams.push_back( params );
+
+                        params.queueIndex = 2;
+                        params.priority   = QueuePriorityTypes::REALTIME;
+                        m_queueProperties[ ndx ].queueParams.push_back( params );
+                    }
+                    else // 0 or more than 3
+                    {
+                        VulkanQueueParams params;
+                        params.familyIndex = static_cast<uint32_t>( ndx );
+
+                        for( index_t ndy = 0; ndy < qCnt / 2; ++ndy )
+                        {
+                            params.priority   = QueuePriorityTypes::NORMAL;
+                            params.queueIndex = static_cast<uint32_t>( ndy );
+
+                            m_queueProperties[ ndx ].queueParams.push_back( params );
+                        }
+
+                        for( index_t ndy = qCnt / 2; ndy < qCnt - 1; ++ndy )
+                        {
+                            params.priority   = QueuePriorityTypes::HIGH;
+                            params.queueIndex = static_cast<uint32_t>( ndy );
+
+                            m_queueProperties[ ndx ].queueParams.push_back( params );
+                        }
+
+                        params.priority   = QueuePriorityTypes::REALTIME;
+                        params.queueIndex = static_cast<uint32_t>( qCnt - 1 );
+                        m_queueProperties[ ndx ].queueParams.push_back( params );
+                    }
+                }
+            }
+
+            RESULT VulkanDevice::CheckVkExtensionSupport( uint32_t extCount, const char* const* ppQueriedExts )
+            {
+                uint32_t         availExtCount = 0;
+                VkPhysicalDevice nativeAdapter = m_desc.pAdapter->GetHandle().GetNativeHandle();
+
+                if( vkEnumerateDeviceExtensionProperties( nativeAdapter, nullptr, &availExtCount, nullptr ) != VK_SUCCESS )
+                {
                     return Results::FAIL;
                 }
 
+                HeapArray<VkExtensionProperties> extProps( availExtCount );
+                if( vkEnumerateDeviceExtensionProperties( nativeAdapter, nullptr, &availExtCount, extProps.data() ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                HeapArray<const char*> availExts( availExtCount );
+                for( index_t ndx = 0; ndx < availExtCount; ++ndx )
+                {
+                    availExts[ ndx ] = extProps[ ndx ].extensionName;
+                }
+
+                for( index_t ndx = 0; ndx < extCount; ++ndx )
+                {
+                    if( Core::Utils::String::FindString( availExts, ppQueriedExts[ ndx ] ) == INVALID_POSITION )
+                    {
+                        // TODO: Log not found, then return not found.
+                        return Results::NOT_FOUND;
+                    }
+                }
+
                 return Results::OK;
+            }
+
+            RESULT VulkanDevice::FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex )
+            {
+                // Due to hw specification best way is to start looking for proper queue in reverse family order.
+                const index_t famCnt = m_queueProperties.size();
+                for( index_t ndx = 0; ndx < famCnt; ++ndx )
+                {
+                    const index_t revFamNdx = famCnt - 1 - ndx;
+                    for( index_t ndy = 0; ndy < m_queueProperties[ revFamNdx ].queueParams.size(); ++ndy )
+                    {
+                        VulkanQueueParams& qParams = m_queueProperties[ revFamNdx ].queueParams[ ndy ];
+                        // TODO: Video here
+
+                        // Looking for copy queue
+                        if( ( type == QueueTypes::COPY ) && ( m_queueProperties[ revFamNdx ].familiyParams.queueFlags & VK_QUEUE_TRANSFER_BIT ) &&
+                            ( prio == qParams.priority ) && ( qParams.free == true ) )
+                        {
+                            qParams.free = false;
+                            *familyIndex = static_cast<uint32_t>( revFamNdx );
+                            *queueIndex  = static_cast<uint32_t>( ndy );
+
+                            return Results::OK;
+                        }
+
+                        // Looking for compute queue
+                        if( ( type == QueueTypes::COMPUTE ) && ( m_queueProperties[ revFamNdx ].familiyParams.queueFlags & VK_QUEUE_COMPUTE_BIT ) &&
+                            ( prio == qParams.priority ) && ( qParams.free == true ) )
+                        {
+                            qParams.free = false;
+                            *familyIndex = static_cast<uint32_t>( revFamNdx );
+                            *queueIndex  = static_cast<uint32_t>( ndy );
+
+                            return Results::OK;
+                        }
+
+                        // Looking for graphics queue
+                        if( ( type == QueueTypes::GRAPHICS ) && ( m_queueProperties[ revFamNdx ].familiyParams.queueFlags & VK_QUEUE_GRAPHICS_BIT ) &&
+                            ( prio == qParams.priority ) && ( qParams.free == true ) )
+                        {
+                            qParams.free = false;
+                            *familyIndex = static_cast<uint32_t>( revFamNdx );
+                            *queueIndex  = static_cast<uint32_t>( ndy );
+
+                            return Results::OK;
+                        }
+                    }
+                }
+
+                *familyIndex = MAX_UINT32;
+                *queueIndex  = MAX_UINT32;
+
+                return Results::NOT_FOUND;
+            }
+
+            void VulkanDevice::FreeNativeQueue( uint32_t familyIndex, uint32_t queueIndex )
+            {
+                BGS_ASSERT( familyIndex < m_queueProperties.size(), "Family index extends count of native queue families." )
+                BGS_ASSERT( queueIndex < m_queueProperties[ familyIndex ].queueParams.size(),
+                            "Queue index extends count of native queues in this family." )
+                if( ( familyIndex >= m_queueProperties.size() ) || ( queueIndex >= m_queueProperties[ familyIndex ].queueParams.size() ) )
+                {
+                    return;
+                }
+
+                m_queueProperties[ familyIndex ].queueParams[ queueIndex ].free = true;
             }
 
         } // namespace Backend

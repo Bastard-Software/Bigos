@@ -14,6 +14,7 @@
 BGS_DECLARE_VULKAN_HANDLE( Factory, VkInstance );
 BGS_DECLARE_VULKAN_HANDLE( Adapter, VkPhysicalDevice );
 BGS_DECLARE_VULKAN_HANDLE( Device, VkDevice );
+BGS_DECLARE_VULKAN_HANDLE( Queue, VkQueue );
 
 #endif
 
@@ -24,4 +25,21 @@ namespace BIGOS::Driver::Backend
     class VulkanAdapter;
     class VulkanFactory;
     class VulkanDevice;
+
+    struct VulkanQueueParams
+    {
+        uint32_t            familyIndex;
+        uint32_t            queueIndex;
+        QUEUE_PRIORITY_TYPE priority;
+        bool                free;
+    };
+
+    struct VulkanQueueFamilyParams
+    {
+        HeapArray<VulkanQueueParams> queueParams;
+        VkQueueFamilyProperties      familiyParams;
+    };
+
+    using VulkanQueueProperties = HeapArray<VulkanQueueFamilyParams>;
+
 } // namespace BIGOS::Driver::Backend

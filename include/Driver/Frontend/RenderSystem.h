@@ -1,6 +1,6 @@
 #pragma once
 #include "Core/Memory/MemoryTypes.h"
-#include "Driver/Frontend/DriverSystemTypes.h"
+#include "Driver/Frontend/RenderSystemTypes.h"
 
 namespace BIGOS
 {
@@ -8,27 +8,27 @@ namespace BIGOS
     {
         namespace Frontend
         {
-            class BGS_API DriverSystem final
+            class BGS_API RenderSystem final
             {
                 friend class BigosFramework;
                 friend class Backend::VulkanFactory;
                 friend class Backend::D3D12Factory;
 
             public:
-                RESULT CreateDevice( const DeviceDesc& desc, Device** ppDevice );
-                void   DestroyDevice( Device** ppDevice );
+                RESULT CreateDevice( const RenderDeviceDesc& desc, RenderDevice** ppDevice );
+                void   DestroyDevice( RenderDevice** ppDevice );
 
                 BigosFramework*     GetParentPtr() { return m_pParent; }
                 Memory::IAllocator* GetDefaultAllocatorPtr() { return m_pDefaultAllocator; }
                 Backend::IFactory*  GetFactoryPtr() { return m_pFactory; }
 
-                const DeviceArray&  GetDevices() const { return m_devices; }
-                const AdapterArray& GetAdapters() const { return m_adapters; }
+                const RenderDeviceArray& GetDevices() const { return m_devices; }
+                const AdapterArray&      GetAdapters() const { return m_adapters; }
 
-                const DriverSystemDesc& GetDesc() const { return m_desc; }
+                const RenderSystemDesc& GetDesc() const { return m_desc; }
 
             protected:
-                RESULT Create( const DriverSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent );
+                RESULT Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent );
                 void   Destroy();
 
             private:
@@ -36,10 +36,10 @@ namespace BIGOS
                 void   DestroyFactory( Backend::IFactory** ppFactory );
 
             private:
-                DriverSystemDesc    m_desc;
+                RenderSystemDesc    m_desc;
                 Backend::IFactory*  m_pFactory;
                 AdapterArray        m_adapters;
-                DeviceArray         m_devices;
+                RenderDeviceArray   m_devices;
                 BigosFramework*     m_pParent;
                 Memory::IAllocator* m_pDefaultAllocator;
             };
