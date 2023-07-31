@@ -9,7 +9,7 @@ namespace BIGOS
     {
         namespace Frontend
         {
-            class DriverSystem;
+            class RenderSystem;
         }
 
         namespace Backend
@@ -17,14 +17,18 @@ namespace BIGOS
 
             class BGS_API D3D12Factory final : public IFactory
             {
-                friend class BIGOS::Driver::Frontend::DriverSystem;
+                friend class BIGOS::Driver::Frontend::RenderSystem;
 
             public:
                 RESULT CreateDevice( const DeviceDesc& desc, IDevice** ppDevice ) override;
                 void   DestroyDevice( IDevice** ppDevice ) override;
 
+                // Funcions needed for D3D12 backend
+            public:
+                BIGOS::Driver::Frontend::RenderSystem* GetParentPtr() { return m_pParent; }
+
             protected:
-                RESULT Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::DriverSystem* pParent );
+                RESULT Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::RenderSystem* pParent );
                 void   Destroy();
 
             private:
@@ -33,7 +37,7 @@ namespace BIGOS
                 RESULT CreateD3D12Factory();
 
             private:
-                BIGOS::Driver::Frontend::DriverSystem* m_pParent;
+                BIGOS::Driver::Frontend::RenderSystem* m_pParent = nullptr;
 
 #if( BGS_RENDER_DEBUG )
                 ID3D12Debug1*   m_pNativeDebug;

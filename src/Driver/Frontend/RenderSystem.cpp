@@ -1,10 +1,10 @@
-#include "Driver/Frontend/DriverSystem.h"
+#include "Driver/Frontend/RenderSystem.h"
 
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Driver/Backend/D3D12/D3D12Factory.h"
 #include "Driver/Backend/Vulkan/VulkanFactory.h"
-#include "Driver/Frontend/Device.h"
+#include "Driver/Frontend/RenderDevice.h"
 
 namespace BIGOS
 {
@@ -13,7 +13,7 @@ namespace BIGOS
         namespace Frontend
         {
 
-            RESULT DriverSystem::CreateDevice( const DeviceDesc& desc, Device** ppDevice )
+            RESULT RenderSystem::CreateDevice( const RenderDeviceDesc& desc, RenderDevice** ppDevice )
             {
                 BGS_ASSERT( m_pFactory != nullptr,
                             "Invalid factory (m_pFactory) pointer. Factory hasn't been created properly or has been destroyed during runtime." );
@@ -24,7 +24,7 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                Device* pDevice = ( *ppDevice );
+                RenderDevice* pDevice = ( *ppDevice );
                 if( pDevice != nullptr )
                 {
                     for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
@@ -62,27 +62,32 @@ namespace BIGOS
                 return Results::OK;
             }
 
-            void DriverSystem::DestroyDevice( Device** ppDevice )
+            void RenderSystem::DestroyDevice( RenderDevice** ppDevice )
             {
                 BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice != nullptr ), "ppDevice must be an valid address of a valid pointer." );
 
-                Device* pDevice = ( *ppDevice );
-
-                for (index_t ndx = 0; ndx < m_devices.size(); ++ndx)
+                if( ppDevice != nullptr )
                 {
-                    // TODO: Find device in array using hash
-                    if (m_devices[ndx] == pDevice)
+
+                    RenderDevice* pDevice = ( *ppDevice );
+
+                    for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
                     {
-                        m_devices[ ndx ] = m_devices.back();
-                        m_devices.pop_back();
-                        pDevice->Destroy();
-                        Memory::FreeObject( m_pDefaultAllocator, &pDevice );
-                        break;
+                        // TODO: Find device in array using hash
+                        if( m_devices[ ndx ] == pDevice )
+                        {
+                            m_devices[ ndx ] = m_devices.back();
+                            m_devices.pop_back();
+                            pDevice->Destroy();
+                            Memory::FreeObject( m_pDefaultAllocator, &pDevice );
+                            ppDevice = nullptr;
+                            break;
+                        }
                     }
                 }
             }
 
-            RESULT DriverSystem::Create( const DriverSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent )
+            RESULT RenderSystem::Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent )
             {
                 BGS_ASSERT( pParent != nullptr );
                 BGS_ASSERT( pAllocator != nullptr );
@@ -98,16 +103,16 @@ namespace BIGOS
                 return Results::OK;
             }
 
-            void DriverSystem::Destroy()
+            void RenderSystem::Destroy()
             {
+                for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
+                {
+                    DestroyDevice( &m_devices[ ndx ] );
+                }
+
                 if( m_pFactory != nullptr )
                 {
                     DestroyFactory( &m_pFactory );
-                }
-
-                for (index_t ndx = 0; ndx < m_devices.size(); ++ndx)
-                {
-                    DestroyDevice( &m_devices[ ndx ] );
                 }
 
                 m_devices.clear();
@@ -117,7 +122,7 @@ namespace BIGOS
                 m_pParent           = nullptr;
             }
 
-            RESULT DriverSystem::CreateFactory( const Backend::FactoryDesc& desc, Backend::IFactory** ppFactory )
+            RESULT RenderSystem::CreateFactory( const Backend::FactoryDesc& desc, Backend::IFactory** ppFactory )
             {
                 BGS_ASSERT( ( ppFactory != nullptr ) && ( *ppFactory == nullptr ) );
                 BGS_ASSERT( m_pFactory == nullptr );
@@ -167,7 +172,7 @@ namespace BIGOS
                 return Results::OK;
             }
 
-            void DriverSystem::DestroyFactory( Backend::IFactory** ppFactory )
+            void RenderSystem::DestroyFactory( Backend::IFactory** ppFactory )
             {
                 BGS_ASSERT( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ), "ppDevice must be an valid address of a valid pointer." );
 

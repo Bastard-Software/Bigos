@@ -1,8 +1,8 @@
 #include "BigosFramework/BigosFramework.h"
 
-#include "Driver/Frontend/DriverSystemTypes.h"
+#include "Driver/Frontend/RenderSystemTypes.h"
 
-#include "Driver/Frontend/DriverSystem.h"
+#include "Driver/Frontend/RenderSystem.h"
 
 BGS_API BIGOS::RESULT CreateBigosFramework( const BIGOS::BigosFrameworkDesc& desc, BIGOS::BigosFramework** ppFramework )
 {
@@ -48,37 +48,37 @@ BGS_API void DestroyBigosFramework( BIGOS::BigosFramework** ppFramework )
 namespace BIGOS
 {
 
-    RESULT BigosFramework::CreateDriverSystem( const Driver::Frontend::DriverSystemDesc& desc, Driver::Frontend::DriverSystem** ppSystem )
+    RESULT BigosFramework::CreateRenderSystem( const Driver::Frontend::RenderSystemDesc& desc, Driver::Frontend::RenderSystem** ppSystem )
     {
         BGS_ASSERT( ( ppSystem != nullptr ) && ( *ppSystem == nullptr ) );
 
-        // If driver system exist we return it otherwise we need to create.
-        if( m_pDriverSystem == nullptr )
+        // If render system exist we return it otherwise we need to create.
+        if( m_pRenderSystem == nullptr )
         {
-            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pDriverSystem ) ) )
+            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pRenderSystem ) ) )
             {
                 return Results::NO_MEMORY;
             }
 
-            if( BGS_FAILED( m_pDriverSystem->Create( desc, m_memorySystem.GetSystemHeapAllocatorPtr(), this ) ) )
+            if( BGS_FAILED( m_pRenderSystem->Create( desc, m_memorySystem.GetSystemHeapAllocatorPtr(), this ) ) )
             {
-                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pDriverSystem );
+                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pRenderSystem );
                 return Results::FAIL;
             }
         }
 
-        *ppSystem = m_pDriverSystem;
+        *ppSystem = m_pRenderSystem;
 
         return Results::OK;
     }
 
-    void BigosFramework::DestroyDriverSystem( Driver::Frontend::DriverSystem** ppSystem )
+    void BigosFramework::DestroyRenderSystem( Driver::Frontend::RenderSystem** ppSystem )
     {
         BGS_ASSERT( ( ppSystem != nullptr ) && ( *ppSystem != nullptr ) );
 
         if( *ppSystem != nullptr )
         {
-            Driver::Frontend::DriverSystem* pSystem = *ppSystem;
+            Driver::Frontend::RenderSystem* pSystem = *ppSystem;
             pSystem->Destroy();
             Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &pSystem );
             pSystem = nullptr;
@@ -97,7 +97,7 @@ namespace BIGOS
 
     void BigosFramework::Destroy()
     {
-        DestroyDriverSystem( &m_pDriverSystem );
+        DestroyRenderSystem( &m_pRenderSystem );
 
         m_memorySystem.Destroy();
     }

@@ -7,8 +7,9 @@
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Core/Utils/String.h"
-#include "Driver/Frontend/DriverSystem.h"
+#include "Driver/Frontend/RenderSystem.h"
 #include "VulkanAdapter.h"
+#include "VulkanDevice.h"
 
 namespace BIGOS
 {
@@ -25,7 +26,21 @@ namespace BIGOS
             RESULT VulkanFactory::CreateDevice( const DeviceDesc& desc, IDevice** ppDevice )
             {
                 BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice == nullptr ) );
-                desc;
+
+                VulkanDevice* pDevice = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                BGS_ASSERT( pDevice != nullptr );
+
+                if( BGS_FAILED( pDevice->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice );
+                    return Results::FAIL;
+                }
+
+                ( *ppDevice ) = pDevice;
 
                 return Results::OK;
             }
@@ -33,9 +48,15 @@ namespace BIGOS
             void VulkanFactory::DestroyDevice( IDevice** ppDevice )
             {
                 BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice != nullptr ) );
+                if( *ppDevice != nullptr )
+                {
+                    static_cast<VulkanDevice*>( *ppDevice )->Destroy();
+                }
+
+                Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), ppDevice );
             }
 
-            RESULT VulkanFactory::Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::DriverSystem* pParent )
+            RESULT VulkanFactory::Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::RenderSystem* pParent )
             {
                 BGS_ASSERT( pParent != nullptr );
 
@@ -63,6 +84,20 @@ namespace BIGOS
 
             void VulkanFactory::Destroy()
             {
+                BGS_ASSERT( m_handle != FactoryHandle() );
+
+                if( m_handle != FactoryHandle() )
+                {
+                    VkInstance nativeInstance = m_handle.GetNativeHandle();
+
+#if( BGS_RENDER_DEBUG )
+                    if( m_nativeDebug != VK_NULL_HANDLE )
+                    {
+                        vkDestroyDebugUtilsMessengerEXT( nativeInstance, m_nativeDebug, nullptr );
+                    }
+#endif // (BGS_RENDER_DEBUG)
+                    vkDestroyInstance( nativeInstance, nullptr );
+                }
 
                 for( index_t i = 0; i < m_adapters.size(); ++i )
                 {
@@ -71,20 +106,8 @@ namespace BIGOS
                 }
                 m_adapters.clear();
 
-                BGS_ASSERT( m_handle != FactoryHandle() );
-                VkInstance nativeInstance = m_handle.GetNativeHandle();
-
-                BGS_ASSERT( nativeInstance != VK_NULL_HANDLE );
-                if( nativeInstance != VK_NULL_HANDLE )
-                {
-#if( BGS_RENDER_DEBUG )
-                    vkDestroyDebugUtilsMessengerEXT( nativeInstance, m_nativeDebug, nullptr );
-#endif // (BGS_RENDER_DEBUG)
-                    vkDestroyInstance( nativeInstance, nullptr );
-                }
-
-                m_handle  = FactoryHandle();
                 m_pParent = nullptr;
+                m_handle  = FactoryHandle();
             }
 
             RESULT VulkanFactory::CheckValidationLayersSupport()
@@ -258,7 +281,8 @@ namespace BIGOS
                 {
                     return Results::FAIL;
                 }
-                volkLoadInstance( nativeInstance );
+                // volkLoadInstance( nativeInstance );
+                volkLoadInstanceOnly( nativeInstance );
 
 #if( BGS_RENDER_DEBUG )
                 if( m_desc.flags > 0 )

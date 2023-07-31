@@ -1,6 +1,6 @@
 #include "BigosFramework/BigosFramework.h"
 #include "Core/Memory/SystemHeapAllocator.h"
-#include "Driver/Frontend/DriverSystem.h"
+#include "Driver/Frontend/RenderSystem.h"
 #include <stdio.h>
 
 int main()
@@ -9,8 +9,8 @@ int main()
 
     BIGOS::BigosFramework*    pFramework = nullptr;
     BIGOS::BigosFrameworkDesc frameworkDesc;
-    frameworkDesc.driverSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::D3D12;
-    frameworkDesc.driverSystemDesc.factoryDesc.flags   = 1;
+    frameworkDesc.renderSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::D3D12;
+    frameworkDesc.renderSystemDesc.factoryDesc.flags   = 1;
 
     if( BGS_FAILED( CreateBigosFramework( frameworkDesc, &pFramework ) ) )
     {
@@ -18,35 +18,30 @@ int main()
         return -1;
     }
 
-    BIGOS::Driver::Frontend::DriverSystem* pDriverSystem = nullptr;
-    if( BGS_FAILED( pFramework->CreateDriverSystem( frameworkDesc.driverSystemDesc, &pDriverSystem ) ) )
+    BIGOS::Driver::Frontend::RenderSystem* pRenderSystem = nullptr;
+    if( BGS_FAILED( pFramework->CreateRenderSystem( frameworkDesc.renderSystemDesc, &pRenderSystem ) ) )
     {
         return -1;
     }
 
-    BIGOS::Driver::Frontend::DeviceDesc devDesc;
-    devDesc.adapter.index                    = 0;
-    BIGOS::Driver::Frontend::Device* pDevice = nullptr;
-    if( BGS_FAILED( pDriverSystem->CreateDevice( devDesc, &pDevice ) ) )
+    auto blocks = pFramework->GetMemorySystemPtr()->GetMemoryBlockInfoPtrs();
+
+    BIGOS::Driver::Frontend::RenderDeviceDesc devDesc;
+    devDesc.adapter.index                          = 0;
+    BIGOS::Driver::Frontend::RenderDevice* pDevice = nullptr;
+    if( BGS_FAILED( pRenderSystem->CreateDevice( devDesc, &pDevice ) ) )
     {
         return -1;
     }
-    pDevice;
+    devDesc.adapter.index = 1;
 
-    auto        allocator = pFramework->GetMemorySystemPtr()->GetSystemHeapAllocatorPtr();
-    const auto& adapters  = pDriverSystem->GetFactoryPtr()->GetAdapters();
+    blocks = pFramework->GetMemorySystemPtr()->GetMemoryBlockInfoPtrs();
+    blocks;
+
+    const auto& adapters = pRenderSystem->GetFactoryPtr()->GetAdapters();
     adapters;
 
-    void* pBlock        = nullptr;
-    void* pAlignedBlock = nullptr;
-    allocator->Allocate( 64, &pBlock );
-    allocator->AllocateAligned( 64, 8, &pAlignedBlock );
-    const auto& infoPtrs = pFramework->GetMemorySystemPtr()->GetMemoryBlockInfoPtrs();
-    infoPtrs;
-
-    allocator->Free( &pBlock );
-    allocator->FreeAligned( &pAlignedBlock );
-
+    pRenderSystem->DestroyDevice( &pDevice );
     DestroyBigosFramework( &pFramework );
 
     return 0;

@@ -64,30 +64,49 @@ namespace BIGOS
 
             struct DeviceDesc
             {
-                AdapterHandle h_adapter;
+                IAdapter* pAdapter;
             };
 
             enum class QueueTypes : uint8_t
             {
-                GENERAL,
+                GRAPHICS,
                 COMPUTE,
                 COPY,
+                // TODO: Support video (not soon)
                 _MAX_ENUM,
             };
             using QUEUE_TYPE = QueueTypes;
 
-            enum class QueuePriority : uint8_t
+            enum class QueuePriorityTypes : uint8_t
             {
                 NORMAL,
                 HIGH,
+                REALTIME,
                 _MAX_ENUM,
             };
-            using QUEUE_PRIORITY = QueuePriority;
+            using QUEUE_PRIORITY_TYPE = QueuePriorityTypes;
 
             struct QueueDesc
             {
-                QUEUE_TYPE type;
+                QUEUE_TYPE          type;
+                QUEUE_PRIORITY_TYPE priority;
             };
+
+            struct QueueLimits
+            {
+                // TODO: Fill
+            };
+
+            struct QueueSubmitDesc
+            {
+                // TODO: Fill
+            };
+
+            struct QueueWaitDesc
+            {
+                // TODO: Fill
+            };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

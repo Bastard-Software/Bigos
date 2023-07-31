@@ -22,11 +22,14 @@ namespace BIGOS
         namespace Frontend
         {
 
-            class DriverSystem;
-            class Device;
+            class RenderSystem;
+            class RenderDevice;
 
-            using AdapterArray = Backend::AdapterArray;
-            using DeviceArray  = HeapArray<Device*>; // Framework allows to create only one device for each adapter
+            using AdapterArray      = Backend::AdapterArray;
+            using RenderDeviceArray = HeapArray<RenderDevice*>; // Framework allows to create only one device for each adapter
+            using QueueArray        = HeapArray<Backend::IQueue*>;
+
+            using QueueDesc = Backend::QueueDesc;
 
             enum class AdapterTypes : uint8_t
             {
@@ -39,12 +42,12 @@ namespace BIGOS
             };
             using ADAPTER_TYPE = AdapterTypes;
 
-            struct DriverSystemDesc
+            struct RenderSystemDesc
             {
                 Backend::FactoryDesc factoryDesc;
             };
 
-            struct DeviceDesc
+            struct RenderDeviceDesc
             {
                 struct
                 {
@@ -54,6 +57,13 @@ namespace BIGOS
                     const char*  pText = nullptr;
                     */
                 } adapter;
+                /* TODO: Expose to framework, for now we create all three type of queues
+                struct
+                {
+                    QueueDesc* pQueueDescs;
+                    uint32_t   queueCount;
+                } queue;
+                */
             };
 
         } // namespace Frontend

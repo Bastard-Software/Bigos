@@ -45,11 +45,33 @@ namespace BIGOS
             public:
                 virtual ~IDevice() = default;
 
-                BGS_FORCEINLINE const DeviceDesc& GetDesc() const { return m_desc; }
+                virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) = 0;
+                virtual void   DestroyQueue( IQueue** ppQueue )                       = 0;
+
+                BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
 
             protected:
                 DeviceDesc   m_desc;
                 DeviceHandle m_handle;
+            };
+
+            class BGS_API BGS_API_INTERFACE IQueue
+            {
+            public:
+                virtual ~IQueue() = default;
+
+                virtual RESULT Submit( const QueueSubmitDesc& desc ) = 0;
+                virtual RESULT Wait( const QueueWaitDesc& desc )     = 0;
+
+                BGS_FORCEINLINE const QueueDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const QueueLimits& GetLimits() const { return m_limits; }
+                BGS_FORCEINLINE const QueueHandle  GetHandle() const { return m_handle; }
+
+            protected:
+                QueueDesc   m_desc;
+                QueueLimits m_limits;
+                QueueHandle m_handle;
             };
 
         } // namespace Backend

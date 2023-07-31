@@ -7,7 +7,8 @@
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "D3D12Adapter.h"
-#include "Driver/Frontend/DriverSystem.h"
+#include "D3D12Device.h"
+#include "Driver/Frontend/RenderSystem.h"
 
 namespace BIGOS
 {
@@ -19,7 +20,21 @@ namespace BIGOS
             RESULT D3D12Factory::CreateDevice( const DeviceDesc& desc, IDevice** ppDevice )
             {
                 BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice == nullptr ) );
-                desc;
+
+                D3D12Device* pDevice = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                BGS_ASSERT( pDevice != nullptr );
+
+                if( BGS_FAILED( pDevice->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice );
+                    return Results::FAIL;
+                }
+
+                ( *ppDevice ) = pDevice;
 
                 return Results::OK;
             }
@@ -27,11 +42,21 @@ namespace BIGOS
             void D3D12Factory::DestroyDevice( IDevice** ppDevice )
             {
                 BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice != nullptr ) );
+                if( *ppDevice != nullptr )
+                {
+                    static_cast<D3D12Device*>( *ppDevice )->Destroy();
+                }
+
+                Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), ppDevice );
             }
 
-            RESULT D3D12Factory::Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::DriverSystem* pParent )
+            RESULT D3D12Factory::Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::RenderSystem* pParent )
             {
                 BGS_ASSERT( pParent != nullptr );
+                if( pParent == nullptr )
+                {
+                    return Results::FAIL;
+                }
 
                 m_desc    = desc;
                 m_pParent = pParent;
@@ -52,6 +77,13 @@ namespace BIGOS
 
             void D3D12Factory::Destroy()
             {
+                BGS_ASSERT( m_handle != FactoryHandle() );
+
+                if( m_handle != FactoryHandle() )
+                {
+                    IDXGIFactory4* pNativeFactory = m_handle.GetNativeHandle();
+                    RELEASE_COM_PTR( pNativeFactory );
+                }
 #if( BGS_RENDER_DEBUG )
                 RELEASE_COM_PTR( m_pNativeInfoQueue );
                 RELEASE_COM_PTR( m_pNativeDebug );
@@ -64,12 +96,8 @@ namespace BIGOS
                 }
                 m_adapters.clear();
 
-                BGS_ASSERT( m_handle != FactoryHandle() );
-                IDXGIFactory4* pNativeFactory = m_handle.GetNativeHandle();
-                RELEASE_COM_PTR( pNativeFactory );
-
-                m_handle  = FactoryHandle();
                 m_pParent = nullptr;
+                m_handle  = FactoryHandle();
             }
 
             RESULT D3D12Factory::EnumAdapters()
