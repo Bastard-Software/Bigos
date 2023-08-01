@@ -31,7 +31,7 @@ namespace BIGOS::Driver::Backend
         uint32_t            familyIndex;
         uint32_t            queueIndex;
         QUEUE_PRIORITY_TYPE priority;
-        bool                free;
+        bool_t              free;
     };
 
     struct VulkanQueueFamilyParams

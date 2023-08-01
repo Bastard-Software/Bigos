@@ -99,10 +99,10 @@ namespace BIGOS
                     vkDestroyInstance( nativeInstance, nullptr );
                 }
 
-                for( index_t i = 0; i < m_adapters.size(); ++i )
+                for( index_t ndx = 0; ndx < m_adapters.size(); ++ndx )
                 {
-                    static_cast<VulkanAdapter*>( m_adapters[ i ] )->Destroy();
-                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &m_adapters[ i ] );
+                    static_cast<VulkanAdapter*>( m_adapters[ ndx ] )->Destroy();
+                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &m_adapters[ ndx ] );
                 }
                 m_adapters.clear();
 
@@ -123,9 +123,9 @@ namespace BIGOS
                 }
 
                 HeapArray<const char*> availLayers( layerCount );
-                for( index_t i = 0; i < availLayers.size(); ++i )
+                for( index_t ndx = 0; ndx < availLayers.size(); ++ndx )
                 {
-                    availLayers[ i ] = layerProps[ i ].layerName;
+                    availLayers[ ndx ] = layerProps[ ndx ].layerName;
                 }
 
                 if( Core::Utils::String::FindString( availLayers, "VK_LAYER_KHRONOS_validation" ) != INVALID_POSITION )
@@ -150,16 +150,16 @@ namespace BIGOS
                 }
 
                 HeapArray<const char*> availExts( availExtCount );
-                for( index_t i = 0; i < availExts.size(); ++i )
+                for( index_t ndx = 0; ndx < availExts.size(); ++ndx )
                 {
-                    availExts[ i ] = extProps[ i ].extensionName;
+                    availExts[ ndx ] = extProps[ ndx ].extensionName;
                 }
 
                 bool_t failed = BGS_FALSE;
 
-                for( index_t i = 0; i < extCount; ++i )
+                for( index_t ndx = 0; ndx < extCount; ++ndx )
                 {
-                    if( Core::Utils::String::FindString( availExts, ppExts[ i ] ) == INVALID_POSITION )
+                    if( Core::Utils::String::FindString( availExts, ppExts[ ndx ] ) == INVALID_POSITION )
                     {
                         failed = BGS_TRUE;
                     }
@@ -316,14 +316,14 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                for( index_t i = 0; i < nativeAdapters.size(); ++i )
+                for( index_t ndx = 0; ndx < nativeAdapters.size(); ++ndx )
                 {
                     VulkanAdapter* pVulkanAdapter = nullptr;
                     if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetDefaultAllocatorPtr(), &pVulkanAdapter ) ) )
                     {
                         return Results::NO_MEMORY;
                     }
-                    if( BGS_FAILED( pVulkanAdapter->Create( nativeAdapters[ i ], this ) ) )
+                    if( BGS_FAILED( pVulkanAdapter->Create( nativeAdapters[ ndx ], this ) ) )
                     {
                         Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &pVulkanAdapter );
                         return Results::FAIL;

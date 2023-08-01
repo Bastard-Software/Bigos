@@ -26,10 +26,7 @@ namespace BIGOS
                 const MemorySystemDesc& GetDesc() { return m_desc; }
 
 #if( BGS_MEMORY_DEBUG )
-                const MemoryBlockInfoArray& GetMemoryBlockInfoPtrs() const
-                {
-                    return m_memoryBlockInfoPtrs;
-                };
+                const MemoryBlockInfoArray& GetMemoryBlockInfoPtrs() const { return m_memoryBlockInfoPtrs; };
 #endif // ( BGS_MEMORY_DEBUG )
 
             protected:

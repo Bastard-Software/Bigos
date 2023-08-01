@@ -27,9 +27,9 @@ namespace BIGOS
                 // Destroy everything
 
                 // Destroy allocators
-                for( index_t i = 0; i < m_allocatorPtrs.size(); ++i )
+                for( index_t ndx = 0; ndx < m_allocatorPtrs.size(); ++ndx )
                 {
-                    m_allocatorPtrs[ i ]->Destroy();
+                    m_allocatorPtrs[ ndx ]->Destroy();
                 }
                 m_allocatorPtrs.clear();
 
@@ -56,11 +56,11 @@ namespace BIGOS
             {
                 BGS_ASSERT( pDebugInfo != nullptr );
 
-                for( index_t i = 0; i < m_memoryBlockInfoPtrs.size(); ++i )
+                for( index_t ndx = 0; ndx < m_memoryBlockInfoPtrs.size(); ++ndx )
                 {
-                    if( m_memoryBlockInfoPtrs[ i ] == pDebugInfo )
+                    if( m_memoryBlockInfoPtrs[ ndx ] == pDebugInfo )
                     {
-                        m_memoryBlockInfoPtrs[ i ] = m_memoryBlockInfoPtrs.back();
+                        m_memoryBlockInfoPtrs[ ndx ] = m_memoryBlockInfoPtrs.back();
                         m_memoryBlockInfoPtrs.pop_back();
 
                         break;

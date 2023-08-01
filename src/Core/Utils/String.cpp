@@ -12,11 +12,11 @@ namespace BIGOS
                 BGS_ASSERT( pStr != nullptr, "String (pStr) must be a valid string." );
                 BGS_ASSERT( array.size() > 0, "Array (array) can not be empty." );
 
-                for( index_t i = 0; i < array.size(); ++i )
+                for( index_t ndx = 0; ndx < array.size(); ++ndx )
                 {
-                    if( String::Compare( array[ i ], pStr ) )
+                    if( String::Compare( array[ ndx ], pStr ) )
                     {
-                        return i;
+                        return ndx;
                     }
                 }
 
@@ -28,11 +28,11 @@ namespace BIGOS
                 BGS_ASSERT( pStr != nullptr, "String (pStr) must be a valid string." );
                 BGS_ASSERT( ppArray != nullptr, "Array (ppArray) must be a valid array." );
 
-                for( index_t i = 0; i < elemCount; ++i )
+                for( index_t ndx = 0; ndx < elemCount; ++ndx )
                 {
-                    if( String::Compare( *( ppArray + i ), pStr ) )
+                    if( String::Compare( *( ppArray + ndx ), pStr ) )
                     {
-                        return i;
+                        return ndx;
                     }
                 }
 

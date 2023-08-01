@@ -1,4 +1,5 @@
 #include "Core/Memory/MemoryTypes.h"
+
 #include "Core/Memory/Memory.h"
 
 void* BIGOS::Core::Memory::Malloc( size_t size )
