@@ -5,8 +5,6 @@
 
 int main()
 {
-    printf( "Hello bigos\n" );
-
     BIGOS::BigosFramework*    pFramework = nullptr;
     BIGOS::BigosFrameworkDesc frameworkDesc;
     frameworkDesc.renderSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::D3D12;
@@ -43,6 +41,8 @@ int main()
 
     pRenderSystem->DestroyDevice( &pDevice );
     DestroyBigosFramework( &pFramework );
+
+    printf( "Hello bigos\n" );
 
     return 0;
 }

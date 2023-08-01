@@ -89,10 +89,10 @@ namespace BIGOS
                 RELEASE_COM_PTR( m_pNativeDebug );
 #endif // ( BGS_RENDER_DEBUG )
 
-                for( index_t i = 0; i < m_adapters.size(); ++i )
+                for( index_t ndx = 0; ndx < m_adapters.size(); ++ndx )
                 {
-                    static_cast<D3D12Adapter*>( m_adapters[ i ] )->Destroy();
-                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &m_adapters[ i ] );
+                    static_cast<D3D12Adapter*>( m_adapters[ ndx ] )->Destroy();
+                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &m_adapters[ ndx ] );
                 }
                 m_adapters.clear();
 
@@ -104,10 +104,10 @@ namespace BIGOS
             {
                 IDXGIFactory4* pNativeFactory = m_handle.GetNativeHandle();
 
-                for( index_t i = 0;; ++i )
+                for( index_t ndx = 0;; ++ndx )
                 {
                     IDXGIAdapter1* pAdapter   = nullptr;
-                    const UINT     adapterNdx = static_cast<UINT>( i );
+                    const UINT     adapterNdx = static_cast<UINT>( ndx );
 
                     if( DXGI_ERROR_NOT_FOUND == pNativeFactory->EnumAdapters1( adapterNdx, &pAdapter ) )
                     {

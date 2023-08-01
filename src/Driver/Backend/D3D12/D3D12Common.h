@@ -11,6 +11,6 @@ namespace BIGOS
             D3D12_COMMAND_LIST_TYPE MapBigosQueueTypeToD3D12CommandListType( QUEUE_TYPE type );
 
             D3D12_COMMAND_QUEUE_PRIORITY MapBigosQueuePriorityToD3D12CommandQueuePriority( QUEUE_PRIORITY_TYPE prio );
-        }
-    } // namespace Driver
+        } // namespace Backend
+    }     // namespace Driver
 } // namespace BIGOS

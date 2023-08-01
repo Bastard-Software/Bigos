@@ -238,7 +238,7 @@ namespace BIGOS
                         params.familyIndex = static_cast<uint32_t>( ndx );
                         params.queueIndex  = 0;
                         params.priority    = QueuePriorityTypes::NORMAL;
-                        params.free        = true;
+                        params.free        = BGS_TRUE;
 
                         m_queueProperties[ ndx ].queueParams.push_back( params );
                     }
@@ -248,7 +248,7 @@ namespace BIGOS
                         params.familyIndex = static_cast<uint32_t>( ndx );
                         params.queueIndex  = 0;
                         params.priority    = QueuePriorityTypes::NORMAL;
-                        params.free        = true;
+                        params.free        = BGS_TRUE;
                         m_queueProperties[ ndx ].queueParams.push_back( params );
 
                         params.queueIndex = 1;
@@ -261,7 +261,7 @@ namespace BIGOS
                         params.familyIndex = static_cast<uint32_t>( ndx );
                         params.queueIndex  = 0;
                         params.priority    = QueuePriorityTypes::NORMAL;
-                        params.free        = true;
+                        params.free        = BGS_TRUE;
                         m_queueProperties[ ndx ].queueParams.push_back( params );
 
                         params.queueIndex = 1;
@@ -276,6 +276,7 @@ namespace BIGOS
                     {
                         VulkanQueueParams params;
                         params.familyIndex = static_cast<uint32_t>( ndx );
+                        params.free        = BGS_TRUE;
 
                         for( index_t ndy = 0; ndy < qCnt / 2; ++ndy )
                         {
@@ -348,9 +349,9 @@ namespace BIGOS
 
                         // Looking for copy queue
                         if( ( type == QueueTypes::COPY ) && ( m_queueProperties[ revFamNdx ].familiyParams.queueFlags & VK_QUEUE_TRANSFER_BIT ) &&
-                            ( prio == qParams.priority ) && ( qParams.free == true ) )
+                            ( prio == qParams.priority ) && ( qParams.free == BGS_TRUE ) )
                         {
-                            qParams.free = false;
+                            qParams.free = BGS_FALSE;
                             *familyIndex = static_cast<uint32_t>( revFamNdx );
                             *queueIndex  = static_cast<uint32_t>( ndy );
 
@@ -359,9 +360,9 @@ namespace BIGOS
 
                         // Looking for compute queue
                         if( ( type == QueueTypes::COMPUTE ) && ( m_queueProperties[ revFamNdx ].familiyParams.queueFlags & VK_QUEUE_COMPUTE_BIT ) &&
-                            ( prio == qParams.priority ) && ( qParams.free == true ) )
+                            ( prio == qParams.priority ) && ( qParams.free == BGS_TRUE ) )
                         {
-                            qParams.free = false;
+                            qParams.free = BGS_FALSE;
                             *familyIndex = static_cast<uint32_t>( revFamNdx );
                             *queueIndex  = static_cast<uint32_t>( ndy );
 
@@ -370,9 +371,9 @@ namespace BIGOS
 
                         // Looking for graphics queue
                         if( ( type == QueueTypes::GRAPHICS ) && ( m_queueProperties[ revFamNdx ].familiyParams.queueFlags & VK_QUEUE_GRAPHICS_BIT ) &&
-                            ( prio == qParams.priority ) && ( qParams.free == true ) )
+                            ( prio == qParams.priority ) && ( qParams.free == BGS_TRUE ) )
                         {
-                            qParams.free = false;
+                            qParams.free = BGS_FALSE;
                             *familyIndex = static_cast<uint32_t>( revFamNdx );
                             *queueIndex  = static_cast<uint32_t>( ndy );
 
