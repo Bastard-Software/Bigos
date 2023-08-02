@@ -116,10 +116,71 @@ namespace BIGOS
                 }
             }
 
+            RESULT VulkanDevice::CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command pool (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.pQueue != nullptr, "Queue (desc.pQueue) must be a valid pointer." );
+                if( desc.pQueue == nullptr )
+                {
+                    return Results::FAIL;
+                }
+
+                VkCommandPoolCreateInfo poolInfo;
+                poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                poolInfo.pNext            = nullptr;
+                poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // To mimic D3D12 behaviour
+                poolInfo.queueFamilyIndex = static_cast<VulkanQueue*>( desc.pQueue )->GetFamilyIndex();
+
+                VkDevice      nativeDevice      = m_handle.GetNativeHandle();
+                VkCommandPool nativeCommandPool = VK_NULL_HANDLE;
+
+                if( vkCreateCommandPool( nativeDevice, &poolInfo, nullptr, &nativeCommandPool ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = CommandPoolHandle( nativeCommandPool );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyCommandPool( CommandPoolHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command pool handle (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != CommandPoolHandle(), "Command pool handle (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != CommandPoolHandle() ) )
+                {
+                    VkDevice      nativeDevice      = m_handle.GetNativeHandle();
+                    VkCommandPool nativeCommandPool = pHandle->GetNativeHandle();
+
+                    vkDestroyCommandPool( nativeDevice, nativeCommandPool, nullptr );
+
+                    *pHandle = CommandPoolHandle();
+                }
+            }
+
+            RESULT VulkanDevice::ResetCommandPool( CommandPoolHandle handle )
+            {
+                BGS_ASSERT( handle != CommandPoolHandle(), "Command pool handle (handle) must be a valid handle." );
+                if( handle == CommandPoolHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                VkDevice      nativeDevice      = m_handle.GetNativeHandle();
+                VkCommandPool nativeCommandPool = handle.GetNativeHandle();
+                if( vkResetCommandPool( nativeDevice, nativeCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
             RESULT VulkanDevice::Create( const DeviceDesc& desc, VulkanFactory* pFactory )
             {
                 BGS_ASSERT( pFactory != nullptr, "Factory (pFactory) must be a valid pointer." );
-                BGS_ASSERT( desc.pAdapter != nullptr, "Adapter handle (pAdapter) must be a valid pointer." );
+                BGS_ASSERT( desc.pAdapter != nullptr, "Adapter (pAdapter) must be a valid pointer." );
                 if( ( pFactory == nullptr ) || ( desc.pAdapter == nullptr ) )
                 {
                     return Results::FAIL;

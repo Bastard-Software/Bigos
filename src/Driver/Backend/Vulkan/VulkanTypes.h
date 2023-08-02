@@ -15,6 +15,7 @@ BGS_DECLARE_VULKAN_HANDLE( Factory, VkInstance );
 BGS_DECLARE_VULKAN_HANDLE( Adapter, VkPhysicalDevice );
 BGS_DECLARE_VULKAN_HANDLE( Device, VkDevice );
 BGS_DECLARE_VULKAN_HANDLE( Queue, VkQueue );
+BGS_DECLARE_VULKAN_HANDLE( CommandPool, VkCommandPool );
 
 #endif
 

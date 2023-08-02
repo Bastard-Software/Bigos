@@ -24,10 +24,10 @@ namespace BIGOS
                     Results::FAIL;
                 }
 
-                m_pDevice = pDevice;
+                m_pAPIDevice = pDevice;
 
-                // TODO: Temporary solution
-                // Creating hardware queues
+                // TODO: Create hardware queue interfaces
+                /*
                 QueueDesc qDescs[ 3 ] = {
                     { Backend::QueueTypes::GRAPHICS, Backend::QueuePriorityTypes::NORMAL },
                     { Backend::QueueTypes::COMPUTE, Backend::QueuePriorityTypes::NORMAL },
@@ -36,9 +36,10 @@ namespace BIGOS
                 uint32_t qCnt = 3;
                 if( BGS_FAILED( CreateQueues( qDescs, qCnt ) ) )
                 {
-                    m_pFactory->DestroyDevice( &m_pDevice );
+                    m_pFactory->DestroyDevice( &m_pAPIDevice );
                     Results::FAIL;
                 }
+                */
 
                 return Results::OK;
             }
@@ -46,9 +47,9 @@ namespace BIGOS
             void RenderDevice::Destroy()
             {
                 DestroyQueues();
-                if( m_pFactory && m_pDevice )
+                if( m_pFactory && m_pAPIDevice )
                 {
-                    m_pFactory->DestroyDevice( &m_pDevice );
+                    m_pFactory->DestroyDevice( &m_pAPIDevice );
                 }
 
                 m_pParent  = nullptr;
@@ -59,14 +60,14 @@ namespace BIGOS
             {
                 BGS_ASSERT( descs != nullptr, "" );
                 BGS_ASSERT( descCount != 0, "" );
-                BGS_ASSERT( m_pDevice != nullptr, "" );
+                BGS_ASSERT( m_pAPIDevice != nullptr, "" );
 
                 const index_t qCnt = static_cast<index_t>( descCount );
                 for( index_t ndx = 0; ndx < qCnt; ++ndx )
                 {
                     const QueueDesc& desc   = descs[ ndx ];
                     Backend::IQueue* pQueue = nullptr;
-                    if( BGS_FAILED( m_pDevice->CreateQueue( desc, &pQueue ) ) )
+                    if( BGS_FAILED( m_pAPIDevice->CreateQueue( desc, &pQueue ) ) )
                     {
                         // TODO: LOg which creation failed
                         return Results::FAIL;
@@ -93,17 +94,17 @@ namespace BIGOS
             {
                 for( index_t ndx = 0; ndx < m_graphicsQueues.size(); ++ndx )
                 {
-                    m_pDevice->DestroyQueue( &m_graphicsQueues[ ndx ] );
+                    m_pAPIDevice->DestroyQueue( &m_graphicsQueues[ ndx ] );
                 }
 
                 for( index_t ndx = 0; ndx < m_computeQueues.size(); ++ndx )
                 {
-                    m_pDevice->DestroyQueue( &m_computeQueues[ ndx ] );
+                    m_pAPIDevice->DestroyQueue( &m_computeQueues[ ndx ] );
                 }
 
                 for( index_t ndx = 0; ndx < m_copyQueues.size(); ++ndx )
                 {
-                    m_pDevice->DestroyQueue( &m_copyQueues[ ndx ] );
+                    m_pAPIDevice->DestroyQueue( &m_copyQueues[ ndx ] );
                 }
             }
 

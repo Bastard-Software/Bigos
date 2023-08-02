@@ -19,6 +19,11 @@ namespace BIGOS
                 virtual RESULT Submit( const QueueSubmitDesc& desc ) override;
                 virtual RESULT Wait( const QueueWaitDesc& desc ) override;
 
+                // Funcions needed for Vulkan backend
+            public:
+                uint32_t GetFamilyIndex() const { return m_nativeQueueFamilyIndex; }
+                uint32_t GetQueueIndex() const { return m_nativeQueueIndex; }
+
             protected:
                 RESULT Create( const QueueDesc& desc, VulkanDevice* pDevice );
                 void   Destroy();

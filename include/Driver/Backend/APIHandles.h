@@ -7,4 +7,5 @@ namespace BIGOS::Driver::Backend
     BGS_DECLARE_HANDLE( Factory );
     BGS_DECLARE_HANDLE( Device );
     BGS_DECLARE_HANDLE( Queue );
+    BGS_DECLARE_HANDLE( CommandPool );
 } // namespace BIGOS::Driver::Backend

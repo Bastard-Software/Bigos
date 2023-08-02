@@ -18,6 +18,10 @@ namespace BIGOS
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
                 virtual void   DestroyQueue( IQueue** ppQueue ) override;
 
+                virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) override;
+                virtual void   DestroyCommandPool( CommandPoolHandle* pHandle ) override;
+                virtual RESULT ResetCommandPool( CommandPoolHandle handle ) override;
+
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );
                 void   Destroy();

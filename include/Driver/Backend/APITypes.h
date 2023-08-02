@@ -107,6 +107,11 @@ namespace BIGOS
                 // TODO: Fill
             };
 
+            struct CommandPoolDesc
+            {
+                IQueue* pQueue;
+            };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
