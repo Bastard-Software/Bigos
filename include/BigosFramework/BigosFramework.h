@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/CoreTypes.h"
 #include "Driver/Frontend/RenderSystemTypes.h"
+#include "Platform/PlatformTypes.h"
 
 #include "Core/Memory/MemorySystem.h"
 
@@ -10,6 +11,7 @@ namespace BIGOS
     {
         Core::Memory::MemorySystemDesc     memorySystemDesc;
         Driver::Frontend::RenderSystemDesc renderSystemDesc;
+        Platform::WindowSystemDesc         windowSystemDesc;
     };
 
     class BigosFramework;
@@ -24,24 +26,29 @@ extern "C"
 
 namespace BIGOS
 {
-    class BGS_API BigosFramework
+    class BGS_API BigosFramework final
     {
     public:
-        BigosFramework()  = default;
+        BigosFramework();
         ~BigosFramework() = default;
 
         // TODO: Should that be private and create with framework?
         RESULT CreateRenderSystem( const Driver::Frontend::RenderSystemDesc& desc, Driver::Frontend::RenderSystem** ppSystem );
         void   DestroyRenderSystem( Driver::Frontend::RenderSystem** ppSystem );
 
+        RESULT CreateWindowSystem( const Platform::WindowSystemDesc& desc, Platform::WindowSystem** ppSystem );
+        void   DestroyWindowSystem( Platform::WindowSystem** ppSystem );
+
         Core::Memory::MemorySystem*     GetMemorySystemPtr() { return &m_memorySystem; }
         Driver::Frontend::RenderSystem* GetDriverSystemPtr() { return m_pRenderSystem; }
+        Platform::WindowSystem*         GetWindowSystemPtr() { return m_pWindowSystem; }
 
         RESULT Create( const BigosFrameworkDesc& desc );
         void   Destroy();
 
     private:
         Core::Memory::MemorySystem      m_memorySystem;
-        Driver::Frontend::RenderSystem* m_pRenderSystem = nullptr;
+        Driver::Frontend::RenderSystem* m_pRenderSystem;
+        Platform::WindowSystem*         m_pWindowSystem;
     };
 } // namespace BIGOS

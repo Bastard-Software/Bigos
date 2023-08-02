@@ -19,7 +19,7 @@ namespace BIGOS
             {
                 BGS_ASSERT( ppQueue != nullptr, "ppQueue must be a valid address." );
                 BGS_ASSERT( *ppQueue == nullptr, "There is a pointer at the given address. *ppQueue must be nullptr." );
-                if( ( ppQueue == nullptr ) && ( *ppQueue != nullptr ) )
+                if( ( ppQueue == nullptr ) || ( *ppQueue != nullptr ) )
                 {
                     return Results::FAIL;
                 }

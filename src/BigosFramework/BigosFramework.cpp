@@ -3,6 +3,7 @@
 #include "Driver/Frontend/RenderSystemTypes.h"
 
 #include "Driver/Frontend/RenderSystem.h"
+#include "Platform/WindowSystem.h"
 
 BGS_API BIGOS::RESULT CreateBigosFramework( const BIGOS::BigosFrameworkDesc& desc, BIGOS::BigosFramework** ppFramework )
 {
@@ -47,10 +48,16 @@ BGS_API void DestroyBigosFramework( BIGOS::BigosFramework** ppFramework )
 
 namespace BIGOS
 {
+    BigosFramework::BigosFramework()
+        : m_memorySystem()
+        , m_pRenderSystem(nullptr)
+        , m_pWindowSystem(nullptr)
+    {
+    }
 
     RESULT BigosFramework::CreateRenderSystem( const Driver::Frontend::RenderSystemDesc& desc, Driver::Frontend::RenderSystem** ppSystem )
     {
-        BGS_ASSERT( ( ppSystem != nullptr ) && ( *ppSystem == nullptr ) );
+        BGS_ASSERT( ppSystem != nullptr, "Render system (ppSystem) must be a valid address." );
 
         // If render system exist we return it otherwise we need to create.
         if( m_pRenderSystem == nullptr )
@@ -74,14 +81,51 @@ namespace BIGOS
 
     void BigosFramework::DestroyRenderSystem( Driver::Frontend::RenderSystem** ppSystem )
     {
-        BGS_ASSERT( ( ppSystem != nullptr ) && ( *ppSystem != nullptr ) );
+        BGS_ASSERT( ppSystem != nullptr, "Render system (ppSystem) must be a valid address." );
 
-        if( *ppSystem != nullptr )
+        if( ( *ppSystem != nullptr ) && ( *ppSystem == m_pRenderSystem ) )
         {
             Driver::Frontend::RenderSystem* pSystem = *ppSystem;
             pSystem->Destroy();
             Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &pSystem );
-            pSystem = nullptr;
+            m_pRenderSystem = nullptr;
+        }
+    }
+
+    RESULT BigosFramework::CreateWindowSystem( const Platform::WindowSystemDesc& desc, Platform::WindowSystem** ppSystem )
+    {
+        BGS_ASSERT( ppSystem != nullptr, "Window system (ppSystem) must be a valid address." );
+
+        // If render system exist we return it otherwise we need to create.
+        if( m_pWindowSystem == nullptr )
+        {
+            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pWindowSystem ) ) )
+            {
+                return Results::NO_MEMORY;
+            }
+
+            if( BGS_FAILED( m_pWindowSystem->Create( desc, m_memorySystem.GetSystemHeapAllocatorPtr(), this ) ) )
+            {
+                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pWindowSystem );
+                return Results::FAIL;
+            }
+        }
+
+        *ppSystem = m_pWindowSystem;
+
+        return Results::OK;
+    }
+
+    void BigosFramework::DestroyWindowSystem( Platform::WindowSystem** ppSystem )
+    {
+        BGS_ASSERT( ppSystem != nullptr, "Window system (ppSystem) must be a valid address." );
+
+        if( ( *ppSystem != nullptr ) && ( *ppSystem == m_pWindowSystem ) )
+        {
+            Platform::WindowSystem* pSystem = *ppSystem;
+            pSystem->Destroy();
+            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &pSystem );
+            m_pWindowSystem = nullptr;
         }
     }
 
@@ -98,6 +142,7 @@ namespace BIGOS
     void BigosFramework::Destroy()
     {
         DestroyRenderSystem( &m_pRenderSystem );
+        DestroyWindowSystem( &m_pWindowSystem );
 
         m_memorySystem.Destroy();
     }
