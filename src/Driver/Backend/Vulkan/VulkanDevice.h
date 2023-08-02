@@ -18,6 +18,10 @@ namespace BIGOS
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
                 virtual void   DestroyQueue( IQueue** ppQueue ) override;
 
+                virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) override;
+                virtual void   DestroyCommandPool( CommandPoolHandle* pHandle ) override;
+                virtual RESULT ResetCommandPool( CommandPoolHandle handle ) override;
+
                 // Funcions needed for Vulkan backend
             public:
                 RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );

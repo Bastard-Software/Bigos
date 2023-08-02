@@ -48,6 +48,10 @@ namespace BIGOS
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) = 0;
                 virtual void   DestroyQueue( IQueue** ppQueue )                       = 0;
 
+                virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) = 0;
+                virtual void   DestroyCommandPool( CommandPoolHandle* pHandle )                             = 0;
+                virtual RESULT ResetCommandPool( CommandPoolHandle handle )                                 = 0;
+
                 BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
 

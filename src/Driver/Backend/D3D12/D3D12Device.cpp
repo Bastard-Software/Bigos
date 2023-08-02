@@ -4,6 +4,7 @@
 
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
+#include "D3D12Common.h"
 #include "D3D12Factory.h"
 #include "D3D12Queue.h"
 #include "Driver/Frontend/RenderSystem.h"
@@ -50,6 +51,60 @@ namespace BIGOS
                     static_cast<D3D12Queue*>( *ppQueue )->Destroy();
                     Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), ppQueue );
                 }
+            }
+
+            RESULT D3D12Device::CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command pool (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.pQueue != nullptr, "Queue (desc.pQueue) must be a valid pointer." );
+                if( desc.pQueue == nullptr )
+                {
+                    return Results::FAIL;
+                }
+
+                ID3D12Device*           pNativeDevice      = m_handle.GetNativeHandle();
+                ID3D12CommandAllocator* pNativeCommandPool = nullptr;
+
+                if( FAILED( pNativeDevice->CreateCommandAllocator( MapBigosQueueTypeToD3D12CommandListType( desc.pQueue->GetDesc().type ),
+                                                                   IID_PPV_ARGS( &pNativeCommandPool ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = CommandPoolHandle( pNativeCommandPool );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyCommandPool( CommandPoolHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command pool handle (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != CommandPoolHandle(), "Command pool handle (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != CommandPoolHandle() ) )
+                {
+                    ID3D12CommandAllocator* pNativeCommandPool = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeCommandPool );
+
+                    *pHandle = CommandPoolHandle();
+                }
+            }
+
+            RESULT D3D12Device::ResetCommandPool( CommandPoolHandle handle )
+            {
+                BGS_ASSERT( handle != CommandPoolHandle(), "Command pool handle (handle) must be a valid handle." );
+                if( handle == CommandPoolHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                ID3D12CommandAllocator* pNativeCommandPool = handle.GetNativeHandle();
+                if( FAILED( pNativeCommandPool->Reset() ) )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
             }
 
             RESULT D3D12Device::Create( const DeviceDesc& desc, D3D12Factory* pFactory )

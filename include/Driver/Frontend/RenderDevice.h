@@ -14,6 +14,8 @@ namespace BIGOS
                 friend class RenderSystem;
 
             public:
+                Backend::IDevice* GetNativeAPIDevice() { return m_pAPIDevice; }
+
             protected:
                 RESULT Create( const RenderDeviceDesc& desc, Backend::IFactory* pFactory, RenderSystem* pDriverSystem );
                 void   Destroy();
@@ -24,9 +26,9 @@ namespace BIGOS
 
             private:
                 RenderDeviceDesc   m_desc;
-                Backend::IFactory* m_pFactory = nullptr;
-                RenderSystem*      m_pParent  = nullptr;
-                Backend::IDevice*  m_pDevice  = nullptr;
+                Backend::IFactory* m_pFactory   = nullptr;
+                RenderSystem*      m_pParent    = nullptr;
+                Backend::IDevice*  m_pAPIDevice = nullptr;
                 QueueArray         m_graphicsQueues;
                 QueueArray         m_computeQueues;
                 QueueArray         m_copyQueues;
