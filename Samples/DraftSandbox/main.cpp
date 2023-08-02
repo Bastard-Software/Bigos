@@ -2,6 +2,8 @@
 #include "Core/Memory/SystemHeapAllocator.h"
 #include "Driver/Frontend/RenderDevice.h"
 #include "Driver/Frontend/RenderSystem.h"
+#include "Platform/Window.h"
+#include "Platform/WindowSystem.h"
 #include <stdio.h>
 
 int main()
@@ -17,11 +19,31 @@ int main()
         return -1;
     }
 
+    BIGOS::Platform::WindowSystem* pWindowSystem = nullptr;
+    if( BGS_FAILED( pFramework->CreateWindowSystem( frameworkDesc.windowSystemDesc, &pWindowSystem ) ) )
+    {
+        return -1;
+    }
+
     BIGOS::Driver::Frontend::RenderSystem* pRenderSystem = nullptr;
     if( BGS_FAILED( pFramework->CreateRenderSystem( frameworkDesc.renderSystemDesc, &pRenderSystem ) ) )
     {
         return -1;
     }
+
+    BIGOS::Platform::Window*    pWnd = nullptr;
+    BIGOS::Platform::WindowDesc wndDesc;
+    wndDesc.pTitle    = "Test window";
+    wndDesc.mode      = BIGOS::Platform::WindowModes::WINDOW;
+    wndDesc.xPosition = 100;
+    wndDesc.yPosition = 100;
+    wndDesc.width     = 1280;
+    wndDesc.height    = 720;
+    if( BGS_FAILED( pWindowSystem->CreateWindow( wndDesc, &pWnd ) ) )
+    {
+        return -1;
+    }
+    pWnd->Show();
 
     auto blocks = pFramework->GetMemorySystemPtr()->GetMemoryBlockInfoPtrs();
 
@@ -54,10 +76,12 @@ int main()
         return -1;
     }
 
+    // TODO: Close into loop
     if( BGS_FAILED( pAPIDevice->ResetCommandPool( hCmdPool ) ) )
     {
         return -1;
     }
+    pWnd->Update();
 
     pAPIDevice->DestroyCommandPool( &hCmdPool );
 
