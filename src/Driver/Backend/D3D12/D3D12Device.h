@@ -22,6 +22,15 @@ namespace BIGOS
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle ) override;
                 virtual RESULT ResetCommandPool( CommandPoolHandle handle ) override;
 
+                virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle ) override;
+                virtual void   DestroyFence( FenceHandle* pHandle ) override;
+                virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) override;
+                virtual RESULT SignalFence( uint64_t value, FenceHandle handle ) override;
+                virtual RESULT GetFenceValue( FenceHandle handle, uint64_t* pValue ) override;
+
+                virtual RESULT CreateSemaphore( const SemaphoreDesc& desc, SemaphoreHandle* pHandle ) override;
+                virtual void   DestroySemaphore( SemaphoreHandle* pHandle ) override;
+
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );
                 void   Destroy();

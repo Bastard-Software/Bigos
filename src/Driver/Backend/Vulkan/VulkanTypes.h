@@ -16,6 +16,8 @@ BGS_DECLARE_VULKAN_HANDLE( Adapter, VkPhysicalDevice );
 BGS_DECLARE_VULKAN_HANDLE( Device, VkDevice );
 BGS_DECLARE_VULKAN_HANDLE( Queue, VkQueue );
 BGS_DECLARE_VULKAN_HANDLE( CommandPool, VkCommandPool );
+BGS_DECLARE_VULKAN_HANDLE( Fence, VkSemaphore );
+BGS_DECLARE_VULKAN_HANDLE( Semaphore, VkSemaphore );
 
 #endif
 

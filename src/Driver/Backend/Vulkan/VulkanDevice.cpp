@@ -177,6 +177,169 @@ namespace BIGOS
                 return Results::OK;
             }
 
+            RESULT VulkanDevice::CreateFence( const FenceDesc& desc, FenceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Fence (pHandle) must be a valid address." );
+
+                VkSemaphoreTypeCreateInfo timelineInfo;
+                timelineInfo.sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+                timelineInfo.pNext         = nullptr;
+                timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+                timelineInfo.initialValue  = desc.initialValue;
+
+                VkSemaphoreCreateInfo semaphoreInfo;
+                semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+                semaphoreInfo.pNext = &timelineInfo;
+                semaphoreInfo.flags = 0;
+
+                // Timeline semaphores works the same way as ID3D12Fence
+                VkSemaphore nativeFence  = VK_NULL_HANDLE;
+                VkDevice    nativeDevice = m_handle.GetNativeHandle();
+
+                if( vkCreateSemaphore( nativeDevice, &semaphoreInfo, nullptr, &nativeFence ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = FenceHandle( nativeFence );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyFence( FenceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Fence (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != FenceHandle(), "Fence (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != FenceHandle() ) )
+                {
+                    VkDevice    nativeDevice = m_handle.GetNativeHandle();
+                    VkSemaphore nativeFence  = pHandle->GetNativeHandle();
+
+                    vkDestroySemaphore( nativeDevice, nativeFence, nullptr );
+
+                    *pHandle = FenceHandle();
+                }
+            }
+
+            RESULT VulkanDevice::WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout )
+            {
+                BGS_ASSERT( desc.pFences != nullptr, "Fence (desc.pFences) must be a valid pointer." );
+                BGS_ASSERT( desc.pWaitValues != nullptr, "Uint array (desc.pWaitValues) must be a valid pointer." );
+
+                // TODO: Add config file
+                uint64_t    waitVals[ 8 ];
+                VkSemaphore fences[ 8 ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.fenceCount ); ++ndx )
+                {
+                    waitVals[ ndx ] = desc.pWaitValues[ ndx ];
+                    fences[ ndx ]   = desc.pFences[ ndx ].GetNativeHandle();
+                }
+
+                VkSemaphoreWaitInfo waitInfo;
+                waitInfo.sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+                waitInfo.pNext          = nullptr;
+                waitInfo.flags          = desc.waitAll == BGS_TRUE ? 0 : VK_SEMAPHORE_WAIT_ANY_BIT;
+                waitInfo.semaphoreCount = desc.fenceCount;
+                waitInfo.pSemaphores    = fences;
+                waitInfo.pValues        = waitVals;
+
+                VkDevice nativeDevice = m_handle.GetNativeHandle();
+                VkResult result       = vkWaitSemaphores( nativeDevice, &waitInfo, timeout );
+
+                if( result == VK_TIMEOUT )
+                {
+                    return Results::TIMEOUT;
+                }
+                else if( result != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::SignalFence( uint64_t value, FenceHandle handle )
+            {
+                BGS_ASSERT( handle != FenceHandle(), "Fence (handle) must be a valid handle." );
+                if( handle == FenceHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                VkSemaphore nativeFence  = handle.GetNativeHandle();
+                VkDevice    nativeDevice = m_handle.GetNativeHandle();
+
+                VkSemaphoreSignalInfo signalInfo;
+                signalInfo.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+                signalInfo.pNext     = nullptr;
+                signalInfo.semaphore = nativeFence;
+                signalInfo.value     = value;
+
+                if( vkSignalSemaphore( nativeDevice, &signalInfo ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::GetFenceValue( FenceHandle handle, uint64_t* pValue )
+            {
+                BGS_ASSERT( handle != FenceHandle(), "Fence (handle) must be a valid handle." );
+                if( handle == FenceHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                VkSemaphore nativeFence  = handle.GetNativeHandle();
+                VkDevice    nativeDevice = m_handle.GetNativeHandle();
+
+                if( vkGetSemaphoreCounterValue( nativeDevice, nativeFence, pValue ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::CreateSemaphore( const SemaphoreDesc& desc, SemaphoreHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Semaphore (pHandle) must be a valid address." );
+                desc;
+
+                VkSemaphoreCreateInfo semaphoreInfo;
+                semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+                semaphoreInfo.pNext = nullptr;
+                semaphoreInfo.flags = 0;
+
+                VkDevice    nativeDevice    = m_handle.GetNativeHandle();
+                VkSemaphore nativeSemaphore = VK_NULL_HANDLE;
+
+                if( vkCreateSemaphore( nativeDevice, &semaphoreInfo, nullptr, &nativeSemaphore ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = SemaphoreHandle( nativeSemaphore );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroySemaphore( SemaphoreHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Semaphore handle (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != SemaphoreHandle(), "Semaphore handle (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != SemaphoreHandle() ) )
+                {
+                    VkDevice    nativeDevice    = m_handle.GetNativeHandle();
+                    VkSemaphore nativeSemaphore = pHandle->GetNativeHandle();
+
+                    vkDestroySemaphore( nativeDevice, nativeSemaphore, nullptr );
+
+                    *pHandle = SemaphoreHandle( nativeSemaphore );
+                }
+            }
+
             RESULT VulkanDevice::Create( const DeviceDesc& desc, VulkanFactory* pFactory )
             {
                 BGS_ASSERT( pFactory != nullptr, "Factory (pFactory) must be a valid pointer." );

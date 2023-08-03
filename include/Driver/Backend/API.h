@@ -1,6 +1,10 @@
 #pragma once
 #include "APITypes.h"
 
+#ifdef CreateSemaphore
+#    undef CreateSemaphore
+#endif
+
 namespace BIGOS
 {
     namespace Driver
@@ -51,6 +55,15 @@ namespace BIGOS
                 virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) = 0;
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle )                             = 0;
                 virtual RESULT ResetCommandPool( CommandPoolHandle handle )                                 = 0;
+
+                virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle )       = 0;
+                virtual void   DestroyFence( FenceHandle* pHandle )                             = 0;
+                virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) = 0;
+                virtual RESULT SignalFence( uint64_t value, FenceHandle handle )                = 0;
+                virtual RESULT GetFenceValue( FenceHandle handle, uint64_t* pValue )            = 0;
+
+                virtual RESULT CreateSemaphore( const SemaphoreDesc& desc, SemaphoreHandle* pHandle ) = 0;
+                virtual void   DestroySemaphore( SemaphoreHandle* pHandle )                           = 0;
 
                 BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }

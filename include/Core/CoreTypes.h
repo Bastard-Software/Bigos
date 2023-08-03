@@ -151,6 +151,7 @@ namespace BIGOS
             FAIL,
             NO_MEMORY,
             NOT_FOUND,
+            TIMEOUT,
             // TODO: Add more during development
         };
         using RESULT = Results;

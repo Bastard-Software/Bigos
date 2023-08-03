@@ -6,6 +6,7 @@
 #include "Core/Memory/Memory.h"
 #include "D3D12Common.h"
 #include "D3D12Factory.h"
+#include "D3D12Fence.h"
 #include "D3D12Queue.h"
 #include "Driver/Frontend/RenderSystem.h"
 
@@ -105,6 +106,151 @@ namespace BIGOS
                 }
 
                 return Results::OK;
+            }
+
+            RESULT D3D12Device::CreateFence( const FenceDesc& desc, FenceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Fence (pHandle) must be a valid address." );
+
+                ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
+                D3D12Fence*   pNativeFence  = nullptr;
+
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pNativeFence ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                /*
+                Params:
+                  - LPSECURITY_ATTRIBUTES - ptr to struct containing security description, if null there is default
+                    initialization which meets our needs
+                  - bool - indicate if event needs manual reset. In our case we do not need manual reset (autoreset
+                    after trigger is fine)
+                  - bool - initial state, false is not signaled
+                  - LPCSTR - event name
+                */
+                pNativeFence->hEvent = CreateEvent( nullptr, FALSE, FALSE, nullptr );
+
+                if( FAILED( pNativeDevice->CreateFence( desc.initialValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &pNativeFence->pFence ) ) ) )
+                {
+                    CloseHandle( pNativeFence->hEvent );
+                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pNativeFence );
+                    return Results::FAIL;
+                }
+
+                *pHandle = FenceHandle( pNativeFence );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyFence( FenceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Fence (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != FenceHandle(), "Fence (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != FenceHandle() ) )
+                {
+                    D3D12Fence* pNativeFence = pHandle->GetNativeHandle();
+
+                    CloseHandle( pNativeFence->hEvent );
+                    RELEASE_COM_PTR( pNativeFence->pFence );
+                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pNativeFence );
+
+                    *pHandle = FenceHandle();
+                }
+            }
+
+            RESULT D3D12Device::WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout )
+            {
+                BGS_ASSERT( desc.pFences != nullptr, "Fence (desc.pFences) must be a valid pointer." );
+                BGS_ASSERT( desc.pWaitValues != nullptr, "Uint array (desc.pWaitValues) must be a valid pointer." );
+
+                D3D12Fence* pNativeFence = nullptr;
+                uint32_t    eventCnt     = 0;
+                HANDLE      events[ 8 ]; // TODO: Create config file
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.fenceCount ); ++ndx )
+                {
+                    if( desc.pFences[ ndx ] == FenceHandle() )
+                    {
+                        return Results::FAIL;
+                    }
+                    // Setting event only for fences which has lower internal value than wait value
+                    pNativeFence = desc.pFences[ ndx ].GetNativeHandle();
+                    if( pNativeFence->pFence->GetCompletedValue() < desc.pWaitValues[ ndx ] )
+                    {
+                        pNativeFence->pFence->SetEventOnCompletion( desc.pWaitValues[ ndx ], pNativeFence->hEvent );
+                        events[ eventCnt++ ] = pNativeFence->hEvent;
+                    }
+                }
+                // Waiting for necessary events
+                if( WaitForMultipleObjects( eventCnt, events, desc.waitAll, static_cast<DWORD>( timeout ) ) == WAIT_TIMEOUT )
+                {
+                    return Results::TIMEOUT;
+                }
+
+                return Results::OK;
+            }
+
+            RESULT D3D12Device::SignalFence( uint64_t value, FenceHandle handle )
+            {
+                BGS_ASSERT( handle != FenceHandle(), "Fence (handle) must be a valid handle." );
+                if( handle == FenceHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12Fence* pNativeFence = handle.GetNativeHandle();
+                if( FAILED( pNativeFence->pFence->Signal( value ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            RESULT D3D12Device::GetFenceValue( FenceHandle handle, uint64_t* pValue )
+            {
+                BGS_ASSERT( handle != FenceHandle(), "Fence (handle) must be a valid handle." );
+                if( handle == FenceHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12Fence* pNativeFence = handle.GetNativeHandle();
+                *pValue                  = pNativeFence->pFence->GetCompletedValue();
+
+                return Results::OK;
+            }
+
+            RESULT D3D12Device::CreateSemaphore( const SemaphoreDesc& desc, SemaphoreHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Semaphore (pHandle) must be a valid address." );
+                desc;
+
+                ID3D12Device* pNativeDevice    = m_handle.GetNativeHandle();
+                ID3D12Fence*  pNativeSemaphore = nullptr;
+
+                if( FAILED( pNativeDevice->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &pNativeSemaphore ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = SemaphoreHandle( pNativeSemaphore );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroySemaphore( SemaphoreHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Semaphore handle (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != SemaphoreHandle(), "Semaphore handle (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != SemaphoreHandle() ) )
+                {
+                    ID3D12Fence* pNativeSemaphore = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeSemaphore );
+
+                    *pHandle = SemaphoreHandle();
+                }
             }
 
             RESULT D3D12Device::Create( const DeviceDesc& desc, D3D12Factory* pFactory )
