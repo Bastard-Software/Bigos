@@ -5,6 +5,10 @@
 
 #include "Core/Memory/MemorySystem.h"
 
+#ifdef CreateSemaphore
+#    undef CreateSemaphore
+#endif
+
 namespace BIGOS
 {
     struct BigosFrameworkDesc

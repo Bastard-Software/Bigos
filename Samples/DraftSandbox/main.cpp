@@ -10,7 +10,7 @@ int main()
 {
     BIGOS::BigosFramework*    pFramework = nullptr;
     BIGOS::BigosFrameworkDesc frameworkDesc;
-    frameworkDesc.renderSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::VULKAN;
+    frameworkDesc.renderSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::D3D12;
     frameworkDesc.renderSystemDesc.factoryDesc.flags   = 1;
 
     if( BGS_FAILED( CreateBigosFramework( frameworkDesc, &pFramework ) ) )
@@ -76,6 +76,21 @@ int main()
         return -1;
     }
 
+    BIGOS::Driver::Backend::SemaphoreHandle hSemaphore;
+    BIGOS::Driver::Backend::SemaphoreDesc   semaphoreDesc;
+    if( BGS_FAILED( pAPIDevice->CreateSemaphore( semaphoreDesc, &hSemaphore ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::FenceHandle hFence;
+    BIGOS::Driver::Backend::FenceDesc   fenceDesc;
+    fenceDesc.initialValue = 0;
+    if( BGS_FAILED( pAPIDevice->CreateFence( fenceDesc, &hFence ) ) )
+    {
+        return -1;
+    }
+
     // TODO: Close into loop
     if( BGS_FAILED( pAPIDevice->ResetCommandPool( hCmdPool ) ) )
     {
@@ -83,7 +98,30 @@ int main()
     }
     pWnd->Update();
 
+    uint64_t waitVal;
+    if( BGS_FAILED( pAPIDevice->GetFenceValue( hFence, &waitVal ) ) )
+    {
+        return -1;
+    }
+    waitVal++;
+    if( BGS_FAILED( pAPIDevice->SignalFence( waitVal, hFence ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::WaitForFencesDesc waitDesc;
+    waitDesc.fenceCount  = 1;
+    waitDesc.waitAll     = BIGOS::Core::BGS_TRUE;
+    waitDesc.pFences     = &hFence;
+    waitDesc.pWaitValues = &waitVal;
+    if( BGS_FAILED( pAPIDevice->WaitForFences( waitDesc, UINT64_MAX ) ) )
+    {
+        return -1;
+    }
+
     pAPIDevice->DestroyCommandPool( &hCmdPool );
+    pAPIDevice->DestroySemaphore( &hSemaphore );
+    pAPIDevice->DestroyFence( &hFence );
 
     blocks = pFramework->GetMemorySystemPtr()->GetMemoryBlockInfoPtrs();
     blocks;

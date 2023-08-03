@@ -112,6 +112,24 @@ namespace BIGOS
                 IQueue* pQueue;
             };
 
+            struct FenceDesc
+            {
+                uint64_t initialValue;
+            };
+
+            struct WaitForFencesDesc
+            {
+                FenceHandle* pFences;
+                uint64_t*    pWaitValues;
+                uint32_t     fenceCount;
+                bool_t       waitAll;
+            };
+
+            struct SemaphoreDesc
+            {
+                // For future use
+            };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
