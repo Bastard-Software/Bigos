@@ -22,6 +22,9 @@ namespace BIGOS
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle ) override;
                 virtual RESULT ResetCommandPool( CommandPoolHandle handle ) override;
 
+                virtual RESULT CreateCommandBuffer( const CommandBufferDesc& desc, ICommandBuffer** ppCommandBuffer ) override;
+                virtual void   DestroyCommandBuffer( ICommandBuffer** ppCommandBuffer ) override;
+
                 virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle ) override;
                 virtual void   DestroyFence( FenceHandle* pHandle ) override;
                 virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) override;

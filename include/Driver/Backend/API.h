@@ -56,6 +56,9 @@ namespace BIGOS
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle )                             = 0;
                 virtual RESULT ResetCommandPool( CommandPoolHandle handle )                                 = 0;
 
+                virtual RESULT CreateCommandBuffer( const CommandBufferDesc& desc, ICommandBuffer** ppCommandBuffer ) = 0;
+                virtual void   DestroyCommandBuffer( ICommandBuffer** ppCommandBuffer )                               = 0;
+
                 virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle )       = 0;
                 virtual void   DestroyFence( FenceHandle* pHandle )                             = 0;
                 virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) = 0;
@@ -89,6 +92,38 @@ namespace BIGOS
                 QueueDesc   m_desc;
                 QueueLimits m_limits;
                 QueueHandle m_handle;
+            };
+
+            class BGS_API BGS_API_INTERFACE ICommandBuffer
+            {
+            public:
+                virtual ~ICommandBuffer() = default;
+
+                virtual void Begin( const BeginCommandBufferDesc& desc ) = 0;
+                virtual void End()                                       = 0;
+                virtual void Reset()                                     = 0;
+
+                virtual void BeginRendering( const BeginRenderingDesc& desc ) = 0;
+                virtual void EndRendering()                                   = 0;
+
+                virtual void SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports ) = 0;
+                virtual void SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )     = 0;
+
+                virtual void SetPrimitiveTopology( PRIMITIVE_TOPOLOGY topology ) = 0;
+
+                virtual void Draw( const DrawDesc& desc )        = 0;
+                virtual void DrawIndexed( const DrawDesc& desc ) = 0;
+
+                virtual void Barrier( uint32_t barrierCount, const BarierDesc* pBarriers ) = 0;
+
+                virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type ) = 0;
+
+                BGS_FORCEINLINE const CommandBufferDesc&  GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const CommandBufferHandle GetHandle() const { return m_handle; }
+
+            protected:
+                CommandBufferDesc   m_desc;
+                CommandBufferHandle m_handle;
             };
 
         } // namespace Backend

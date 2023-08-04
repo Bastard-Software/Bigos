@@ -29,6 +29,24 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( prio ) ];
             }
 
+            D3D_PRIMITIVE_TOPOLOGY MapBigosPrimitiveTopologyToD3D12PrimitiveTopology( PRIMITIVE_TOPOLOGY topo )
+            {
+                static const D3D_PRIMITIVE_TOPOLOGY translateTable[ BGS_ENUM_COUNT( PrimitiveTopologies ) ] = {
+                    D3D_PRIMITIVE_TOPOLOGY_POINTLIST,                 // POINT_LIST
+                    D3D_PRIMITIVE_TOPOLOGY_LINELIST,                  // LINE_LIST
+                    D3D_PRIMITIVE_TOPOLOGY_LINESTRIP,                 // LINE_STRIP
+                    D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,              // TRIANGLE_LIST
+                    D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,             // TRIANGLE_STRIP
+                    D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ,              // LINE_LIST_WITH_ADJACENCY
+                    D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ,             // LINE_STRIP_WITH_ADJACENCY
+                    D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ,          // TRIANGLE_LIST_WITH_ADJACENCY
+                    D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ,         // TRIANGLE_STRIP_WITH_ADJACENCY
+                    D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST, // PATCH_LIST
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( topo ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
