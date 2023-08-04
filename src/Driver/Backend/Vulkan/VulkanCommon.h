@@ -8,7 +8,9 @@ namespace BIGOS
     {
         namespace Backend
         {
-            float MapBigosQueuePriorityToVulkanQueuePriority( QUEUE_PRIORITY_TYPE prio );
-        }
-    } // namespace Driver
+            float                MapBigosQueuePriorityToVulkanQueuePriority( QUEUE_PRIORITY_TYPE prio );
+            VkCommandBufferLevel MapBigosCommandBufferLevelToVulkanCommandBufferLevel( COMMAND_BUFFER_LEVEL lvl );
+            VkPrimitiveTopology  MapBigosPrimitiveTopologyToVulkanPrimitiveTopology( PRIMITIVE_TOPOLOGY topo );
+        } // namespace Backend
+    }     // namespace Driver
 } // namespace BIGOS

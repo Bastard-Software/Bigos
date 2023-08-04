@@ -25,6 +25,7 @@ BGS_DECLARE_D3D12_HANDLE( Adapter, IDXGIAdapter1* );
 BGS_DECLARE_D3D12_HANDLE( Device, ID3D12Device* );
 BGS_DECLARE_D3D12_HANDLE( Queue, ID3D12CommandQueue* );
 BGS_DECLARE_D3D12_HANDLE( CommandPool, ID3D12CommandAllocator* );
+BGS_DECLARE_D3D12_HANDLE( CommandBuffer, ID3D12GraphicsCommandList4* );
 BGS_DECLARE_D3D12_HANDLE( Fence, BIGOS::Driver::Backend::D3D12Fence* );
 BGS_DECLARE_D3D12_HANDLE( Semaphore, ID3D12Fence* );
 

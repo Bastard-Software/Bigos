@@ -4,6 +4,7 @@
 
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
+#include "D3D12CommandBuffer.h"
 #include "D3D12Common.h"
 #include "D3D12Factory.h"
 #include "D3D12Fence.h"
@@ -18,8 +19,8 @@ namespace BIGOS
         {
             RESULT D3D12Device::CreateQueue( const QueueDesc& desc, IQueue** ppQueue )
             {
-                BGS_ASSERT( ppQueue != nullptr, "ppQueue must be a valid address." );
-                BGS_ASSERT( *ppQueue == nullptr, "There is a pointer at the given address. *ppQueue must be nullptr." );
+                BGS_ASSERT( ppQueue != nullptr, "Queue (ppQueue) must be a valid address." );
+                BGS_ASSERT( *ppQueue == nullptr, "There is a pointer at the given address. Queue (*ppQueue) must be nullptr." );
                 if( ( ppQueue == nullptr ) || ( *ppQueue != nullptr ) )
                 {
                     return Results::FAIL;
@@ -45,8 +46,8 @@ namespace BIGOS
 
             void D3D12Device::DestroyQueue( IQueue** ppQueue )
             {
-                BGS_ASSERT( ppQueue != nullptr, "ppQueue must be a valid address." );
-                BGS_ASSERT( *ppQueue != nullptr, "*ppQueue must be a valid pointer." );
+                BGS_ASSERT( ppQueue != nullptr, "Queue (ppQueue) must be a valid address." );
+                BGS_ASSERT( *ppQueue != nullptr, "Queue (*ppQueue) must be a valid pointer." );
                 if( ( ppQueue != nullptr ) && ( *ppQueue != nullptr ) )
                 {
                     static_cast<D3D12Queue*>( *ppQueue )->Destroy();
@@ -106,6 +107,45 @@ namespace BIGOS
                 }
 
                 return Results::OK;
+            }
+
+            RESULT D3D12Device::CreateCommandBuffer( const CommandBufferDesc& desc, ICommandBuffer** ppCommandBuffer )
+            {
+                BGS_ASSERT( ppCommandBuffer != nullptr, "Command buffer (ppCommandBuffer) must be a valid address." );
+                BGS_ASSERT( *ppCommandBuffer == nullptr,
+                            "There is a pointer at the given address. Command buffer (*ppCommandBuffer) must be nullptr." );
+                if( ( ppCommandBuffer == nullptr ) || ( *ppCommandBuffer != nullptr ) )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12CommandBuffer* pCommandBuffer = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pCommandBuffer ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                BGS_ASSERT( pCommandBuffer != nullptr );
+
+                if( BGS_FAILED( pCommandBuffer->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pCommandBuffer );
+                    return Results::FAIL;
+                }
+
+                *ppCommandBuffer = pCommandBuffer;
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyCommandBuffer( ICommandBuffer** ppCommandBuffer )
+            {
+                BGS_ASSERT( ppCommandBuffer != nullptr, "Command buffer (ppCommandBuffer) must be a valid address." );
+                BGS_ASSERT( *ppCommandBuffer != nullptr, "Command buffer (*ppCommandBuffer) must be a valid pointer." );
+                if( ( ppCommandBuffer != nullptr ) && ( *ppCommandBuffer != nullptr ) )
+                {
+                    static_cast<D3D12CommandBuffer*>( *ppCommandBuffer )->Destroy();
+                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), ppCommandBuffer );
+                }
             }
 
             RESULT D3D12Device::CreateFence( const FenceDesc& desc, FenceHandle* pHandle )

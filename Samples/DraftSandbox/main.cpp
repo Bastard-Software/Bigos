@@ -10,7 +10,7 @@ int main()
 {
     BIGOS::BigosFramework*    pFramework = nullptr;
     BIGOS::BigosFrameworkDesc frameworkDesc;
-    frameworkDesc.renderSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::D3D12;
+    frameworkDesc.renderSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::VULKAN;
     frameworkDesc.renderSystemDesc.factoryDesc.flags   = 1;
 
     if( BGS_FAILED( CreateBigosFramework( frameworkDesc, &pFramework ) ) )
@@ -91,12 +91,45 @@ int main()
         return -1;
     }
 
+    BIGOS::Driver::Backend::ICommandBuffer*   pCmdBuffer = nullptr;
+    BIGOS::Driver::Backend::CommandBufferDesc cmdBufferDesc;
+    cmdBufferDesc.hCommandPool = hCmdPool;
+    cmdBufferDesc.level        = BIGOS::Driver::Backend::CommandBufferLevels::PRIMARY;
+    cmdBufferDesc.pQueue       = pGraphicsQueue;
+    if( BGS_FAILED( pAPIDevice->CreateCommandBuffer( cmdBufferDesc, &pCmdBuffer ) ) )
+    {
+        return -1;
+    }
+
     // TODO: Close into loop
     if( BGS_FAILED( pAPIDevice->ResetCommandPool( hCmdPool ) ) )
     {
         return -1;
     }
     pWnd->Update();
+
+    BIGOS::Driver::Backend::BeginCommandBufferDesc beginDesc;
+    pCmdBuffer->Begin( beginDesc );
+
+    BIGOS::Driver::Backend::ViewportDesc vp;
+    vp.upperLeftX = 0.0f;
+    vp.upperLeftY = 0.0f;
+    vp.width      = static_cast<float>( pWnd->GetDesc().width );
+    vp.height     = static_cast<float>( pWnd->GetDesc().height );
+    vp.minDepth   = 0.0f;
+    vp.maxDepth   = 1.0f;
+    pCmdBuffer->SetViewports( 1, &vp );
+
+    BIGOS::Driver::Backend::ScissorDesc sr;
+    sr.upperLeftX = 0;
+    sr.upperLeftY = 0;
+    sr.width      = pWnd->GetDesc().width;
+    sr.height     = pWnd->GetDesc().height;
+    pCmdBuffer->SetScissors( 1, &sr );
+
+    pCmdBuffer->End();
+
+    pCmdBuffer->Reset();
 
     uint64_t waitVal;
     if( BGS_FAILED( pAPIDevice->GetFenceValue( hFence, &waitVal ) ) )
@@ -119,6 +152,7 @@ int main()
         return -1;
     }
 
+    pAPIDevice->DestroyCommandBuffer( &pCmdBuffer );
     pAPIDevice->DestroyCommandPool( &hCmdPool );
     pAPIDevice->DestroySemaphore( &hSemaphore );
     pAPIDevice->DestroyFence( &hFence );

@@ -112,6 +112,93 @@ namespace BIGOS
                 IQueue* pQueue;
             };
 
+            enum class PipelineTypes : uint8_t
+            {
+                // TODO: Fill
+            };
+            using PIPELINE_TYPE = PipelineTypes;
+
+            enum class PrimitiveTopologies : uint8_t
+            {
+                POINT_LIST,
+                LINE_LIST,
+                LINE_STRIP,
+                TRIANGLE_LIST,
+                TRIANGLE_STRIP,
+                LINE_LIST_WITH_ADJACENCY,
+                LINE_STRIP_WITH_ADJACENCY,
+                TRIANGLE_LIST_WITH_ADJACENCY,
+                TRIANGLE_STRIP_WITH_ADJACENCY,
+                PATCH_LIST,
+                _MAX_ENUM,
+            };
+            using PRIMITIVE_TOPOLOGY = PrimitiveTopologies;
+
+            struct ViewportDesc
+            {
+                float upperLeftX;
+                float upperLeftY;
+                float width;
+                float height;
+                float minDepth;
+                float maxDepth;
+            };
+
+            struct ScissorDesc
+            {
+                uint32_t upperLeftX;
+                uint32_t upperLeftY;
+                uint32_t width;
+                uint32_t height;
+            };
+
+            enum class CommandBufferLevels : uint8_t
+            {
+                PRIMARY,
+                SECONDARY, // TODO: Not supported yet
+                _MAX_ENUM,
+            };
+            using COMMAND_BUFFER_LEVEL = CommandBufferLevels;
+
+            struct CommandBufferDesc
+            {
+                CommandPoolHandle    hCommandPool;
+                IQueue*              pQueue;
+                COMMAND_BUFFER_LEVEL level;
+            };
+
+            struct BeginCommandBufferDesc
+            {
+                // For future use
+            };
+
+            struct BeginRenderingDesc
+            {
+                // TODO: Fill
+            };
+
+            struct DrawDesc
+            {
+                union
+                {
+                    uint32_t vertexCount;
+                    uint32_t indexCount;
+                };
+                uint32_t instanceCount;
+                union
+                {
+                    uint32_t firstVertex;
+                    uint32_t firstIndex;
+                };
+                int32_t  vertexOffset;
+                uint32_t firstInstance;
+            };
+
+            struct BarierDesc
+            {
+                // TODO: Fill
+            };
+
             struct FenceDesc
             {
                 uint64_t initialValue;
