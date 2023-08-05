@@ -2,6 +2,7 @@
 
 #include "VulkanDevice.h"
 
+#include "BigosFramework/Config.h"
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Core/Utils/String.h"
@@ -265,10 +266,16 @@ namespace BIGOS
             {
                 BGS_ASSERT( desc.pFences != nullptr, "Fence (desc.pFences) must be a valid pointer." );
                 BGS_ASSERT( desc.pWaitValues != nullptr, "Uint array (desc.pWaitValues) must be a valid pointer." );
+                BGS_ASSERT( desc.fenceCount < Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT,
+                            "Fence count (desc.fenceCount) must be less than %d", Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT );
+                if( ( desc.pFences == nullptr ) || ( desc.pWaitValues == nullptr ) ||
+                    ( desc.fenceCount >= Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT ) )
+                {
+                    return Results::FAIL;
+                }
 
-                // TODO: Add config file
-                uint64_t    waitVals[ 8 ];
-                VkSemaphore fences[ 8 ];
+                uint64_t    waitVals[ Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT ];
+                VkSemaphore fences[ Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT ];
                 for( index_t ndx = 0; ndx < static_cast<index_t>( desc.fenceCount ); ++ndx )
                 {
                     waitVals[ ndx ] = desc.pWaitValues[ ndx ];

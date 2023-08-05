@@ -3,6 +3,8 @@
 
 #include "Core/CoreTypes.h"
 
+#include "BigosFramework/Config.h"
+
 namespace BIGOS
 {
     namespace Driver
@@ -30,7 +32,7 @@ namespace BIGOS
 
             struct AdapterInfo
             {
-                char         description[ 256 ]; // TODO: Make config file
+                char         description[ Config::Driver::Adapter::MAX_DESCRIPTION_TEXT_LENGHT ];
                 VersionDesc  apiVersion;
                 VersionDesc  driverVersion;
                 uint32_t     vendorID;

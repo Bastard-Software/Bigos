@@ -2,6 +2,7 @@
 
 #include "D3D12CommandBuffer.h"
 
+#include "BigosFramework/Config.h"
 #include "D3D12Common.h"
 #include "D3D12Device.h"
 
@@ -103,6 +104,10 @@ namespace BIGOS
 
             void D3D12CommandBuffer::SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports )
             {
+                BGS_ASSERT( viewportCount < Config::Driver::Pipeline::MAX_VIEWPORT_COUNT, "Viewport count (viewportCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_VIEWPORT_COUNT );
+                BGS_ASSERT( pViewports != nullptr, "Viewport desc array (pViewport) must be a valid pointer" );
+
                 ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->RSSetViewports( viewportCount, reinterpret_cast<const D3D12_VIEWPORT*>( pViewports ) );
@@ -110,7 +115,11 @@ namespace BIGOS
 
             void D3D12CommandBuffer::SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )
             {
-                D3D12_RECT scissors[ 16 ]; // TODO: Config.h
+                BGS_ASSERT( scissorCount < Config::Driver::Pipeline::MAX_SCISSOR_COUNT, "Viewport count (viewportCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_SCISSOR_COUNT );
+                BGS_ASSERT( pScissors != nullptr, "Scissor desc array (pScissor) must be a valid pointer" );
+
+                D3D12_RECT scissors[ Config::Driver::Pipeline::MAX_SCISSOR_COUNT ];
 
                 for( index_t ndx = 0; ndx < static_cast<index_t>( scissorCount ); ++ndx )
                 {
