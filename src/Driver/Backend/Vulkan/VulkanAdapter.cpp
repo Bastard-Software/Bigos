@@ -44,7 +44,7 @@ namespace BIGOS
                 vkGetPhysicalDeviceProperties( nativeAdapter, &adapterProps );
 
                 const char* pAdapterName = adapterProps.deviceName;
-                Core::Utils::String::Copy( m_info.description, 256, pAdapterName );
+                Core::Utils::String::Copy( m_info.description, Config::Driver::Adapter::MAX_DESCRIPTION_TEXT_LENGHT, pAdapterName );
                 m_info.vendorID      = adapterProps.vendorID;
                 m_info.deviceID      = adapterProps.deviceID;
                 m_info.type          = MapVkPhysicalDeviceTypeToBIGOSAdapterType( adapterProps.deviceType );

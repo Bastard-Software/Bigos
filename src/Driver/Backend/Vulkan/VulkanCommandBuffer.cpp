@@ -107,7 +107,11 @@ namespace BIGOS
 
             void VulkanCommandBuffer::SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports )
             {
-                VkViewport viewports[ 16 ]; // TODO: Config.h
+                BGS_ASSERT( viewportCount < Config::Driver::Pipeline::MAX_VIEWPORT_COUNT, "Viewport count (viewportCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_VIEWPORT_COUNT );
+                BGS_ASSERT( pViewports != nullptr, "Viewport desc array (pViewport) must be a valid pointer" );
+
+                VkViewport viewports[ Config::Driver::Pipeline::MAX_VIEWPORT_COUNT ];
 
                 for( index_t ndx = 0; ndx < static_cast<uint32_t>( viewportCount ); ++ndx )
                 {
@@ -130,6 +134,10 @@ namespace BIGOS
 
             void VulkanCommandBuffer::SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )
             {
+                BGS_ASSERT( scissorCount < Config::Driver::Pipeline::MAX_SCISSOR_COUNT, "Viewport count (viewportCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_SCISSOR_COUNT );
+                BGS_ASSERT( pScissors != nullptr, "Scissor desc array (pScissor) must be a valid pointer" );
+
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
                 vkCmdSetScissor( nativeCommandBuffer, 0, scissorCount, reinterpret_cast<const VkRect2D*>( pScissors ) );

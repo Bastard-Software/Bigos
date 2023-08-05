@@ -64,7 +64,8 @@ namespace BIGOS
                 }
 
                 char* pDesc = m_info.description;
-                Core::Utils::String::Utf16ToUtf8( pDesc, 256, desc.Description, 256 );
+                Core::Utils::String::Utf16ToUtf8( pDesc, Config::Driver::Adapter::MAX_DESCRIPTION_TEXT_LENGHT, desc.Description,
+                                                  Config::Driver::Adapter::MAX_DESCRIPTION_TEXT_LENGHT );
                 m_info.vendorID      = desc.VendorId;
                 m_info.deviceID      = desc.DeviceId;
                 m_info.type          = MapD3D12AdapterTypeTypeToBIGOSAdapterType( pNativeAdapter4 );

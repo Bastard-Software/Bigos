@@ -2,6 +2,7 @@
 
 #include "D3D12Device.h"
 
+#include "BigosFramework/Config.h"
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "D3D12CommandBuffer.h"
@@ -203,10 +204,17 @@ namespace BIGOS
             {
                 BGS_ASSERT( desc.pFences != nullptr, "Fence (desc.pFences) must be a valid pointer." );
                 BGS_ASSERT( desc.pWaitValues != nullptr, "Uint array (desc.pWaitValues) must be a valid pointer." );
+                BGS_ASSERT( desc.fenceCount < Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT,
+                            "Fence count (desc.fenceCount) must be less than %d", Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT );
+                if( ( desc.pFences == nullptr ) || ( desc.pWaitValues == nullptr ) ||
+                    ( desc.fenceCount >= Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT ) )
+                {
+                    return Results::FAIL;
+                }
 
                 D3D12Fence* pNativeFence = nullptr;
                 uint32_t    eventCnt     = 0;
-                HANDLE      events[ 8 ]; // TODO: Create config file
+                HANDLE      events[ Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT ];
                 for( index_t ndx = 0; ndx < static_cast<index_t>( desc.fenceCount ); ++ndx )
                 {
                     if( desc.pFences[ ndx ] == FenceHandle() )
