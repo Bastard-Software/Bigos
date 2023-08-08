@@ -22,7 +22,7 @@ namespace BIGOS
                 RESULT CreateDevice( const DeviceDesc& desc, IDevice** ppDevice ) override;
                 void   DestroyDevice( IDevice** ppDevice ) override;
 
-                BIGOS::Driver::Frontend::RenderSystem* GetParentPtr() { return m_pParent; }
+                BIGOS::Driver::Frontend::RenderSystem* GetParent() { return m_pParent; }
 
             protected:
                 RESULT Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::RenderSystem* pParent );

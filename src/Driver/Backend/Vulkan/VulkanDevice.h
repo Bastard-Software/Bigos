@@ -25,6 +25,9 @@ namespace BIGOS
                 virtual RESULT CreateCommandBuffer( const CommandBufferDesc& desc, ICommandBuffer** ppCommandBuffer ) override;
                 virtual void   DestroyCommandBuffer( ICommandBuffer** ppCommandBuffer ) override;
 
+                virtual RESULT CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle ) override;
+                virtual void   DestroyShader( ShaderHandle* pHandle ) override;
+
                 virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle ) override;
                 virtual void   DestroyFence( FenceHandle* pHandle ) override;
                 virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) override;

@@ -15,12 +15,18 @@ namespace BIGOS
                 friend class Backend::D3D12Factory;
 
             public:
+                RenderSystem();
+                ~RenderSystem() = default;
+
                 RESULT CreateDevice( const RenderDeviceDesc& desc, RenderDevice** ppDevice );
                 void   DestroyDevice( RenderDevice** ppDevice );
 
-                BigosFramework*     GetParentPtr() { return m_pParent; }
-                Memory::IAllocator* GetDefaultAllocatorPtr() { return m_pDefaultAllocator; }
-                Backend::IFactory*  GetFactoryPtr() { return m_pFactory; }
+                void SetDefaultCompiler( IShaderCompiler* pCompiler ) { m_pCompiler = pCompiler; }
+
+                BigosFramework*     GetParent() { return m_pParent; }
+                Memory::IAllocator* GetDefaultAllocator() { return m_pDefaultAllocator; }
+                Backend::IFactory*  GetFactory() { return m_pFactory; }
+                IShaderCompiler*    GetDefaultCompiler() { return m_pCompiler; }
 
                 const RenderDeviceArray& GetDevices() const { return m_devices; }
                 const AdapterArray&      GetAdapters() const { return m_adapters; }
@@ -28,20 +34,25 @@ namespace BIGOS
                 const RenderSystemDesc& GetDesc() const { return m_desc; }
 
             protected:
-                RESULT Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent );
+                RESULT Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pFramework );
                 void   Destroy();
 
             private:
                 RESULT CreateFactory( const Backend::FactoryDesc& desc, Backend::IFactory** ppFactory ); // Change, factory should be private
                 void   DestroyFactory( Backend::IFactory** ppFactory );
 
+                RESULT CreateShaderCompilerFactory( const ShaderCompilerFactoryDesc& desc, ShaderCompilerFactory** ppFactory );
+                void   DestroyShaderCompilerFactory( ShaderCompilerFactory** ppFactory );
+
             private:
-                RenderSystemDesc    m_desc;
-                Backend::IFactory*  m_pFactory;
-                AdapterArray        m_adapters;
-                RenderDeviceArray   m_devices;
-                BigosFramework*     m_pParent;
-                Memory::IAllocator* m_pDefaultAllocator;
+                RenderSystemDesc       m_desc;
+                Backend::IFactory*     m_pFactory;
+                AdapterArray           m_adapters;
+                RenderDeviceArray      m_devices;
+                BigosFramework*        m_pParent;
+                ShaderCompilerFactory* m_pShaderCompilerFactory;
+                Memory::IAllocator*    m_pDefaultAllocator;
+                IShaderCompiler*       m_pCompiler;
             };
 
         } // namespace Frontend

@@ -50,8 +50,8 @@ namespace BIGOS
 {
     BigosFramework::BigosFramework()
         : m_memorySystem()
-        , m_pRenderSystem(nullptr)
-        , m_pWindowSystem(nullptr)
+        , m_pRenderSystem( nullptr )
+        , m_pWindowSystem( nullptr )
     {
     }
 
@@ -62,14 +62,14 @@ namespace BIGOS
         // If render system exist we return it otherwise we need to create.
         if( m_pRenderSystem == nullptr )
         {
-            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pRenderSystem ) ) )
+            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocator(), &m_pRenderSystem ) ) )
             {
                 return Results::NO_MEMORY;
             }
 
-            if( BGS_FAILED( m_pRenderSystem->Create( desc, m_memorySystem.GetSystemHeapAllocatorPtr(), this ) ) )
+            if( BGS_FAILED( m_pRenderSystem->Create( desc, m_memorySystem.GetSystemHeapAllocator(), this ) ) )
             {
-                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pRenderSystem );
+                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &m_pRenderSystem );
                 return Results::FAIL;
             }
         }
@@ -87,7 +87,7 @@ namespace BIGOS
         {
             Driver::Frontend::RenderSystem* pSystem = *ppSystem;
             pSystem->Destroy();
-            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &pSystem );
+            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &pSystem );
             m_pRenderSystem = nullptr;
         }
     }
@@ -99,14 +99,14 @@ namespace BIGOS
         // If render system exist we return it otherwise we need to create.
         if( m_pWindowSystem == nullptr )
         {
-            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pWindowSystem ) ) )
+            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocator(), &m_pWindowSystem ) ) )
             {
                 return Results::NO_MEMORY;
             }
 
-            if( BGS_FAILED( m_pWindowSystem->Create( desc, m_memorySystem.GetSystemHeapAllocatorPtr(), this ) ) )
+            if( BGS_FAILED( m_pWindowSystem->Create( desc, m_memorySystem.GetSystemHeapAllocator(), this ) ) )
             {
-                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &m_pWindowSystem );
+                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &m_pWindowSystem );
                 return Results::FAIL;
             }
         }
@@ -124,7 +124,7 @@ namespace BIGOS
         {
             Platform::WindowSystem* pSystem = *ppSystem;
             pSystem->Destroy();
-            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocatorPtr(), &pSystem );
+            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &pSystem );
             m_pWindowSystem = nullptr;
         }
     }

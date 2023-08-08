@@ -22,7 +22,7 @@ namespace BIGOS
                 BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice == nullptr ) );
 
                 D3D12Device* pDevice = nullptr;
-                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice ) ) )
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetDefaultAllocator(), &pDevice ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
@@ -30,7 +30,7 @@ namespace BIGOS
 
                 if( BGS_FAILED( pDevice->Create( desc, this ) ) )
                 {
-                    Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice );
+                    Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pDevice );
                     return Results::FAIL;
                 }
 
@@ -47,7 +47,7 @@ namespace BIGOS
                     static_cast<D3D12Device*>( *ppDevice )->Destroy();
                 }
 
-                Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), ppDevice );
+                Core::Memory::FreeObject( m_pParent->GetDefaultAllocator(), ppDevice );
             }
 
             RESULT D3D12Factory::Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::RenderSystem* pParent )
@@ -92,7 +92,7 @@ namespace BIGOS
                 for( index_t ndx = 0; ndx < m_adapters.size(); ++ndx )
                 {
                     static_cast<D3D12Adapter*>( m_adapters[ ndx ] )->Destroy();
-                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &m_adapters[ ndx ] );
+                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocator(), &m_adapters[ ndx ] );
                 }
                 m_adapters.clear();
 
@@ -118,7 +118,7 @@ namespace BIGOS
                     if( SUCCEEDED( D3D12CreateDevice( pAdapter, D3D_FEATURE_LEVEL_11_0, __uuidof( ID3D12Device ), nullptr ) ) )
                     {
                         D3D12Adapter* pD3D12Adapter = nullptr;
-                        if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetDefaultAllocatorPtr(), &pD3D12Adapter ) ) )
+                        if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetDefaultAllocator(), &pD3D12Adapter ) ) )
                         {
                             return Results::NO_MEMORY;
                         }

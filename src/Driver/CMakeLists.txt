@@ -25,9 +25,15 @@ add_library(${PROJECT_NAME} STATIC
     ${SOURCE_FILES}
 )
 
+add_custom_command (TARGET ${PROJECT_NAME} POST_BUILD
+COMMAND ${CMAKE_COMMAND} -E copy
+    ${THIRD_PARTY_DIR}/DXCompiler/bin/dxcompiler.dll
+    ${OUTPUT_DIR}/dxcompiler.dll)
+
 target_include_directories(Driver PRIVATE 
     ${THIRD_PARTY_DIR}/vulkan/include
     ${THIRD_PARTY_DIR}/volk
+    ${THIRD_PARTY_DIR}/DXCompiler/include
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 

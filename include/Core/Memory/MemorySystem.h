@@ -21,12 +21,12 @@ namespace BIGOS
                 MemorySystem()  = default;
                 ~MemorySystem() = default;
 
-                SystemHeapAllocator* GetSystemHeapAllocatorPtr() { return &m_systemHeapAllocator; }
+                SystemHeapAllocator* GetSystemHeapAllocator() { return &m_systemHeapAllocator; }
 
                 const MemorySystemDesc& GetDesc() { return m_desc; }
 
 #if( BGS_MEMORY_DEBUG )
-                const MemoryBlockInfoArray& GetMemoryBlockInfoPtrs() const { return m_memoryBlockInfoPtrs; };
+                const MemoryBlockInfoArray& GetMemoryBlockInfo() const { return m_memoryBlockInfos; };
 #endif // ( BGS_MEMORY_DEBUG )
 
             protected:
@@ -40,12 +40,12 @@ namespace BIGOS
 
             private:
                 MemorySystemDesc    m_desc;
-                AllocatorArray      m_allocatorPtrs;
+                AllocatorArray      m_allocators;
                 SystemHeapAllocator m_systemHeapAllocator;
 
 #if( BGS_MEMORY_DEBUG )
 
-                MemoryBlockInfoArray m_memoryBlockInfoPtrs;
+                MemoryBlockInfoArray m_memoryBlockInfos;
 
 #endif // ( BGS_MEMORY_DEBUG )
             };

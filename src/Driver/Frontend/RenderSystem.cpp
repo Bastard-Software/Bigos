@@ -5,6 +5,7 @@
 #include "Driver/Backend/D3D12/D3D12Factory.h"
 #include "Driver/Backend/Vulkan/VulkanFactory.h"
 #include "Driver/Frontend/RenderDevice.h"
+#include "Shader/ShaderCompilerFactory.h"
 
 namespace BIGOS
 {
@@ -12,6 +13,18 @@ namespace BIGOS
     {
         namespace Frontend
         {
+
+            RenderSystem::RenderSystem()
+                : m_desc()
+                , m_pFactory( nullptr )
+                , m_adapters()
+                , m_devices()
+                , m_pParent( nullptr )
+                , m_pShaderCompilerFactory( nullptr )
+                , m_pDefaultAllocator( nullptr )
+                , m_pCompiler( nullptr )
+            {
+            }
 
             RESULT RenderSystem::CreateDevice( const RenderDeviceDesc& desc, RenderDevice** ppDevice )
             {
@@ -87,17 +100,32 @@ namespace BIGOS
                 }
             }
 
-            RESULT RenderSystem::Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pParent )
+            RESULT RenderSystem::Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pFramework )
             {
-                BGS_ASSERT( pParent != nullptr );
-                BGS_ASSERT( pAllocator != nullptr );
-                m_pDefaultAllocator = pAllocator;
-                m_pParent           = pParent;
+                BGS_ASSERT( pFramework != nullptr, "Bigos framework (pFramework) must be a valid pointer." );
+                BGS_ASSERT( pAllocator != nullptr, "Allocator (pAllocator) must be a valid pointer." );
+
                 m_desc              = desc;
+                m_pDefaultAllocator = pAllocator;
+                m_pParent           = pFramework;
 
                 if( BGS_FAILED( CreateFactory( desc.factoryDesc, &m_pFactory ) ) )
                 {
                     return Results::FAIL;
+                }
+
+                if( BGS_FAILED( CreateShaderCompilerFactory( desc.compilerFactoryDesc, &m_pShaderCompilerFactory ) ) )
+                {
+                    DestroyFactory( &m_pFactory );
+                    return Results::FAIL;
+                }
+
+                ShaderCompilerDesc compDesc;
+                compDesc.type = CompilerTypes::DXC;
+                if( BGS_FAILED( m_pShaderCompilerFactory->CreateCompiler( compDesc, &m_pCompiler ) ) )
+                {
+                    DestroyShaderCompilerFactory( &m_pShaderCompilerFactory );
+                    DestroyFactory( &m_pFactory );
                 }
 
                 return Results::OK;
@@ -115,6 +143,11 @@ namespace BIGOS
                     DestroyFactory( &m_pFactory );
                 }
 
+                if( m_pShaderCompilerFactory != nullptr )
+                {
+                    DestroyShaderCompilerFactory( &m_pShaderCompilerFactory );
+                }
+
                 m_devices.clear();
                 m_adapters.clear();
 
@@ -124,8 +157,18 @@ namespace BIGOS
 
             RESULT RenderSystem::CreateFactory( const Backend::FactoryDesc& desc, Backend::IFactory** ppFactory )
             {
-                BGS_ASSERT( ( ppFactory != nullptr ) && ( *ppFactory == nullptr ) );
-                BGS_ASSERT( m_pFactory == nullptr );
+                BGS_ASSERT( ppFactory != nullptr, "Factory (ppFactory) must be a valid address." );
+                BGS_ASSERT( *ppFactory == nullptr, "There is a pointer at the given address. Factory (*ppFactory) must be nullptr." );
+                if( m_pFactory != nullptr )
+                {
+                    *ppFactory = m_pFactory;
+                    return Results::OK;
+                }
+
+                if( ( ppFactory == nullptr ) || ( *ppFactory != nullptr ) )
+                {
+                    return Results::FAIL;
+                }
 
                 const Backend::API_TYPE apiType = desc.apiType;
                 if( apiType == Backend::APITypes::VULKAN )
@@ -174,26 +217,74 @@ namespace BIGOS
 
             void RenderSystem::DestroyFactory( Backend::IFactory** ppFactory )
             {
-                BGS_ASSERT( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ), "ppDevice must be an valid address of a valid pointer." );
+                BGS_ASSERT( ppFactory != nullptr, "Factory (ppFactory) must be a valid address." );
+                BGS_ASSERT( *ppFactory != nullptr, "Factory (*ppFactory) must be a valid pointer." );
+                BGS_ASSERT( *ppFactory == m_pFactory, "Factory (*ppFactory) has not been created by Bigos Framework." );
 
-                const Backend::API_TYPE apiType = m_desc.factoryDesc.apiType;
-                if( apiType == Backend::APITypes::VULKAN )
+                if( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ) && ( *ppFactory == m_pFactory ) )
                 {
-                    Backend::VulkanFactory* pFactory = static_cast<Backend::VulkanFactory*>( *ppFactory );
-                    pFactory->Destroy();
-                    Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
-                    pFactory = nullptr;
+                    const Backend::API_TYPE apiType = m_desc.factoryDesc.apiType;
+                    if( apiType == Backend::APITypes::VULKAN )
+                    {
+                        Backend::VulkanFactory* pFactory = static_cast<Backend::VulkanFactory*>( *ppFactory );
+                        pFactory->Destroy();
+                        Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
+                        pFactory = nullptr;
+                    }
+                    else if( apiType == Backend::APITypes::D3D12 )
+                    {
+                        Backend::D3D12Factory* pFactory = static_cast<Backend::D3D12Factory*>( *ppFactory );
+                        pFactory->Destroy();
+                        Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
+                        pFactory = nullptr;
+                    }
+                    else
+                    {
+                        BGS_ASSERT( 0 );
+                    }
                 }
-                else if( apiType == Backend::APITypes::D3D12 )
+            }
+
+            RESULT RenderSystem::CreateShaderCompilerFactory( const ShaderCompilerFactoryDesc& desc, ShaderCompilerFactory** ppFactory )
+            {
+                BGS_ASSERT( ppFactory != nullptr, "Shader compiler factory (ppFactory) must be a valid address." );
+                BGS_ASSERT( *ppFactory == nullptr, "There is a pointer at the given address. Shader compiler factory (*ppFactory) must be nullptr." );
+                if( ( ppFactory == nullptr ) || ( *ppFactory != nullptr ) )
                 {
-                    Backend::D3D12Factory* pFactory = static_cast<Backend::D3D12Factory*>( *ppFactory );
-                    pFactory->Destroy();
-                    Core::Memory::FreeObject( m_pDefaultAllocator, &pFactory );
-                    pFactory = nullptr;
+                    return Results::FAIL;
                 }
-                else
+
+                if( m_pShaderCompilerFactory != nullptr )
                 {
-                    BGS_ASSERT( 0 );
+                    *ppFactory = m_pShaderCompilerFactory;
+                    return Results::OK;
+                }
+
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &m_pShaderCompilerFactory ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( m_pShaderCompilerFactory->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pShaderCompilerFactory );
+                    return Results::FAIL;
+                }
+
+                *ppFactory = m_pShaderCompilerFactory;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyShaderCompilerFactory( ShaderCompilerFactory** ppFactory )
+            {
+                BGS_ASSERT( ppFactory != nullptr, "Shader compiler factory (ppFactory) must be a valid address." );
+                BGS_ASSERT( *ppFactory != nullptr, "Shader compiler factory (*ppFactory) must be a valid pointer." );
+                BGS_ASSERT( *ppFactory == m_pShaderCompilerFactory, "Shader compiler factory (*ppFactory) has not been created by Bigos Framework." );
+                if( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ) && ( *ppFactory == m_pShaderCompilerFactory ) )
+                {
+                    m_pShaderCompilerFactory->Destroy();
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pShaderCompilerFactory );
                 }
             }
 

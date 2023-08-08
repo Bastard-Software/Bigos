@@ -28,7 +28,7 @@ namespace BIGOS
                 BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice == nullptr ) );
 
                 VulkanDevice* pDevice = nullptr;
-                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice ) ) )
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetDefaultAllocator(), &pDevice ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
@@ -36,7 +36,7 @@ namespace BIGOS
 
                 if( BGS_FAILED( pDevice->Create( desc, this ) ) )
                 {
-                    Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &pDevice );
+                    Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pDevice );
                     return Results::FAIL;
                 }
 
@@ -53,7 +53,7 @@ namespace BIGOS
                     static_cast<VulkanDevice*>( *ppDevice )->Destroy();
                 }
 
-                Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), ppDevice );
+                Core::Memory::FreeObject( m_pParent->GetDefaultAllocator(), ppDevice );
             }
 
             RESULT VulkanFactory::Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::RenderSystem* pParent )
@@ -102,7 +102,7 @@ namespace BIGOS
                 for( index_t ndx = 0; ndx < m_adapters.size(); ++ndx )
                 {
                     static_cast<VulkanAdapter*>( m_adapters[ ndx ] )->Destroy();
-                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &m_adapters[ ndx ] );
+                    Core::Memory::FreeObject( m_pParent->GetDefaultAllocator(), &m_adapters[ ndx ] );
                 }
                 m_adapters.clear();
 
@@ -319,13 +319,13 @@ namespace BIGOS
                 for( index_t ndx = 0; ndx < nativeAdapters.size(); ++ndx )
                 {
                     VulkanAdapter* pVulkanAdapter = nullptr;
-                    if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetDefaultAllocatorPtr(), &pVulkanAdapter ) ) )
+                    if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetDefaultAllocator(), &pVulkanAdapter ) ) )
                     {
                         return Results::NO_MEMORY;
                     }
                     if( BGS_FAILED( pVulkanAdapter->Create( nativeAdapters[ ndx ], this ) ) )
                     {
-                        Core::Memory::FreeObject( m_pParent->GetDefaultAllocatorPtr(), &pVulkanAdapter );
+                        Core::Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pVulkanAdapter );
                         return Results::FAIL;
                     }
 

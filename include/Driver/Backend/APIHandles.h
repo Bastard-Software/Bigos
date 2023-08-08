@@ -9,6 +9,7 @@ namespace BIGOS::Driver::Backend
     BGS_DECLARE_HANDLE( Queue );
     BGS_DECLARE_HANDLE( CommandPool );
     BGS_DECLARE_HANDLE( CommandBuffer );
+    BGS_DECLARE_HANDLE( Shader );
     BGS_DECLARE_HANDLE( Pipeline );
     BGS_DECLARE_HANDLE( Fence );
     BGS_DECLARE_HANDLE( Semaphore );

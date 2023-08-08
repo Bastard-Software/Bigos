@@ -59,6 +59,9 @@ namespace BIGOS
                 virtual RESULT CreateCommandBuffer( const CommandBufferDesc& desc, ICommandBuffer** ppCommandBuffer ) = 0;
                 virtual void   DestroyCommandBuffer( ICommandBuffer** ppCommandBuffer )                               = 0;
 
+                virtual RESULT CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle ) = 0;
+                virtual void   DestroyShader( ShaderHandle* pHandle )                        = 0;
+
                 virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle )       = 0;
                 virtual void   DestroyFence( FenceHandle* pHandle )                             = 0;
                 virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) = 0;
