@@ -27,20 +27,20 @@ namespace BIGOS
                 // Destroy everything
 
                 // Destroy allocators
-                for( index_t ndx = 0; ndx < m_allocatorPtrs.size(); ++ndx )
+                for( index_t ndx = 0; ndx < m_allocators.size(); ++ndx )
                 {
-                    m_allocatorPtrs[ ndx ]->Destroy();
+                    m_allocators[ ndx ]->Destroy();
                 }
-                m_allocatorPtrs.clear();
+                m_allocators.clear();
 
                 // Destroy base heap allocator
                 m_systemHeapAllocator.Destroy();
 
 #if( BGS_MEMORY_DEBUG )
                 // TODO: Check if there is no leaks and report (assert for now)
-                BGS_ASSERT( m_memoryBlockInfoPtrs.size() == 0 );
+                BGS_ASSERT( m_memoryBlockInfos.size() == 0 );
 
-                m_memoryBlockInfoPtrs.clear();
+                m_memoryBlockInfos.clear();
 #endif // ( BGS_MEMORY_DEBUG )
             }
 
@@ -49,19 +49,19 @@ namespace BIGOS
             {
                 BGS_ASSERT( pDebugInfo != nullptr );
 
-                m_memoryBlockInfoPtrs.push_back( pDebugInfo );
+                m_memoryBlockInfos.push_back( pDebugInfo );
             }
 
             void MemorySystem::Deregister( const MemoryBlockInfo* pDebugInfo )
             {
                 BGS_ASSERT( pDebugInfo != nullptr );
 
-                for( index_t ndx = 0; ndx < m_memoryBlockInfoPtrs.size(); ++ndx )
+                for( index_t ndx = 0; ndx < m_memoryBlockInfos.size(); ++ndx )
                 {
-                    if( m_memoryBlockInfoPtrs[ ndx ] == pDebugInfo )
+                    if( m_memoryBlockInfos[ ndx ] == pDebugInfo )
                     {
-                        m_memoryBlockInfoPtrs[ ndx ] = m_memoryBlockInfoPtrs.back();
-                        m_memoryBlockInfoPtrs.pop_back();
+                        m_memoryBlockInfos[ ndx ] = m_memoryBlockInfos.back();
+                        m_memoryBlockInfos.pop_back();
 
                         break;
                     }

@@ -25,7 +25,7 @@ namespace BIGOS
 
                 // Funcions needed for D3D12 backend
             public:
-                BIGOS::Driver::Frontend::RenderSystem* GetParentPtr() { return m_pParent; }
+                BIGOS::Driver::Frontend::RenderSystem* GetParent() { return m_pParent; }
 
             protected:
                 RESULT Create( const FactoryDesc& desc, BIGOS::Driver::Frontend::RenderSystem* pParent );

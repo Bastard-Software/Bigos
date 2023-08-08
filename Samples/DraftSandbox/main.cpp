@@ -1,16 +1,37 @@
 #include "BigosFramework/BigosFramework.h"
 #include "Core/Memory/SystemHeapAllocator.h"
+#include "Core/Utils/String.h"
 #include "Driver/Frontend/RenderDevice.h"
 #include "Driver/Frontend/RenderSystem.h"
+#include "Driver/Frontend/Shader/IShaderCompiler.h"
 #include "Platform/Window.h"
 #include "Platform/WindowSystem.h"
 #include <stdio.h>
+
+const char* SHADER = "struct PSInput\n"
+                     "{\n"
+                     "  float4 position : SV_POSITION;\n"
+                     "  float4 color : COLOR;\n"
+                     "};\n\n"
+                     "PSInput VSMain(float4 position : POSITION, float4 color : COLOR)\n"
+                     "{\n"
+                     "  PSInput result;\n\n"
+                     "  result.position = position;\n"
+                     "  result.color = color;\n\n"
+                     "  return result;\n"
+                     "}\n\n"
+                     "float4 PSMain(PSInput input) : SV_TARGET\n"
+                     "{\n"
+                     "  return input.color;\n"
+                     "}\n";
+
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
 
 int main()
 {
     BIGOS::BigosFramework*    pFramework = nullptr;
     BIGOS::BigosFrameworkDesc frameworkDesc;
-    frameworkDesc.renderSystemDesc.factoryDesc.apiType = BIGOS::Driver::Backend::APITypes::D3D12;
+    frameworkDesc.renderSystemDesc.factoryDesc.apiType = API_TYPE;
     frameworkDesc.renderSystemDesc.factoryDesc.flags   = 1;
 
     if( BGS_FAILED( CreateBigosFramework( frameworkDesc, &pFramework ) ) )
@@ -45,7 +66,31 @@ int main()
     }
     pWnd->Show();
 
-    auto blocks = pFramework->GetMemorySystemPtr()->GetMemoryBlockInfoPtrs();
+    auto                                           compiler = pRenderSystem->GetDefaultCompiler();
+    BIGOS::Driver::Frontend::ShaderCompilerOutput* pVSBlob  = nullptr;
+    BIGOS::Driver::Frontend::ShaderCompilerOutput* pPSBlob  = nullptr;
+    BIGOS::Driver::Frontend::CompileShaderDesc     shaderDesc;
+    shaderDesc.argCount           = 0;
+    shaderDesc.ppArgs             = nullptr;
+    shaderDesc.outputFormat       = API_TYPE == BIGOS::Driver::Backend::APITypes::D3D12 ? BIGOS::Driver::Frontend::ShaderFormats::DXIL
+                                                                                        : BIGOS::Driver::Frontend::ShaderFormats::SPIRV;
+    shaderDesc.model              = BIGOS::Driver::Frontend::ShaderModels::SHADER_MODEL_6_7;
+    shaderDesc.source.pSourceCode = SHADER;
+    shaderDesc.source.sourceSize  = static_cast<uint32_t>( BIGOS::Core::Utils::String::Length( SHADER ) );
+    shaderDesc.type               = BIGOS::Driver::Backend::ShaderTypes::VERTEX;
+    shaderDesc.pEntryPoint        = "VSMain";
+    if( BGS_FAILED( compiler->Compile( shaderDesc, &pVSBlob ) ) )
+    {
+        return -1;
+    }
+    shaderDesc.type        = BIGOS::Driver::Backend::ShaderTypes::PIXEL;
+    shaderDesc.pEntryPoint = "PSMain";
+    if( BGS_FAILED( compiler->Compile( shaderDesc, &pPSBlob ) ) )
+    {
+        return -1;
+    }
+
+    auto blocks = pFramework->GetMemorySystem()->GetMemoryBlockInfo();
 
     BIGOS::Driver::Frontend::RenderDeviceDesc devDesc;
     devDesc.adapter.index                                = 0;
@@ -56,6 +101,23 @@ int main()
     }
 
     BIGOS::Driver::Backend::IDevice* pAPIDevice = pRenderDevice->GetNativeAPIDevice();
+
+    BIGOS::Driver::Backend::ShaderHandle hVS;
+    BIGOS::Driver::Backend::ShaderDesc   shDesc;
+    shDesc.pByteCode = pVSBlob->pByteCode;
+    shDesc.codeSize  = pVSBlob->byteCodeSize;
+    if( BGS_FAILED( pAPIDevice->CreateShader( shDesc, &hVS ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::ShaderHandle hPS;
+    shDesc.pByteCode = pPSBlob->pByteCode;
+    shDesc.codeSize  = pPSBlob->byteCodeSize;
+    if( BGS_FAILED( pAPIDevice->CreateShader( shDesc, &hPS ) ) )
+    {
+        return -1;
+    }
 
     BIGOS::Driver::Backend::IQueue*   pGraphicsQueue = nullptr;
     BIGOS::Driver::Backend::QueueDesc queueDesc;
@@ -152,15 +214,20 @@ int main()
         return -1;
     }
 
+    compiler->DestroyOutput( &pVSBlob );
+    compiler->DestroyOutput( &pPSBlob );
+
+    pAPIDevice->DestroyShader( &hPS );
+    pAPIDevice->DestroyShader( &hVS );
     pAPIDevice->DestroyCommandBuffer( &pCmdBuffer );
     pAPIDevice->DestroyCommandPool( &hCmdPool );
     pAPIDevice->DestroySemaphore( &hSemaphore );
     pAPIDevice->DestroyFence( &hFence );
 
-    blocks = pFramework->GetMemorySystemPtr()->GetMemoryBlockInfoPtrs();
+    blocks = pFramework->GetMemorySystem()->GetMemoryBlockInfo();
     blocks;
 
-    const auto& adapters = pRenderSystem->GetFactoryPtr()->GetAdapters();
+    const auto& adapters = pRenderSystem->GetFactory()->GetAdapters();
     adapters;
 
     pAPIDevice->DestroyQueue( &pGraphicsQueue );

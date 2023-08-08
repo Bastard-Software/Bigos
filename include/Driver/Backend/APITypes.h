@@ -5,6 +5,10 @@
 
 #include "BigosFramework/Config.h"
 
+#if defined DOMAIN
+#    undef DOMAIN
+#endif
+
 namespace BIGOS
 {
     namespace Driver
@@ -112,6 +116,25 @@ namespace BIGOS
             struct CommandPoolDesc
             {
                 IQueue* pQueue;
+            };
+
+            enum class ShaderTypes : uint8_t
+            {
+                VERTEX,
+                PIXEL,
+                GEOMETRY,
+                HULL,
+                DOMAIN,
+                COMPUTE,
+                // TODO: Ray tracing
+                _MAX_ENUM,
+            };
+            using SHADER_TYPE = ShaderTypes;
+
+            struct ShaderDesc
+            {
+                const byte_t* pByteCode;
+                uint32_t      codeSize;
             };
 
             enum class PipelineTypes : uint8_t

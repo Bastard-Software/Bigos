@@ -90,7 +90,7 @@ namespace BIGOS
                 }
 
                 VulkanQueue* pQueue = nullptr;
-                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pQueue ) ) )
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pQueue ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
@@ -98,7 +98,7 @@ namespace BIGOS
 
                 if( BGS_FAILED( pQueue->Create( desc, this ) ) )
                 {
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pQueue );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pQueue );
                     return Results::FAIL;
                 }
 
@@ -114,7 +114,7 @@ namespace BIGOS
                 if( ( ppQueue != nullptr ) && ( *ppQueue != nullptr ) )
                 {
                     static_cast<VulkanQueue*>( *ppQueue )->Destroy();
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), ppQueue );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), ppQueue );
                 }
             }
 
@@ -190,7 +190,7 @@ namespace BIGOS
                 }
 
                 VulkanCommandBuffer* pCommandBuffer = nullptr;
-                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pCommandBuffer ) ) )
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pCommandBuffer ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
@@ -198,7 +198,7 @@ namespace BIGOS
 
                 if( BGS_FAILED( pCommandBuffer->Create( desc, this ) ) )
                 {
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pCommandBuffer );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pCommandBuffer );
                     return Results::FAIL;
                 }
 
@@ -214,7 +214,51 @@ namespace BIGOS
                 if( ( ppCommandBuffer != nullptr ) && ( *ppCommandBuffer != nullptr ) )
                 {
                     static_cast<VulkanCommandBuffer*>( *ppCommandBuffer )->Destroy();
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), ppCommandBuffer );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), ppCommandBuffer );
+                }
+            }
+
+            RESULT VulkanDevice::CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Shader (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.pByteCode != nullptr, "Source code (desc.pByteCode) must be a valid pointer." );
+                if( desc.pByteCode == nullptr )
+                {
+                    return Results::FAIL;
+                }
+
+                VkShaderModuleCreateInfo shaderInfo;
+                shaderInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+                shaderInfo.pNext    = nullptr;
+                shaderInfo.flags    = 0;
+                shaderInfo.codeSize = desc.codeSize;
+                shaderInfo.pCode    = reinterpret_cast<const uint32_t*>( desc.pByteCode );
+
+                VkDevice       nativeDevice = m_handle.GetNativeHandle();
+                VkShaderModule nativeShader = pHandle->GetNativeHandle();
+
+                if( vkCreateShaderModule( nativeDevice, &shaderInfo, nullptr, &nativeShader ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = ShaderHandle( nativeShader );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyShader( ShaderHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Shader (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != ShaderHandle(), "Shader (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != ShaderHandle() ) )
+                {
+                    VkDevice       nativeDevice = m_handle.GetNativeHandle();
+                    VkShaderModule nativeShader = pHandle->GetNativeHandle();
+
+                    vkDestroyShaderModule( nativeDevice, nativeShader, nullptr );
+
+                    *pHandle = ShaderHandle();
                 }
             }
 

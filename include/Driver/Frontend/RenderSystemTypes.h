@@ -24,6 +24,8 @@ namespace BIGOS
 
             class RenderSystem;
             class RenderDevice;
+            class IShaderCompiler;
+            class ShaderCompilerFactory;
 
             using AdapterArray      = Backend::AdapterArray;
             using RenderDeviceArray = HeapArray<RenderDevice*>; // Framework allows to create only one device for each adapter
@@ -42,9 +44,84 @@ namespace BIGOS
             };
             using ADAPTER_TYPE = AdapterTypes;
 
+            enum class CompilerTypes : uint8_t
+            {
+                DXC,
+                GLSLC,
+                _MAX_ENUM,
+            };
+            using COMPILER_TYPE = CompilerTypes;
+
+            struct ShaderCompilerDesc
+            {
+                COMPILER_TYPE type;
+            };
+
+            struct ShaderCompilerFactoryDesc
+            {
+                // For future use
+            };
+
+            enum class ShaderModels : uint8_t
+            {
+                SHADER_MODEL_6_0,
+                SHADER_MODEL_6_1,
+                SHADER_MODEL_6_2,
+                SHADER_MODEL_6_3,
+                SHADER_MODEL_6_4,
+                SHADER_MODEL_6_5,
+                SHADER_MODEL_6_6,
+                SHADER_MODEL_6_7,
+                _MAX_ENUM,
+                SHADER_MODEL_LATEST = SHADER_MODEL_6_7,
+            };
+            using SHADER_MODEL = ShaderModels;
+
+            enum class ShaderLanguages : uint8_t
+            {
+                HLSL,
+                GLSL,
+                _MAX_ENUM,
+            };
+            using SHADER_LANGUAGE = ShaderLanguages;
+
+            enum class ShaderFormats : uint8_t
+            {
+                DXIL,
+                SPIRV,
+                _MAX_ENUM,
+            };
+            using SHADER_FORMAT = ShaderFormats;
+
+            struct ShaderSource
+            {
+                const void* pSourceCode;
+                uint32_t    sourceSize;
+            };
+
+            struct CompileShaderDesc
+            {
+                ShaderSource          source;
+                const char*           pEntryPoint;
+                const wchar_t* const* ppArgs;
+                uint32_t              argCount;
+                bool_t                compileDebug;
+                Backend::SHADER_TYPE  type;
+                SHADER_MODEL          model;
+                SHADER_FORMAT         outputFormat;
+            };
+
+            struct ShaderCompilerOutput
+            {
+                byte_t*  pByteCode;
+                uint32_t byteCodeSize;
+                // TODO: Add more if needed
+            };
+
             struct RenderSystemDesc
             {
-                Backend::FactoryDesc factoryDesc;
+                Backend::FactoryDesc      factoryDesc;
+                ShaderCompilerFactoryDesc compilerFactoryDesc;
             };
 
             struct RenderDeviceDesc

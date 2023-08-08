@@ -50,7 +50,7 @@ namespace BIGOS
                 BGS_ASSERT( ( ppMem != nullptr ) && ( *ppMem != nullptr ) );
                 BGS_ASSERT( pAllocator != nullptr );
 
-                return pAllocator->Free( static_cast<void**>( ppMem ) );
+                return pAllocator->Free( reinterpret_cast<void**>( ppMem ) );
             }
 
             template<typename T, typename... ArgsT>

@@ -10,7 +10,8 @@
 namespace BIGOS::Driver::Backend
 {
     struct D3D12Fence;
-}
+    struct D3D12ShaderModule;
+} // namespace BIGOS::Driver::Backend
 
 #if BGS_USE_D3D12_HANDLES
 #    define BGS_DECLARE_D3D12_HANDLE( name, type )                                                                                                   \
@@ -26,6 +27,7 @@ BGS_DECLARE_D3D12_HANDLE( Device, ID3D12Device* );
 BGS_DECLARE_D3D12_HANDLE( Queue, ID3D12CommandQueue* );
 BGS_DECLARE_D3D12_HANDLE( CommandPool, ID3D12CommandAllocator* );
 BGS_DECLARE_D3D12_HANDLE( CommandBuffer, ID3D12GraphicsCommandList4* );
+BGS_DECLARE_D3D12_HANDLE( Shader, BIGOS::Driver::Backend::D3D12ShaderModule* );
 BGS_DECLARE_D3D12_HANDLE( Fence, BIGOS::Driver::Backend::D3D12Fence* );
 BGS_DECLARE_D3D12_HANDLE( Semaphore, ID3D12Fence* );
 

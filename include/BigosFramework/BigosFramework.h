@@ -43,9 +43,9 @@ namespace BIGOS
         RESULT CreateWindowSystem( const Platform::WindowSystemDesc& desc, Platform::WindowSystem** ppSystem );
         void   DestroyWindowSystem( Platform::WindowSystem** ppSystem );
 
-        Core::Memory::MemorySystem*     GetMemorySystemPtr() { return &m_memorySystem; }
-        Driver::Frontend::RenderSystem* GetDriverSystemPtr() { return m_pRenderSystem; }
-        Platform::WindowSystem*         GetWindowSystemPtr() { return m_pWindowSystem; }
+        Core::Memory::MemorySystem*     GetMemorySystem() { return &m_memorySystem; }
+        Driver::Frontend::RenderSystem* GetDriverSystem() { return m_pRenderSystem; }
+        Platform::WindowSystem*         GetWindowSystem() { return m_pWindowSystem; }
 
         RESULT Create( const BigosFrameworkDesc& desc );
         void   Destroy();

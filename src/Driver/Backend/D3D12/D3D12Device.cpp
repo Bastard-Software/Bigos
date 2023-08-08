@@ -10,6 +10,7 @@
 #include "D3D12Factory.h"
 #include "D3D12Fence.h"
 #include "D3D12Queue.h"
+#include "D3D12Shader.h"
 #include "Driver/Frontend/RenderSystem.h"
 
 namespace BIGOS
@@ -28,7 +29,7 @@ namespace BIGOS
                 }
 
                 D3D12Queue* pQueue = nullptr;
-                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pQueue ) ) )
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pQueue ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
@@ -36,7 +37,7 @@ namespace BIGOS
 
                 if( BGS_FAILED( pQueue->Create( desc, this ) ) )
                 {
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pQueue );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pQueue );
                     return Results::FAIL;
                 }
 
@@ -52,7 +53,7 @@ namespace BIGOS
                 if( ( ppQueue != nullptr ) && ( *ppQueue != nullptr ) )
                 {
                     static_cast<D3D12Queue*>( *ppQueue )->Destroy();
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), ppQueue );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), ppQueue );
                 }
             }
 
@@ -81,8 +82,8 @@ namespace BIGOS
 
             void D3D12Device::DestroyCommandPool( CommandPoolHandle* pHandle )
             {
-                BGS_ASSERT( pHandle != nullptr, "Command pool handle (pHandle) must be a valid address." );
-                BGS_ASSERT( *pHandle != CommandPoolHandle(), "Command pool handle (pHandle) must point to valid handle." );
+                BGS_ASSERT( pHandle != nullptr, "Command pool (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != CommandPoolHandle(), "Command pool (pHandle) must point to valid handle." );
                 if( ( pHandle != nullptr ) && ( *pHandle != CommandPoolHandle() ) )
                 {
                     ID3D12CommandAllocator* pNativeCommandPool = pHandle->GetNativeHandle();
@@ -95,7 +96,7 @@ namespace BIGOS
 
             RESULT D3D12Device::ResetCommandPool( CommandPoolHandle handle )
             {
-                BGS_ASSERT( handle != CommandPoolHandle(), "Command pool handle (handle) must be a valid handle." );
+                BGS_ASSERT( handle != CommandPoolHandle(), "Command pool (handle) must be a valid handle." );
                 if( handle == CommandPoolHandle() )
                 {
                     return Results::FAIL;
@@ -121,7 +122,7 @@ namespace BIGOS
                 }
 
                 D3D12CommandBuffer* pCommandBuffer = nullptr;
-                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pCommandBuffer ) ) )
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pCommandBuffer ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
@@ -129,7 +130,7 @@ namespace BIGOS
 
                 if( BGS_FAILED( pCommandBuffer->Create( desc, this ) ) )
                 {
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pCommandBuffer );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pCommandBuffer );
                     return Results::FAIL;
                 }
 
@@ -145,7 +146,49 @@ namespace BIGOS
                 if( ( ppCommandBuffer != nullptr ) && ( *ppCommandBuffer != nullptr ) )
                 {
                     static_cast<D3D12CommandBuffer*>( *ppCommandBuffer )->Destroy();
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), ppCommandBuffer );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), ppCommandBuffer );
+                }
+            }
+
+            RESULT D3D12Device::CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Shader (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.pByteCode != nullptr, "Source code (desc.pByteCode) must be a valid pointer." );
+                if( desc.pByteCode == nullptr )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12ShaderModule* pNativeShader = nullptr;
+                const uint32_t     allocSize     = sizeof( D3D12ShaderModule ) + desc.codeSize;
+                byte_t*            pMem          = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pMem, allocSize ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                pNativeShader            = reinterpret_cast<D3D12ShaderModule*>( pMem );
+                pNativeShader->pByteCode = pMem + sizeof( D3D12ShaderModule );
+                pNativeShader->codeSize  = desc.codeSize;
+
+                Core::Memory::Copy( desc.pByteCode, desc.codeSize, pNativeShader->pByteCode, pNativeShader->codeSize );
+
+                *pHandle = ShaderHandle( pNativeShader );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyShader( ShaderHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Shader (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != ShaderHandle(), "Shader (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != ShaderHandle() ) )
+                {
+                    D3D12ShaderModule* pNativeShader = pHandle->GetNativeHandle();
+
+                    Core::Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeShader );
+
+                    *pHandle = ShaderHandle();
                 }
             }
 
@@ -156,7 +199,7 @@ namespace BIGOS
                 ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
                 D3D12Fence*   pNativeFence  = nullptr;
 
-                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pNativeFence ) ) )
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeFence ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
@@ -175,7 +218,7 @@ namespace BIGOS
                 if( FAILED( pNativeDevice->CreateFence( desc.initialValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &pNativeFence->pFence ) ) ) )
                 {
                     CloseHandle( pNativeFence->hEvent );
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pNativeFence );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeFence );
                     return Results::FAIL;
                 }
 
@@ -194,7 +237,7 @@ namespace BIGOS
 
                     CloseHandle( pNativeFence->hEvent );
                     RELEASE_COM_PTR( pNativeFence->pFence );
-                    Memory::FreeObject( m_pParent->GetParentPtr()->GetDefaultAllocatorPtr(), &pNativeFence );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeFence );
 
                     *pHandle = FenceHandle();
                 }

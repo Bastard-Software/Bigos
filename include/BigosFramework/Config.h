@@ -18,6 +18,12 @@ namespace BIGOS
                 constexpr uint32_t MAX_FENCES_TO_WAIT_COUNT = 8U;
             } // namespace Synchronization
 
+            namespace Shader
+            {
+                constexpr uint32_t MAX_SHADER_ENTRY_POINT_NAME_LENGHT = 32U;
+                constexpr uint32_t MAX_SHADER_COMPILER_ARGUMENT_COUNT = 32U;
+            } // namespace Shader
+
             namespace Pipeline
             {
                 constexpr uint32_t MAX_SCISSOR_COUNT  = 16U;
