@@ -113,6 +113,74 @@ namespace BIGOS
                 // TODO: Fill
             };
 
+            enum class Formats : uint8_t
+            {
+                UNKNOWN,
+                B5G5R5A1_UNORM,
+                B5G6R5_UNORM,
+                B8G8R8A8_UNORM,
+                B8G8R8A8_UNORM_SRGB,
+                BC1_UNORM,
+                BC1_UNORM_SRGB,
+                BC2_UNORM,
+                BC2_UNORM_SRGB,
+                BC3_UNORM,
+                BC3_UNORM_SRGB,
+                BC4_UNORM,
+                BC4_SNORM,
+                BC5_UNORM,
+                BC5_SNORM,
+                BC6H_UFLOAT,
+                BC6H_SFLOAT,
+                BC7_UNORM,
+                BC7_UNORM_SRGB,
+                R8_UINT,
+                R8_SINT,
+                R8_UNORM,
+                R8_SNORM,
+                R16_UINT,
+                R16_SINT,
+                R16_UNORM,
+                R16_SNORM,
+                R16_FLOAT,
+                D16_UNORM,
+                R8G8_UINT,
+                R8G8_SINT,
+                R8G8_UNORM,
+                R8G8_SNORM,
+                D24_UNORM_S8_UINT,
+                R32_FLOAT,
+                R32_UINT,
+                R32_SINT,
+                D32_FLOAT,
+                R16G16_UINT,
+                R16G16_SINT,
+                R16G16_UNORM,
+                R16G16_SNORM,
+                R16G16_FLOAT,
+                R8G8B8A8_UNORM,
+                R8G8B8A8_SNORM,
+                R8G8B8A8_UNORM_SRGB,
+                R8G8B8A8_UINT,
+                R8G8B8A8_SINT,
+                R32G32_UINT,
+                R32G32_SINT,
+                R32G32_FLOAT,
+                R16G16B16A16_UNORM,
+                R16G16B16A16_SNORM,
+                R16G16B16A16_UINT,
+                R16G16B16A16_SINT,
+                R16G16B16A16_FLOAT,
+                R32G32B32_UINT,
+                R32G32B32_SINT,
+                R32G32B32_FLOAT,
+                R32G32B32A32_UINT,
+                R32G32B32A32_SINT,
+                R32G32B32A32_FLOAT,
+                _MAX_ENUM,
+            };
+            using FORMAT = Formats;
+
             struct CommandPoolDesc
             {
                 IQueue* pQueue;
@@ -137,11 +205,56 @@ namespace BIGOS
                 uint32_t      codeSize;
             };
 
+            struct ShaderStageDesc
+            {
+                ShaderHandle hShader;
+                const char*  pEntryPoint;
+            };
+
             enum class PipelineTypes : uint8_t
             {
-                // TODO: Fill
+                GRAPHICS,
+                COMPUTE,
+                RAY_TRACING,
+                _MAX_ENUM,
             };
             using PIPELINE_TYPE = PipelineTypes;
+
+            struct PipelineDesc
+            {
+                PIPELINE_TYPE type;
+            };
+
+            enum class InputStepRates : uint8_t
+            {
+                PER_VERTEX,
+                PER_INSTANCE,
+                _MAX_ENUM,
+            };
+            using INPUT_STEP_RATE = InputStepRates;
+
+            struct InputBindingDesc
+            {
+                uint32_t        binding;
+                INPUT_STEP_RATE inputRate;
+            };
+
+            struct InputElementDesc
+            {
+                const char* pSemanticName;
+                uint32_t    location;
+                uint32_t    binding;
+                uint32_t    offset;
+                FORMAT      format;
+            };
+
+            struct InputStateDesc
+            {
+                const InputBindingDesc* pInputBindings;
+                const InputElementDesc* pInputElements;
+                uint32_t                inputBindingCount;
+                uint32_t                inputElementCount;
+            };
 
             enum class PrimitiveTopologies : uint8_t
             {
@@ -158,6 +271,230 @@ namespace BIGOS
                 _MAX_ENUM,
             };
             using PRIMITIVE_TOPOLOGY = PrimitiveTopologies;
+
+            enum class IndexRestartValues
+            {
+                DISABLED,         // Check if we need to add value for uint8 index type
+                ENABLED_0xFFFF,   // For index type uint16
+                ENABLED_0xFFFFFF, // For index type uint32
+                _MAX_ENUM,
+            };
+            using INDEX_RESTART_VALUE = IndexRestartValues;
+
+            struct InputAssemblerStateDesc
+            {
+                PRIMITIVE_TOPOLOGY  topology;
+                INDEX_RESTART_VALUE indexRestartValue;
+            };
+
+            enum class PolygonFillModes : uint8_t
+            {
+                WIREFRAME,
+                SOLID,
+                _MAX_ENUM,
+            };
+            using POLYGON_FILL_MODE = PolygonFillModes;
+
+            enum class CullModes : uint8_t
+            {
+                NONE,
+                FRONT,
+                BACK,
+                _MAX_ENUM,
+            };
+            using CULL_MODE = CullModes;
+
+            enum class FrontFaceModes
+            {
+                COUNTER_CLOCKWISE,
+                CLOCKWISE,
+                _MAX_ENUM,
+            };
+            using FRONT_FACE_MODE = FrontFaceModes;
+
+            struct RasterizerStateDesc
+            {
+                float             depthBiasConstantFactor;
+                float             depthBiasSlopeFactor;
+                float             depthBiasClamp;
+                bool_t            depthClipEnable;
+                POLYGON_FILL_MODE fillMode;
+                CULL_MODE         cullMode;
+                FRONT_FACE_MODE   frontFaceMode;
+            };
+
+            enum class SampleCount : uint8_t
+            {
+                COUNT_1,
+                COUNT_2,
+                COUNT_4,
+                COUNT_8,
+                COUNT_16,
+                COUNT_32,
+                COUNT_64,
+                _MAX_ENUM,
+            };
+            using SAMPLE_COUNT = SampleCount;
+
+            struct MultisampleStateDesc
+            {
+                SAMPLE_COUNT sampleCount;
+            };
+
+            enum class CompareOperationTypes : uint8_t
+            {
+                NEVER,
+                LESS,
+                EQUAL,
+                LESS_OR_EQUAL,
+                GREATER,
+                NOT_EQUAL,
+                GREATER_OR_EQUAL,
+                ALWAYS,
+                _MAX_ENUM,
+            };
+            using COMPARE_OPERATION_TYPE = CompareOperationTypes;
+
+            enum class StencilOperationTypes : uint8_t
+            {
+                KEEP,
+                ZERO,
+                REPLACE,
+                INCREMENT_AND_CLAMP,
+                DECREMENT_AND_CLAMP,
+                INVERT,
+                INCREMENT_AND_WRAP,
+                DECREMENT_AND_WRAP,
+                _MAX_ENUM,
+            };
+            using STENCIL_OPERATION_TYPE = StencilOperationTypes;
+
+            struct StencilOperationDesc
+            {
+                STENCIL_OPERATION_TYPE failOp;
+                STENCIL_OPERATION_TYPE passOp;
+                STENCIL_OPERATION_TYPE depthFailOp;
+                COMPARE_OPERATION_TYPE compareOp;
+            };
+
+            struct DepthStencilStateDesc
+            {
+                bool_t                 depthTestEnable;
+                bool_t                 depthWriteEnable;
+                bool_t                 stencilTestEnable;
+                StencilOperationDesc   frontFace;
+                StencilOperationDesc   backFace;
+                uint8_t                stencilWriteMask;
+                uint8_t                stencilReadMask;
+                COMPARE_OPERATION_TYPE depthCompare;
+            };
+
+            enum class BlendFactors : uint8_t
+            {
+                ZERO,
+                ONE,
+                SRC_COLOR,
+                ONE_MINUS_SRC_COLOR,
+                DST_COLOR,
+                ONE_MINUS_DST_COLOR,
+                SRC_ALPHA,
+                ONE_MINUS_SRC_ALPHA,
+                DST_ALPHA,
+                ONE_MINUS_DST_ALPHA,
+                SRC1_COLOR,
+                ONE_MINUS_SRC1_COLOR,
+                SRC1_ALPHA,
+                ONE_MINUS_SRC1_ALPHA,
+                SRC_ALPHA_SATURATE,
+                _MAX_ENUM
+            };
+            using BLEND_FACTOR = BlendFactors;
+
+            enum class BlendOperationTypes : uint8_t
+            {
+                ADD,
+                SUBTRACT,
+                REVERSE_SUBTRACT,
+                MIN,
+                MAX,
+                _MAX_ENUM
+            };
+            using BLEND_OPERATION_TYPE = BlendOperationTypes;
+
+            enum class ColorComponentFlagBits : uint32_t
+            {
+                RED   = 0x00000001,
+                GREEN = 0x00000002,
+                BLUE  = 0x00000004,
+                ALPHA = 0x00000008,
+                ALL   = RED | GREEN | BLUE | ALPHA
+            };
+            using ColorComponentFlags = uint32_t;
+
+            struct RenderTargetBlendDesc
+            {
+
+                BLEND_FACTOR         srcColorBlendFactor;
+                BLEND_FACTOR         dstColorBlendFactor;
+                BLEND_OPERATION_TYPE colorBlendOp;
+                BLEND_FACTOR         srcAlphaBlendFactor;
+                BLEND_FACTOR         dstAlphaBlendFactor;
+                BLEND_OPERATION_TYPE alphaBlendOp;
+                ColorComponentFlags  writeFlag;
+                bool_t               blendEnable;
+            };
+
+            enum class LogicOperationTypes : uint8_t
+            {
+                CLEAR,
+                AND,
+                AND_REVERSE,
+                COPY,
+                AND_INVERTED,
+                NO_OP,
+                XOR,
+                OR,
+                NOR,
+                EQUIVALENT,
+                INVERT,
+                OR_REVERSE,
+                COPY_INVERTED,
+                OR_INVERTED,
+                NAND,
+                SET,
+                _MAX_ENUM,
+            };
+            using LOGIC_OPERATION_TYPE = LogicOperationTypes;
+
+            struct BlendStateDesc
+            {
+                RenderTargetBlendDesc* pRenderTargetBlendDescs;
+                uint32_t               renderTargetBlendDescCount;
+                LOGIC_OPERATION_TYPE   logicOperation;
+                /// <summary>
+                /// Enables logic operations.
+                /// </summary>
+                bool enableLogicOperations;
+            };
+
+            struct GraphicsPipelineDesc : public PipelineDesc
+            {
+                ShaderStageDesc         vertexShader;
+                ShaderStageDesc         pixelShader;
+                ShaderStageDesc         domainShader;
+                ShaderStageDesc         hullShader;
+                ShaderStageDesc         geometryShader;
+                InputStateDesc          inputState;
+                InputAssemblerStateDesc inputAssemblerState;
+                RasterizerStateDesc     rasterizeState;
+                MultisampleStateDesc    multisampleState;
+                DepthStencilStateDesc   depthStencilState;
+                BlendStateDesc          blendState;
+                uint32_t                renderTargetCount;
+                const FORMAT*           pRenderTargetFormats;
+                FORMAT                  depthStencilFormat;
+                PipelineLayoutHandle    hPipelineLayout;
+            };
 
             struct ViewportDesc
             {

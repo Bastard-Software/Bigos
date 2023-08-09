@@ -80,6 +80,20 @@ namespace BIGOS
                 void* m_pNext;
             };
 
+            static VkPipelineShaderStageCreateInfo CreateShaderStage( ShaderStageDesc shaderStageDesc, VkShaderStageFlagBits stage )
+            {
+                VkPipelineShaderStageCreateInfo shaderStageInfo;
+                shaderStageInfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                shaderStageInfo.flags               = 0;
+                shaderStageInfo.pNext               = nullptr;
+                shaderStageInfo.stage               = stage;
+                shaderStageInfo.module              = shaderStageDesc.hShader.GetNativeHandle();
+                shaderStageInfo.pName               = shaderStageDesc.pEntryPoint;
+                shaderStageInfo.pSpecializationInfo = nullptr;
+
+                return shaderStageInfo;
+            }
+
             RESULT VulkanDevice::CreateQueue( const QueueDesc& desc, IQueue** ppQueue )
             {
                 BGS_ASSERT( ppQueue != nullptr, "Queue (ppQueue) must be a valid address." );
@@ -259,6 +273,57 @@ namespace BIGOS
                     vkDestroyShaderModule( nativeDevice, nativeShader, nullptr );
 
                     *pHandle = ShaderHandle();
+                }
+            }
+
+            RESULT VulkanDevice::CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
+
+                VkPipeline nativePipeline = VK_NULL_HANDLE;
+
+                switch( desc.type )
+                {
+                    case PipelineTypes::GRAPHICS:
+                    {
+                        const GraphicsPipelineDesc& gpDesc = static_cast<const GraphicsPipelineDesc&>( desc );
+
+                        if( BGS_FAILED( CreateVkGraphicsPipeline( gpDesc, &nativePipeline ) ) )
+                        {
+                            return Results::FAIL;
+                        }
+
+                        break;
+                    }
+                    case PipelineTypes::COMPUTE:
+                    {
+                        // TODO: Implement
+                        break;
+                    }
+                    case PipelineTypes::RAY_TRACING:
+                    {
+                        // TODO: Implement
+                        return Results::FAIL;
+                    }
+                }
+
+                *pHandle = PipelineHandle( nativePipeline );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyPipeline( PipelineHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != PipelineHandle(), "Pipeline (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != PipelineHandle() ) )
+                {
+                    VkDevice   nativeDevice   = m_handle.GetNativeHandle();
+                    VkPipeline nativePipeline = pHandle->GetNativeHandle();
+
+                    vkDestroyPipeline( nativeDevice, nativePipeline, nullptr );
+
+                    *pHandle = PipelineHandle();
                 }
             }
 
@@ -526,6 +591,241 @@ namespace BIGOS
                 volkLoadDevice( nativeDevice );
 
                 m_handle = DeviceHandle( nativeDevice );
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::CreateVkGraphicsPipeline( const GraphicsPipelineDesc& gpDesc, VkPipeline* pNativePipeline )
+            {
+                // Shader stages
+                VkPipelineShaderStageCreateInfo shaderStages[ 5 ];
+                uint32_t                        stageCnt = 0;
+                if( gpDesc.vertexShader.hShader != ShaderHandle() )
+                {
+                    shaderStages[ stageCnt++ ] = CreateShaderStage( gpDesc.vertexShader, VK_SHADER_STAGE_VERTEX_BIT );
+                }
+                if( gpDesc.pixelShader.hShader != ShaderHandle() )
+                {
+                    shaderStages[ stageCnt++ ] = CreateShaderStage( gpDesc.pixelShader, VK_SHADER_STAGE_FRAGMENT_BIT );
+                }
+                if( gpDesc.domainShader.hShader != ShaderHandle() )
+                {
+                    shaderStages[ stageCnt++ ] = CreateShaderStage( gpDesc.domainShader, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT );
+                }
+                if( gpDesc.hullShader.hShader != ShaderHandle() )
+                {
+                    shaderStages[ stageCnt++ ] = CreateShaderStage( gpDesc.hullShader, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT );
+                }
+                if( gpDesc.geometryShader.hShader != ShaderHandle() )
+                {
+                    shaderStages[ stageCnt++ ] = CreateShaderStage( gpDesc.geometryShader, VK_SHADER_STAGE_GEOMETRY_BIT );
+                }
+
+                // Vertex input state desc
+                BGS_ASSERT( gpDesc.inputState.inputBindingCount <= Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT );
+                if( gpDesc.inputState.inputBindingCount > Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT )
+
+                {
+                    return Results::FAIL;
+                }
+                VkVertexInputBindingDescription bindings[ Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.inputState.inputBindingCount ); ++ndx )
+                {
+                    const InputBindingDesc&          currDesc = gpDesc.inputState.pInputBindings[ ndx ];
+                    VkVertexInputBindingDescription& currBind = bindings[ ndx ];
+                    currBind.binding                          = currDesc.binding;
+                    currBind.stride                           = MAX_UINT32; // Will be ignored because of dynamic state flag
+                    currBind.inputRate                        = MapBigosInputStepRateToVulkanVertexInputStepRate( currDesc.inputRate );
+                }
+
+                BGS_ASSERT( gpDesc.inputState.inputElementCount <= Config::Driver::Pipeline::MAX_INPUT_ELEMENT_COUNT );
+                if( gpDesc.inputState.inputElementCount > Config::Driver::Pipeline::MAX_INPUT_ELEMENT_COUNT )
+                {
+                    return Results::FAIL;
+                }
+                VkVertexInputAttributeDescription attribs[ Config::Driver::Pipeline::MAX_INPUT_ELEMENT_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.inputState.inputElementCount ); ++ndx )
+                {
+                    const InputElementDesc&            currDesc = gpDesc.inputState.pInputElements[ ndx ];
+                    VkVertexInputAttributeDescription& currAttr = attribs[ ndx ];
+                    currAttr.binding                            = currDesc.binding;
+                    currAttr.format                             = MapBigosFormatToVulkanFormat( currDesc.format );
+                    currAttr.location                           = currDesc.location;
+                    currAttr.offset                             = currDesc.offset;
+                }
+
+                VkPipelineVertexInputStateCreateInfo viInfo;
+                viInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+                viInfo.pNext                           = nullptr;
+                viInfo.flags                           = 0;
+                viInfo.vertexBindingDescriptionCount   = gpDesc.inputState.inputBindingCount;
+                viInfo.pVertexBindingDescriptions      = bindings;
+                viInfo.vertexAttributeDescriptionCount = gpDesc.inputState.inputElementCount;
+                viInfo.pVertexAttributeDescriptions    = attribs;
+
+                // Input assembler
+                VkPipelineInputAssemblyStateCreateInfo inputAssembly;
+                inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+                inputAssembly.pNext    = nullptr;
+                inputAssembly.flags    = 0;
+                inputAssembly.topology = MapBigosPrimitiveTopologyToVulkanPrimitiveTopology(
+                    gpDesc.inputAssemblerState.topology ); // Will be ignored because of dynamic state flag
+                inputAssembly.primitiveRestartEnable = MapBigosIndexRestartValueToVulkanBool( gpDesc.inputAssemblerState.indexRestartValue );
+
+                // TODO: Handle tesselation state
+
+                // Rasterizer state
+                VkPipelineRasterizationStateCreateInfo rasterInfo;
+                rasterInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+                rasterInfo.pNext                   = nullptr;
+                rasterInfo.flags                   = 0;
+                rasterInfo.rasterizerDiscardEnable = VK_FALSE;
+                rasterInfo.depthClampEnable        = gpDesc.rasterizeState.depthClipEnable;
+                rasterInfo.polygonMode             = MapBigosPolygonFillModeToVulkanPolygonMode( gpDesc.rasterizeState.fillMode );
+                rasterInfo.cullMode                = MapBigosCullModeToVulkanCullModeFlags( gpDesc.rasterizeState.cullMode );
+                rasterInfo.frontFace               = MapBigosFrontFaceModeToVulkanFrontFace( gpDesc.rasterizeState.frontFaceMode );
+                rasterInfo.depthBiasEnable         = VK_TRUE;
+                rasterInfo.depthBiasConstantFactor = gpDesc.rasterizeState.depthBiasConstantFactor;
+                rasterInfo.depthBiasSlopeFactor    = gpDesc.rasterizeState.depthBiasSlopeFactor;
+                rasterInfo.depthBiasClamp          = gpDesc.rasterizeState.depthBiasClamp;
+                rasterInfo.lineWidth               = 1.0f; // To mimic D3D12 behaviour
+
+                // Multisample state
+                VkPipelineMultisampleStateCreateInfo multisampleInfo;
+                multisampleInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+                multisampleInfo.pNext                 = nullptr;
+                multisampleInfo.flags                 = 0;
+                multisampleInfo.rasterizationSamples  = MapBigosSampleCountToVulkanSampleCountFlags( gpDesc.multisampleState.sampleCount );
+                multisampleInfo.sampleShadingEnable   = VK_FALSE; // Potentially need to handle all above
+                multisampleInfo.minSampleShading      = 0.0f;
+                multisampleInfo.pSampleMask           = nullptr;
+                multisampleInfo.alphaToOneEnable      = VK_FALSE;
+                multisampleInfo.alphaToCoverageEnable = VK_FALSE;
+
+                // Depth stencil state
+                VkPipelineDepthStencilStateCreateInfo depthStencilInfo;
+                depthStencilInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                depthStencilInfo.pNext             = nullptr;
+                depthStencilInfo.flags             = 0;
+                depthStencilInfo.depthTestEnable   = gpDesc.depthStencilState.depthTestEnable;
+                depthStencilInfo.depthWriteEnable  = gpDesc.depthStencilState.depthWriteEnable;
+                depthStencilInfo.depthCompareOp    = MapBigosCompareOperationTypeToVulkanCompareOp( gpDesc.depthStencilState.depthCompare );
+                depthStencilInfo.stencilTestEnable = gpDesc.depthStencilState.stencilTestEnable;
+                depthStencilInfo.front.failOp      = MapBigosStencilOperationTypeToVulkanStencilOp( gpDesc.depthStencilState.frontFace.failOp );
+                depthStencilInfo.front.depthFailOp = MapBigosStencilOperationTypeToVulkanStencilOp( gpDesc.depthStencilState.frontFace.depthFailOp );
+                depthStencilInfo.front.passOp      = MapBigosStencilOperationTypeToVulkanStencilOp( gpDesc.depthStencilState.frontFace.passOp );
+                depthStencilInfo.front.compareOp   = MapBigosCompareOperationTypeToVulkanCompareOp( gpDesc.depthStencilState.frontFace.compareOp );
+                depthStencilInfo.front.compareMask = gpDesc.depthStencilState.stencilReadMask;
+                depthStencilInfo.front.writeMask   = gpDesc.depthStencilState.stencilWriteMask;
+                // Stencil reference is ignored because of dynamic states
+                depthStencilInfo.back.failOp      = MapBigosStencilOperationTypeToVulkanStencilOp( gpDesc.depthStencilState.backFace.failOp );
+                depthStencilInfo.back.depthFailOp = MapBigosStencilOperationTypeToVulkanStencilOp( gpDesc.depthStencilState.backFace.depthFailOp );
+                depthStencilInfo.back.passOp      = MapBigosStencilOperationTypeToVulkanStencilOp( gpDesc.depthStencilState.backFace.passOp );
+                depthStencilInfo.back.compareOp   = MapBigosCompareOperationTypeToVulkanCompareOp( gpDesc.depthStencilState.backFace.compareOp );
+                depthStencilInfo.back.compareMask = gpDesc.depthStencilState.stencilReadMask;
+                depthStencilInfo.back.writeMask   = gpDesc.depthStencilState.stencilWriteMask;
+                // Stencil reference is ignored because of dynamic states
+                depthStencilInfo.maxDepthBounds = 0.0f; // Ignored because of dynamic states
+                depthStencilInfo.minDepthBounds = 0.0f; // Ignored because of dynamic states
+
+                // Blend state
+                BGS_ASSERT( gpDesc.blendState.renderTargetBlendDescCount <= Config::Driver::Pipeline::MAX_BLEND_STATE_COUNT );
+                if( gpDesc.blendState.renderTargetBlendDescCount > Config::Driver::Pipeline::MAX_BLEND_STATE_COUNT )
+                {
+                    return Results::FAIL;
+                }
+
+                VkPipelineColorBlendAttachmentState nativeRTBlends[ Config::Driver::Pipeline::MAX_BLEND_STATE_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.blendState.renderTargetBlendDescCount ); ++ndx )
+                {
+                    const RenderTargetBlendDesc&         currDesc   = gpDesc.blendState.pRenderTargetBlendDescs[ ndx ];
+                    VkPipelineColorBlendAttachmentState& currAttach = nativeRTBlends[ ndx ];
+
+                    currAttach.blendEnable         = currDesc.blendEnable;
+                    currAttach.srcColorBlendFactor = MapBigosBlendFactorToVulkanBlendFactor( currDesc.srcColorBlendFactor );
+                    currAttach.dstColorBlendFactor = MapBigosBlendFactorToVulkanBlendFactor( currDesc.dstColorBlendFactor );
+                    currAttach.colorBlendOp        = MapBigosBlendOperationTypeToVulkanBlendOp( currDesc.colorBlendOp );
+                    currAttach.srcAlphaBlendFactor = MapBigosBlendFactorToVulkanBlendFactor( currDesc.srcAlphaBlendFactor );
+                    currAttach.dstAlphaBlendFactor = MapBigosBlendFactorToVulkanBlendFactor( currDesc.dstAlphaBlendFactor );
+                    currAttach.alphaBlendOp        = MapBigosBlendOperationTypeToVulkanBlendOp( currDesc.alphaBlendOp );
+                    currAttach.colorWriteMask      = static_cast<uint32_t>( currDesc.writeFlag );
+                }
+
+                VkPipelineColorBlendStateCreateInfo blendState;
+                blendState.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+                blendState.pNext           = nullptr;
+                blendState.flags           = 0;
+                blendState.logicOpEnable   = gpDesc.blendState.enableLogicOperations;
+                blendState.logicOp         = MapBigosLogicOperationTypeToVulkanLogicOp( gpDesc.blendState.logicOperation );
+                blendState.attachmentCount = gpDesc.blendState.renderTargetBlendDescCount;
+                blendState.pAttachments    = nativeRTBlends;
+                // Blend constants are ignored because of dynamic states
+
+                // Dynamic states - set to mimic D3D12 behaviour
+                VkDynamicState dynamicStates[] = {
+                    VK_DYNAMIC_STATE_VIEWPORT,     VK_DYNAMIC_STATE_SCISSOR,           VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE,
+                    VK_DYNAMIC_STATE_DEPTH_BOUNDS, VK_DYNAMIC_STATE_STENCIL_REFERENCE, VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+                };
+
+                VkPipelineDynamicStateCreateInfo dynamicState;
+                dynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+                dynamicState.pNext             = nullptr;
+                dynamicState.flags             = 0;
+                dynamicState.dynamicStateCount = __crt_countof( dynamicStates );
+                dynamicState.pDynamicStates    = dynamicStates;
+
+                // Render target formats
+                BGS_ASSERT( gpDesc.renderTargetCount <= Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT );
+                if( gpDesc.renderTargetCount > Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT )
+                {
+                    return Results::FAIL;
+                }
+
+                VkFormat rtFormats[ Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.renderTargetCount ); ++ndx )
+                {
+                    rtFormats[ ndx ] = MapBigosFormatToVulkanFormat( gpDesc.pRenderTargetFormats[ ndx ] );
+                }
+
+                VkPipelineRenderingCreateInfo dynamicInfo;
+                dynamicInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+                dynamicInfo.pNext                   = nullptr;
+                dynamicInfo.viewMask                = 0;
+                dynamicInfo.colorAttachmentCount    = gpDesc.renderTargetCount;
+                dynamicInfo.pColorAttachmentFormats = rtFormats;
+                dynamicInfo.depthAttachmentFormat   = MapBigosFormatToVulkanFormat( gpDesc.depthStencilFormat );
+                dynamicInfo.stencilAttachmentFormat = MapBigosFormatToVulkanFormat( gpDesc.depthStencilFormat );
+
+                VkGraphicsPipelineCreateInfo pipelineInfo;
+                pipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+                pipelineInfo.pNext               = &dynamicInfo;
+                pipelineInfo.flags               = 0;
+                pipelineInfo.pStages             = shaderStages;
+                pipelineInfo.pVertexInputState   = &viInfo;
+                pipelineInfo.pInputAssemblyState = &inputAssembly;
+                pipelineInfo.pTessellationState  = nullptr;
+                pipelineInfo.pViewportState      = nullptr;
+                pipelineInfo.pRasterizationState = &rasterInfo;
+                pipelineInfo.pMultisampleState   = &multisampleInfo;
+                pipelineInfo.pDepthStencilState  = &depthStencilInfo;
+                pipelineInfo.pColorBlendState    = &blendState;
+                pipelineInfo.pDynamicState       = &dynamicState;
+                pipelineInfo.layout = gpDesc.hPipelineLayout != PipelineLayoutHandle() ? gpDesc.hPipelineLayout.GetNativeHandle() : VK_NULL_HANDLE;
+                pipelineInfo.renderPass         = VK_NULL_HANDLE; // We do support only dynamic rendering for now
+                pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+                pipelineInfo.basePipelineIndex  = 0;
+                pipelineInfo.subpass            = 0;
+
+                VkDevice   nativeDevice   = m_handle.GetNativeHandle();
+                VkPipeline nativePipeline = VK_NULL_HANDLE;
+
+                // TODO: Handle cached pso
+                if( vkCreateGraphicsPipelines( nativeDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &nativePipeline ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pNativePipeline = nativePipeline;
 
                 return Results::OK;
             }

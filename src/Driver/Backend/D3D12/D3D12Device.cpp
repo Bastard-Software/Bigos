@@ -9,6 +9,7 @@
 #include "D3D12Common.h"
 #include "D3D12Factory.h"
 #include "D3D12Fence.h"
+#include "D3D12Pipeline.h"
 #include "D3D12Queue.h"
 #include "D3D12Shader.h"
 #include "Driver/Frontend/RenderSystem.h"
@@ -190,6 +191,46 @@ namespace BIGOS
 
                     *pHandle = ShaderHandle();
                 }
+            }
+
+            RESULT D3D12Device::CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
+
+                D3D12Pipeline* pNativePipeline = nullptr;
+
+                switch( desc.type )
+                {
+                    case PipelineTypes::GRAPHICS:
+                    {
+                        const GraphicsPipelineDesc& gpDesc = static_cast<const GraphicsPipelineDesc&>( desc );
+
+                        if( BGS_FAILED( CreateD3D12GraphicsPipeline( gpDesc, &pNativePipeline ) ) )
+                        {
+                            return Results::FAIL;
+                        }
+
+                        break;
+                    }
+                    case PipelineTypes::COMPUTE:
+                    {
+                        // TODO: Implement
+                        return Results::FAIL;
+                    }
+                    case PipelineTypes::RAY_TRACING:
+                    {
+                        // TODO: Implement
+                        return Results::FAIL;
+                    }
+                }
+
+                *pHandle = PipelineHandle( pNativePipeline );
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyPipeline( PipelineHandle* pHandle )
+            {
+                pHandle;
             }
 
             RESULT D3D12Device::CreateFence( const FenceDesc& desc, FenceHandle* pHandle )
@@ -389,6 +430,235 @@ namespace BIGOS
                 }
 
                 m_handle = DeviceHandle( pNativeDevice );
+
+                return Results::OK;
+            }
+
+            RESULT D3D12Device::CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline )
+            {
+                D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
+                // Shader stages
+                if( gpDesc.vertexShader.hShader != ShaderHandle() )
+                {
+                    D3D12ShaderModule* pShader = gpDesc.vertexShader.hShader.GetNativeHandle();
+                    psoDesc.VS.pShaderBytecode = pShader->pByteCode;
+                    psoDesc.VS.BytecodeLength  = pShader->codeSize;
+                }
+                else
+                {
+                    psoDesc.VS.pShaderBytecode = nullptr;
+                    psoDesc.VS.BytecodeLength  = 0;
+                }
+                if( gpDesc.pixelShader.hShader != ShaderHandle() )
+                {
+                    D3D12ShaderModule* pShader = gpDesc.pixelShader.hShader.GetNativeHandle();
+                    psoDesc.PS.pShaderBytecode = pShader->pByteCode;
+                    psoDesc.PS.BytecodeLength  = pShader->codeSize;
+                }
+                else
+                {
+                    psoDesc.PS.pShaderBytecode = nullptr;
+                    psoDesc.PS.BytecodeLength  = 0;
+                }
+                if( gpDesc.domainShader.hShader != ShaderHandle() )
+                {
+                    D3D12ShaderModule* pShader = gpDesc.domainShader.hShader.GetNativeHandle();
+                    psoDesc.DS.pShaderBytecode = pShader->pByteCode;
+                    psoDesc.DS.BytecodeLength  = pShader->codeSize;
+                }
+                else
+                {
+                    psoDesc.DS.pShaderBytecode = nullptr;
+                    psoDesc.DS.BytecodeLength  = 0;
+                }
+                if( gpDesc.hullShader.hShader != ShaderHandle() )
+                {
+                    D3D12ShaderModule* pShader = gpDesc.hullShader.hShader.GetNativeHandle();
+                    psoDesc.HS.pShaderBytecode = pShader->pByteCode;
+                    psoDesc.HS.BytecodeLength  = pShader->codeSize;
+                }
+                else
+                {
+                    psoDesc.HS.pShaderBytecode = nullptr;
+                    psoDesc.HS.BytecodeLength  = 0;
+                }
+                if( gpDesc.geometryShader.hShader != ShaderHandle() )
+                {
+                    D3D12ShaderModule* pShader = gpDesc.geometryShader.hShader.GetNativeHandle();
+                    psoDesc.GS.pShaderBytecode = pShader->pByteCode;
+                    psoDesc.GS.BytecodeLength  = pShader->codeSize;
+                }
+                else
+                {
+                    psoDesc.GS.pShaderBytecode = nullptr;
+                    psoDesc.GS.BytecodeLength  = 0;
+                }
+
+                // Input state
+                BGS_ASSERT( gpDesc.inputState.inputElementCount <= Config::Driver::Pipeline::MAX_INPUT_ELEMENT_COUNT );
+                BGS_ASSERT( gpDesc.inputState.inputBindingCount <= Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT );
+                if( ( gpDesc.inputState.inputElementCount > Config::Driver::Pipeline::MAX_INPUT_ELEMENT_COUNT ) &&
+                    ( gpDesc.inputState.inputBindingCount > Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT ) )
+                {
+                    return Results::FAIL;
+                }
+                D3D12_INPUT_ELEMENT_DESC elemDescs[ Config::Driver::Pipeline::MAX_INPUT_ELEMENT_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.inputState.inputElementCount ); ++ndx )
+                {
+                    const InputElementDesc& currDesc = gpDesc.inputState.pInputElements[ ndx ];
+
+                    // In vulkan input rate is specified by binding not by element. We need to mimic this behavior here.
+                    D3D12_INPUT_CLASSIFICATION inputClass{};
+                    for( index_t ndy = 0; ndy < static_cast<index_t>( gpDesc.inputState.inputBindingCount ); ++ndy )
+                    {
+                        const InputBindingDesc& currBinding = gpDesc.inputState.pInputBindings[ ndy ];
+                        if( currDesc.binding == currBinding.binding )
+                        {
+                            inputClass = MapBigosInputStepRateToD3D12InputClassification( currBinding.inputRate );
+                            break;
+                        }
+                    }
+
+                    D3D12_INPUT_ELEMENT_DESC& currElem = elemDescs[ ndx ];
+                    currElem.SemanticName              = currDesc.pSemanticName;
+                    currElem.SemanticIndex             = 0; // TODO: Handle
+                    currElem.InputSlot                 = currDesc.binding;
+                    currElem.Format                    = MapBigosFormatToD3D12Format( currDesc.format );
+                    currElem.AlignedByteOffset         = currDesc.offset;
+                    currElem.InputSlotClass            = inputClass;
+                    currElem.InstanceDataStepRate      = inputClass == D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA ? 0 : 1;
+                    // TODO: Handle
+                }
+
+                D3D12_INPUT_LAYOUT_DESC inputLayout;
+                inputLayout.NumElements        = gpDesc.inputState.inputElementCount;
+                inputLayout.pInputElementDescs = elemDescs;
+
+                // Nothing simmilar in vulkan, probably hardly connected to windows
+                D3D12_STREAM_OUTPUT_DESC so{};
+
+                // Rasterizer state
+                D3D12_RASTERIZER_DESC rasterState;
+                rasterState.FillMode              = MapBigosPolygonFillModeToD3D12FillModes( gpDesc.rasterizeState.fillMode );
+                rasterState.CullMode              = MapBigosCullModeToD3D12CullMode( gpDesc.rasterizeState.cullMode );
+                rasterState.FrontCounterClockwise = MapBigosFrontFaceModeToD3D12Bool( gpDesc.rasterizeState.frontFaceMode );
+                rasterState.DepthClipEnable       = gpDesc.rasterizeState.depthClipEnable;
+                rasterState.DepthBias             = static_cast<INT>( gpDesc.rasterizeState.depthBiasConstantFactor );
+                rasterState.SlopeScaledDepthBias  = gpDesc.rasterizeState.depthBiasSlopeFactor;
+                rasterState.DepthBiasClamp        = gpDesc.rasterizeState.depthBiasClamp;
+                rasterState.AntialiasedLineEnable = false; // Potentially need to handle all above
+                rasterState.MultisampleEnable     = false;
+                rasterState.ForcedSampleCount     = 0;
+                rasterState.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE ::D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+                // Multisample state
+                DXGI_SAMPLE_DESC multisampleState;
+                multisampleState.Count   = MapBigosSampleCountToD3D12Uint( gpDesc.multisampleState.sampleCount );
+                multisampleState.Quality = 0; // TODO: For now, should swith to sampleCount - 1 ?
+
+                // Depth stencil state
+                D3D12_DEPTH_STENCIL_DESC depthStencilState;
+                depthStencilState.DepthEnable      = gpDesc.depthStencilState.depthTestEnable;
+                depthStencilState.DepthWriteMask   = MapBigosBoolToD3D12DepthWriteMask( gpDesc.depthStencilState.depthWriteEnable );
+                depthStencilState.DepthFunc        = MapBigosCompareOperationTypeToD3D12ComparsionFunc( gpDesc.depthStencilState.depthCompare );
+                depthStencilState.StencilEnable    = gpDesc.depthStencilState.stencilTestEnable;
+                depthStencilState.StencilWriteMask = gpDesc.depthStencilState.stencilWriteMask;
+                depthStencilState.StencilReadMask  = gpDesc.depthStencilState.stencilReadMask;
+
+                depthStencilState.BackFace.StencilFailOp = MapBigosStencilOperationTypeToD3D12StencilOp( gpDesc.depthStencilState.backFace.failOp );
+                depthStencilState.BackFace.StencilPassOp = MapBigosStencilOperationTypeToD3D12StencilOp( gpDesc.depthStencilState.backFace.passOp );
+                depthStencilState.BackFace.StencilDepthFailOp =
+                    MapBigosStencilOperationTypeToD3D12StencilOp( gpDesc.depthStencilState.backFace.depthFailOp );
+                depthStencilState.BackFace.StencilFunc =
+                    MapBigosCompareOperationTypeToD3D12ComparsionFunc( gpDesc.depthStencilState.backFace.compareOp );
+
+                depthStencilState.FrontFace.StencilFailOp = MapBigosStencilOperationTypeToD3D12StencilOp( gpDesc.depthStencilState.frontFace.failOp );
+                depthStencilState.FrontFace.StencilPassOp = MapBigosStencilOperationTypeToD3D12StencilOp( gpDesc.depthStencilState.frontFace.passOp );
+                depthStencilState.FrontFace.StencilDepthFailOp =
+                    MapBigosStencilOperationTypeToD3D12StencilOp( gpDesc.depthStencilState.frontFace.depthFailOp );
+                depthStencilState.FrontFace.StencilFunc =
+                    MapBigosCompareOperationTypeToD3D12ComparsionFunc( gpDesc.depthStencilState.frontFace.compareOp );
+
+                // Blend state
+                BGS_ASSERT( gpDesc.blendState.renderTargetBlendDescCount <= Config::Driver::Pipeline::MAX_BLEND_STATE_COUNT );
+                if( gpDesc.blendState.renderTargetBlendDescCount > Config::Driver::Pipeline::MAX_BLEND_STATE_COUNT )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12_BLEND_DESC blendState;
+                for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.blendState.renderTargetBlendDescCount ); ++ndx )
+                {
+                    const RenderTargetBlendDesc&    currDesc   = gpDesc.blendState.pRenderTargetBlendDescs[ ndx ];
+                    D3D12_RENDER_TARGET_BLEND_DESC& currAttach = blendState.RenderTarget[ ndx ];
+
+                    currAttach.SrcBlend              = MapBigosBlendFactorToD3D12Blend( currDesc.srcColorBlendFactor );
+                    currAttach.DestBlend             = MapBigosBlendFactorToD3D12Blend( currDesc.dstColorBlendFactor );
+                    currAttach.BlendOp               = MapBigosBlendOperationTypeToD3D12BlendOp( currDesc.colorBlendOp );
+                    currAttach.SrcBlendAlpha         = MapBigosBlendFactorToD3D12Blend( currDesc.srcAlphaBlendFactor );
+                    currAttach.DestBlendAlpha        = MapBigosBlendFactorToD3D12Blend( currDesc.dstAlphaBlendFactor );
+                    currAttach.BlendOpAlpha          = MapBigosBlendOperationTypeToD3D12BlendOp( currDesc.alphaBlendOp );
+                    currAttach.RenderTargetWriteMask = static_cast<UINT8>( static_cast<uint32_t>( currDesc.writeFlag ) );
+                    currAttach.BlendEnable           = currDesc.blendEnable;
+                    currAttach.LogicOpEnable         = gpDesc.blendState.enableLogicOperations;
+                    currAttach.LogicOp               = MapBigosLogicOperationTypeToD3D12LogicOp( gpDesc.blendState.logicOperation );
+                }
+                blendState.AlphaToCoverageEnable  = FALSE; // To mimic vulkan behaviour
+                blendState.IndependentBlendEnable = FALSE; // To mimic vulkan behaviour
+
+                // Render target formats
+                BGS_ASSERT( gpDesc.renderTargetCount <= Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT );
+                if( gpDesc.renderTargetCount > Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT )
+                {
+                    return Results::FAIL;
+                }
+
+                psoDesc.NumRenderTargets = gpDesc.renderTargetCount;
+                psoDesc.DSVFormat        = MapBigosFormatToD3D12Format( gpDesc.depthStencilFormat );
+                for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.renderTargetCount ); ++ndx )
+                {
+                    psoDesc.RTVFormats[ ndx ] = MapBigosFormatToD3D12Format( gpDesc.pRenderTargetFormats[ ndx ] );
+                }
+                for( index_t ndx = gpDesc.renderTargetCount; ndx < static_cast<index_t>( Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT ); ++ndx )
+                {
+                    psoDesc.RTVFormats[ ndx ] = DXGI_FORMAT_UNKNOWN;
+                }
+
+                // Cahed pipeline - TODO: Handle
+                D3D12_CACHED_PIPELINE_STATE cachedPipeline{};
+
+                // Pipeline desc
+                psoDesc.InputLayout           = inputLayout;
+                psoDesc.PrimitiveTopologyType = MapBigosPrimitiveTopologyToD3D12PrimitiveTopologyType( gpDesc.inputAssemblerState.topology );
+                psoDesc.IBStripCutValue   = MapBigosIndexRestartValueToD3D12IndexBufferStripCutValue( gpDesc.inputAssemblerState.indexRestartValue );
+                psoDesc.StreamOutput      = so;
+                psoDesc.RasterizerState   = rasterState;
+                psoDesc.SampleDesc        = multisampleState;
+                psoDesc.DepthStencilState = depthStencilState;
+                psoDesc.BlendState        = blendState;
+                psoDesc.SampleMask        = UINT_MAX;
+                psoDesc.CachedPSO         = cachedPipeline;
+                psoDesc.NodeMask          = 0;
+                psoDesc.Flags             = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+                ID3D12Device*        pNativeDevice   = m_handle.GetNativeHandle();
+                ID3D12PipelineState* pNativePipeline = nullptr;
+                if( FAILED( pNativeDevice->CreateGraphicsPipelineState( &psoDesc, IID_PPV_ARGS( &pNativePipeline ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12Pipeline* pPipeline;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pPipeline ) ) )
+                {
+                    RELEASE_COM_PTR( pNativePipeline );
+                    return Results::NO_MEMORY;
+                }
+
+                pPipeline->pPipeline      = pNativePipeline;
+                pPipeline->pRootSignature = gpDesc.hPipelineLayout != PipelineLayoutHandle() ? gpDesc.hPipelineLayout.GetNativeHandle() : nullptr;
+
+                *ppPipeline = pPipeline;
 
                 return Results::OK;
             }

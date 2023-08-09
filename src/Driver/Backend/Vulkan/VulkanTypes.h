@@ -18,6 +18,8 @@ BGS_DECLARE_VULKAN_HANDLE( Queue, VkQueue );
 BGS_DECLARE_VULKAN_HANDLE( CommandPool, VkCommandPool );
 BGS_DECLARE_VULKAN_HANDLE( CommandBuffer, VkCommandBuffer );
 BGS_DECLARE_VULKAN_HANDLE( Shader, VkShaderModule );
+BGS_DECLARE_VULKAN_HANDLE( PipelineLayout, VkPipelineLayout );
+BGS_DECLARE_VULKAN_HANDLE( Pipeline, VkPipeline );
 BGS_DECLARE_VULKAN_HANDLE( Fence, VkSemaphore );
 BGS_DECLARE_VULKAN_HANDLE( Semaphore, VkSemaphore );
 

@@ -62,6 +62,9 @@ namespace BIGOS
                 virtual RESULT CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle ) = 0;
                 virtual void   DestroyShader( ShaderHandle* pHandle )                        = 0;
 
+                virtual RESULT CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle ) = 0;
+                virtual void   DestroyPipeline( PipelineHandle* pHandle )                          = 0;
+
                 virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle )       = 0;
                 virtual void   DestroyFence( FenceHandle* pHandle )                             = 0;
                 virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) = 0;

@@ -28,6 +28,9 @@ namespace BIGOS
                 virtual RESULT CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle ) override;
                 virtual void   DestroyShader( ShaderHandle* pHandle ) override;
 
+                virtual RESULT CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle ) override;
+                virtual void   DestroyPipeline( PipelineHandle* pHandle ) override;
+
                 virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle ) override;
                 virtual void   DestroyFence( FenceHandle* pHandle ) override;
                 virtual RESULT WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout ) override;
@@ -43,6 +46,7 @@ namespace BIGOS
 
             private:
                 RESULT CreateD3D12Device();
+                RESULT CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline );
 
             private:
                 D3D12Factory* m_pParent = nullptr;
