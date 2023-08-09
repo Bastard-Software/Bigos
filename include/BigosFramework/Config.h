@@ -26,8 +26,12 @@ namespace BIGOS
 
             namespace Pipeline
             {
-                constexpr uint32_t MAX_SCISSOR_COUNT  = 16U;
-                constexpr uint32_t MAX_VIEWPORT_COUNT = 16U;
+                constexpr uint32_t MAX_INPUT_BINDING_COUNT = 16U;
+                constexpr uint32_t MAX_INPUT_ELEMENT_COUNT = 16U;
+                constexpr uint32_t MAX_BLEND_STATE_COUNT   = 8U;
+                constexpr uint32_t MAX_RENDER_TARGET_COUNT = 8U;
+                constexpr uint32_t MAX_SCISSOR_COUNT       = 16U;
+                constexpr uint32_t MAX_VIEWPORT_COUNT      = 16U;
             } // namespace Pipeline
         }     // namespace Driver
     }         // namespace Config

@@ -8,24 +8,20 @@
 #include "Platform/WindowSystem.h"
 #include <stdio.h>
 
-const char* SHADER = "struct PSInput\n"
+const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5f, 0.0f, 1.0f ), float4( 0.5f, -0.5f, 0.0f, 1.0f ), float4( 0.0f, "
+                     "0.5f, 0.0f, 1.0f ) };\n"
+
+                     "float4 VSMain(uint vertexID : SV_VertexID) : SV_Position\n"
                      "{\n"
-                     "  float4 position : SV_POSITION;\n"
-                     "  float4 color : COLOR;\n"
-                     "};\n\n"
-                     "PSInput VSMain(float4 position : POSITION, float4 color : COLOR)\n"
-                     "{\n"
-                     "  PSInput result;\n\n"
-                     "  result.position = position;\n"
-                     "  result.color = color;\n\n"
-                     "  return result;\n"
+                     "  return positions[ vertexID ];\n"
                      "}\n\n"
-                     "float4 PSMain(PSInput input) : SV_TARGET\n"
+
+                     "float4 PSMain(float4 position : SV_Position ) : SV_Target\n"
                      "{\n"
-                     "  return input.color;\n"
+                     "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
 
 int main()
 {
@@ -115,6 +111,57 @@ int main()
     shDesc.pByteCode = pPSBlob->pByteCode;
     shDesc.codeSize  = pPSBlob->byteCodeSize;
     if( BGS_FAILED( pAPIDevice->CreateShader( shDesc, &hPS ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::PipelineHandle       hPipeline;
+    BIGOS::Driver::Backend::GraphicsPipelineDesc pipelineDesc;
+    // Shaders
+    pipelineDesc.vertexShader.hShader     = hVS;
+    pipelineDesc.vertexShader.pEntryPoint = "VSMain";
+    pipelineDesc.pixelShader.hShader      = hPS;
+    pipelineDesc.pixelShader.pEntryPoint  = "PSMain";
+    pipelineDesc.hullShader.hShader       = BIGOS::Driver::Backend::ShaderHandle();
+    pipelineDesc.domainShader.hShader     = BIGOS::Driver::Backend::ShaderHandle();
+    pipelineDesc.geometryShader.hShader   = BIGOS::Driver::Backend::ShaderHandle();
+    // VI
+    pipelineDesc.inputState.inputBindingCount = 0;
+    pipelineDesc.inputState.inputElementCount = 0;
+    pipelineDesc.inputState.pInputBindings    = nullptr;
+    pipelineDesc.inputState.pInputElements    = nullptr;
+    // IA
+    pipelineDesc.inputAssemblerState.indexRestartValue = BIGOS::Driver::Backend::IndexRestartValues::DISABLED;
+    pipelineDesc.inputAssemblerState.topology          = BIGOS::Driver::Backend::PrimitiveTopologies::TRIANGLE_LIST;
+    // RS
+    pipelineDesc.rasterizeState.frontFaceMode           = BIGOS::Driver::Backend::FrontFaceModes::COUNTER_CLOCKWISE;
+    pipelineDesc.rasterizeState.cullMode                = BIGOS::Driver::Backend::CullModes::BACK;
+    pipelineDesc.rasterizeState.fillMode                = BIGOS::Driver::Backend::PolygonFillModes::SOLID;
+    pipelineDesc.rasterizeState.depthBiasClamp          = 0.0f;
+    pipelineDesc.rasterizeState.depthBiasConstantFactor = 0.0f;
+    pipelineDesc.rasterizeState.depthBiasSlopeFactor    = 0.0f;
+    pipelineDesc.rasterizeState.depthClipEnable         = BIGOS::Core::BGS_FALSE;
+    // MS
+    pipelineDesc.multisampleState.sampleCount = BIGOS::Driver::Backend::SampleCount::COUNT_1;
+    // DS
+    pipelineDesc.depthStencilState.depthTestEnable   = BIGOS::Core::BGS_FALSE;
+    pipelineDesc.depthStencilState.stencilTestEnable = BIGOS::Core::BGS_FALSE;
+    // BS
+    BIGOS::Driver::Backend::RenderTargetBlendDesc rtb;
+    rtb.blendEnable                                    = BIGOS::Core::BGS_FALSE;
+    pipelineDesc.blendState.enableLogicOperations      = BIGOS::Core::BGS_FALSE;
+    pipelineDesc.blendState.pRenderTargetBlendDescs    = &rtb;
+    pipelineDesc.blendState.renderTargetBlendDescCount = 1;
+    // RT
+    BIGOS::Driver::Backend::FORMAT        rtFormats[ 1 ] = { BIGOS::Driver::Backend::Formats::B8G8R8A8_UNORM };
+    const BIGOS::Driver::Backend::FORMAT* pFormat        = rtFormats;
+    pipelineDesc.renderTargetCount                       = 1;
+    pipelineDesc.pRenderTargetFormats                    = pFormat;
+    pipelineDesc.renderTargetCount                       = 1;
+    pipelineDesc.depthStencilFormat                      = BIGOS::Driver::Backend::Formats::UNKNOWN;
+    // PL
+    pipelineDesc.hPipelineLayout = BIGOS::Driver::Backend::PipelineLayoutHandle();
+    if( BGS_FAILED( pAPIDevice->CreatePipeline( pipelineDesc, &hPipeline ) ) )
     {
         return -1;
     }
@@ -219,6 +266,7 @@ int main()
 
     pAPIDevice->DestroyShader( &hPS );
     pAPIDevice->DestroyShader( &hVS );
+    pAPIDevice->DestroyPipeline( &hPipeline );
     pAPIDevice->DestroyCommandBuffer( &pCmdBuffer );
     pAPIDevice->DestroyCommandPool( &hCmdPool );
     pAPIDevice->DestroySemaphore( &hSemaphore );
