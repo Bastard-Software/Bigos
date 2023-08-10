@@ -14,6 +14,23 @@ namespace BIGOS
             {
                 friend class VulkanFactory;
 
+                struct VulkanQueueParams
+                {
+                    uint32_t            familyIndex;
+                    uint32_t            queueIndex;
+                    QUEUE_PRIORITY_TYPE priority;
+                    bool_t              free;
+                };
+
+                struct VulkanQueueFamilyParams
+                {
+                    HeapArray<VulkanQueueParams> queueParams;
+                    VkQueueFamilyProperties      familiyParams;
+                };
+
+                using VulkanQueueProperties = HeapArray<VulkanQueueFamilyParams>;
+                using VulkanHeapProperties  = VkPhysicalDeviceMemoryProperties2;
+
             public:
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
                 virtual void   DestroyQueue( IQueue** ppQueue ) override;
@@ -40,6 +57,9 @@ namespace BIGOS
                 virtual RESULT CreateSemaphore( const SemaphoreDesc& desc, SemaphoreHandle* pHandle ) override;
                 virtual void   DestroySemaphore( SemaphoreHandle* pHandle ) override;
 
+                virtual RESULT AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle ) override;
+                virtual void   FreeMemory( MemoryHandle* pHandle ) override;
+
                 // Funcions needed for Vulkan backend
             public:
                 RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );
@@ -59,8 +79,8 @@ namespace BIGOS
 
             private:
                 VulkanQueueProperties m_queueProperties;
-
-                VulkanFactory* m_pParent = nullptr;
+                VulkanHeapProperties  m_heapProperties;
+                VulkanFactory*        m_pParent = nullptr;
 
                 // VolkDeviceTable m_deviceAPI;
             };

@@ -14,4 +14,5 @@ namespace BIGOS::Driver::Backend
     BGS_DECLARE_HANDLE( Pipeline );
     BGS_DECLARE_HANDLE( Fence );
     BGS_DECLARE_HANDLE( Semaphore );
+    BGS_DECLARE_HANDLE( Memory );
 } // namespace BIGOS::Driver::Backend

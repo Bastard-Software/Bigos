@@ -24,6 +24,7 @@ namespace BIGOS
             VkLogicOp             MapBigosLogicOperationTypeToVulkanLogicOp( LOGIC_OPERATION_TYPE op );
             VkBlendFactor         MapBigosBlendFactorToVulkanBlendFactor( BLEND_FACTOR factor );
             VkBlendOp             MapBigosBlendOperationTypeToVulkanBlendOp( BLEND_OPERATION_TYPE op );
+            VkMemoryPropertyFlags MapBigosMemoryAccessFlagsToVulkanMemoryPropertFlags( MemoryAccessFlags flags );
 
         } // namespace Backend
     }     // namespace Driver

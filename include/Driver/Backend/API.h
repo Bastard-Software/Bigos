@@ -74,6 +74,9 @@ namespace BIGOS
                 virtual RESULT CreateSemaphore( const SemaphoreDesc& desc, SemaphoreHandle* pHandle ) = 0;
                 virtual void   DestroySemaphore( SemaphoreHandle* pHandle )                           = 0;
 
+                virtual RESULT AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle ) = 0;
+                virtual void   FreeMemory( MemoryHandle* pHandle )                                     = 0;
+
                 BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
 

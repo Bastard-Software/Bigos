@@ -14,6 +14,8 @@ namespace BIGOS
             {
                 friend class D3D12Factory;
 
+                using D3D12HeapProperties = D3D12_HEAP_PROPERTIES[ BGS_ENUM_COUNT( MemoryHeapTypes ) ];
+
             public:
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
                 virtual void   DestroyQueue( IQueue** ppQueue ) override;
@@ -40,6 +42,9 @@ namespace BIGOS
                 virtual RESULT CreateSemaphore( const SemaphoreDesc& desc, SemaphoreHandle* pHandle ) override;
                 virtual void   DestroySemaphore( SemaphoreHandle* pHandle ) override;
 
+                virtual RESULT AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle ) override;
+                virtual void   FreeMemory( MemoryHandle* pHandle ) override;
+
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );
                 void   Destroy();
@@ -47,9 +52,11 @@ namespace BIGOS
             private:
                 RESULT CreateD3D12Device();
                 RESULT CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline );
+                void   CreateD3D12MemoryHeapProperties( const AllocateMemoryDesc& desc, D3D12_HEAP_PROPERTIES* pProps );
 
             private:
-                D3D12Factory* m_pParent = nullptr;
+                D3D12HeapProperties m_heapProperties;
+                D3D12Factory*       m_pParent = nullptr;
             };
 
         } // namespace Backend

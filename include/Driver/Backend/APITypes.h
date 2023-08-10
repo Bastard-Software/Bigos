@@ -579,6 +579,58 @@ namespace BIGOS
                 // For future use
             };
 
+            enum class MemoryHeapTypes : uint8_t
+            {
+                DEFAULT,
+                UPLOAD,
+                READBACK,
+                CUSTOM,
+                _MAX_ENUM
+            };
+            using MEMORY_HEAP_TYPE = MemoryHeapTypes;
+
+            enum class MemoryHeapUsages : uint8_t
+            {
+                BUFFERS,
+                TEXTURES,
+                RENDER_TARGETS,
+                _MAX_ENUM,
+            };
+            using MEMORY_HEAP_USAGE = MemoryHeapUsages;
+
+            enum class MemoryAccessFlagBits : uint32_t
+            {
+                CPU_READS_FROM_DEVICE = 0x00000001,
+                CPU_WRITES_TO_DEVICE  = 0x00000002,
+                GPU_READS_FROM_DEVICE = 0x00000004,
+                GPU_WRITES_TO_DEVICE  = 0x00000008,
+                GPU_WRITES_TO_SYSTEM  = 0x00000010,
+                GPU_READS_FROM_SYSTEM = 0x00000020,
+                CPU_WRITES_TO_SYSTEM  = 0x00000040,
+                CPU_READS_FROM_SYSTEM = 0x00000080,
+                CPU_DEVICE_ACCESS     = CPU_READS_FROM_DEVICE | CPU_WRITES_TO_DEVICE,
+                CPU_SYSTEM_ACCESS     = CPU_READS_FROM_SYSTEM | CPU_WRITES_TO_SYSTEM,
+                GPU_DEVICE_ACCESS     = GPU_READS_FROM_DEVICE | GPU_WRITES_TO_DEVICE,
+                GPU_SYSTEM_ACCESS     = GPU_READS_FROM_SYSTEM | GPU_WRITES_TO_SYSTEM,
+                GPU_ACCESS            = GPU_DEVICE_ACCESS | GPU_SYSTEM_ACCESS,
+                CPU_ACCESS            = CPU_DEVICE_ACCESS | CPU_SYSTEM_ACCESS,
+                CPU_READ              = CPU_READS_FROM_DEVICE | CPU_READS_FROM_SYSTEM,
+                CPU_WRITE             = CPU_WRITES_TO_SYSTEM | CPU_WRITES_TO_DEVICE,
+                GPU_READ              = GPU_READS_FROM_DEVICE | GPU_READS_FROM_SYSTEM,
+                GPU_WRITE             = GPU_WRITES_TO_DEVICE,
+                ALL                   = CPU_ACCESS | GPU_ACCESS
+            };
+            using MemoryAccessFlags = uint32_t;
+
+            struct AllocateMemoryDesc
+            {
+                uint64_t          size;
+                uint64_t          alignment;
+                MemoryAccessFlags access;
+                MEMORY_HEAP_TYPE  heapType;
+                MEMORY_HEAP_USAGE heapUsage;
+            };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

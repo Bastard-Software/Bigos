@@ -3,6 +3,11 @@
 
 #include <volk.h>
 
+namespace BIGOS::Driver::Backend
+{
+    struct VulkanMemory;
+} // namespace BIGOS::Driver::Backend
+
 #if BGS_USE_VULKAN_HANDLES
 #    define BGS_DECLARE_VULKAN_HANDLE( name, type )                                                                                                  \
         template<>                                                                                                                                   \
@@ -22,6 +27,7 @@ BGS_DECLARE_VULKAN_HANDLE( PipelineLayout, VkPipelineLayout );
 BGS_DECLARE_VULKAN_HANDLE( Pipeline, VkPipeline );
 BGS_DECLARE_VULKAN_HANDLE( Fence, VkSemaphore );
 BGS_DECLARE_VULKAN_HANDLE( Semaphore, VkSemaphore );
+BGS_DECLARE_VULKAN_HANDLE( Memory, BIGOS::Driver::Backend::VulkanMemory* )
 
 #endif
 
@@ -32,21 +38,5 @@ namespace BIGOS::Driver::Backend
     class VulkanAdapter;
     class VulkanFactory;
     class VulkanDevice;
-
-    struct VulkanQueueParams
-    {
-        uint32_t            familyIndex;
-        uint32_t            queueIndex;
-        QUEUE_PRIORITY_TYPE priority;
-        bool_t              free;
-    };
-
-    struct VulkanQueueFamilyParams
-    {
-        HeapArray<VulkanQueueParams> queueParams;
-        VkQueueFamilyProperties      familiyParams;
-    };
-
-    using VulkanQueueProperties = HeapArray<VulkanQueueFamilyParams>;
 
 } // namespace BIGOS::Driver::Backend
