@@ -373,8 +373,8 @@ namespace BIGOS
 
             void D3D12Device::DestroySemaphore( SemaphoreHandle* pHandle )
             {
-                BGS_ASSERT( pHandle != nullptr, "Semaphore handle (pHandle) must be a valid address." );
-                BGS_ASSERT( *pHandle != SemaphoreHandle(), "Semaphore handle (pHandle) must point to valid handle." );
+                BGS_ASSERT( pHandle != nullptr, "Semaphore (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != SemaphoreHandle(), "Semaphore (pHandle) must point to valid handle." );
                 if( ( pHandle != nullptr ) && ( *pHandle != SemaphoreHandle() ) )
                 {
                     ID3D12Fence* pNativeSemaphore = pHandle->GetNativeHandle();
@@ -382,6 +382,43 @@ namespace BIGOS
                     RELEASE_COM_PTR( pNativeSemaphore );
 
                     *pHandle = SemaphoreHandle();
+                }
+            }
+
+            RESULT D3D12Device::AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Memory (pHandle) must be a valid address." );
+
+                D3D12_HEAP_DESC nativeHeapDesc;
+                CreateD3D12MemoryHeapProperties( desc, &nativeHeapDesc.Properties );
+                nativeHeapDesc.Flags       = MapBigosMemoryHeapUsageToD3D12HeapFlags( desc.heapUsage );
+                nativeHeapDesc.SizeInBytes = desc.size;
+                nativeHeapDesc.Alignment   = desc.alignment;
+
+                ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
+                ID3D12Heap*   pNativeHeap   = nullptr;
+
+                if( FAILED( pNativeDevice->CreateHeap( &nativeHeapDesc, IID_PPV_ARGS( &pNativeHeap ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = MemoryHandle( pNativeHeap );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::FreeMemory( MemoryHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Memory (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != MemoryHandle(), "Memory (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != MemoryHandle() ) )
+                {
+                    ID3D12Heap* pNativeHeap = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeHeap );
+
+                    *pHandle = MemoryHandle();
                 }
             }
 
@@ -428,6 +465,12 @@ namespace BIGOS
                 {
                     return Results::FAIL;
                 }
+
+                m_heapProperties[ BGS_ENUM_INDEX( MemoryHeapTypes::DEFAULT ) ] = pNativeDevice->GetCustomHeapProperties( 0, D3D12_HEAP_TYPE_DEFAULT );
+                m_heapProperties[ BGS_ENUM_INDEX( MemoryHeapTypes::READBACK ) ] =
+                    pNativeDevice->GetCustomHeapProperties( 0, D3D12_HEAP_TYPE_READBACK );
+                m_heapProperties[ BGS_ENUM_INDEX( MemoryHeapTypes::UPLOAD ) ] = pNativeDevice->GetCustomHeapProperties( 0, D3D12_HEAP_TYPE_UPLOAD );
+                m_heapProperties[ BGS_ENUM_INDEX( MemoryHeapTypes::CUSTOM ) ] = {}; // TODO: Handle
 
                 m_handle = DeviceHandle( pNativeDevice );
 
@@ -661,6 +704,50 @@ namespace BIGOS
                 *ppPipeline = pPipeline;
 
                 return Results::OK;
+            }
+
+            void D3D12Device::CreateD3D12MemoryHeapProperties( const AllocateMemoryDesc& desc, D3D12_HEAP_PROPERTIES* pProps )
+            {
+                if( desc.heapType == MemoryHeapTypes::CUSTOM )
+                {
+                    pProps->Type = D3D12_HEAP_TYPE_CUSTOM;
+                    if( desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::GPU_DEVICE_ACCESS ) )
+                    {
+                        // Device only access
+                        pProps->CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE;
+                    }
+                    else
+                    {
+                        pProps->CPUPageProperty      = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
+                        pProps->MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+                        pProps->VisibleNodeMask      = 0;
+                        pProps->CreationNodeMask     = 0;
+
+                        if( desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::CPU_READ ) ||
+                            desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::GPU_WRITES_TO_SYSTEM ) )
+                        {
+                            pProps->CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+                        }
+                        if( desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::CPU_WRITES_TO_DEVICE ) )
+                        {
+                            pProps->CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
+                        }
+                        if( desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::CPU_ACCESS ) &&
+                            desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::GPU_DEVICE_ACCESS ) )
+                        {
+                            pProps->MemoryPoolPreference = D3D12_MEMORY_POOL_L1;
+                        }
+                        if( desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::CPU_WRITES_TO_DEVICE ) &&
+                            desc.access & static_cast<uint32_t>( MemoryAccessFlagBits::GPU_DEVICE_ACCESS ) )
+                        {
+                            pProps->MemoryPoolPreference = D3D12_MEMORY_POOL_L1;
+                        }
+                    }
+                }
+                else
+                {
+                    *pProps = m_heapProperties[ BGS_ENUM_INDEX( desc.heapType ) ];
+                }
             }
 
         } // namespace Backend

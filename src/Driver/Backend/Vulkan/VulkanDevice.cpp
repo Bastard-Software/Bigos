@@ -10,6 +10,7 @@
 #include "VulkanCommandBuffer.h"
 #include "VulkanCommon.h"
 #include "VulkanFactory.h"
+#include "VulkanMemory.h"
 #include "VulkanQueue.h"
 
 namespace BIGOS
@@ -92,6 +93,35 @@ namespace BIGOS
                 shaderStageInfo.pSpecializationInfo = nullptr;
 
                 return shaderStageInfo;
+            }
+
+            static int32_t FindMemTypeNdx( const VkPhysicalDeviceMemoryProperties* pMemProps, uint32_t memBits, VkMemoryPropertyFlags memProps )
+            {
+
+                for( index_t ndx = 0; ndx < static_cast<index_t>( pMemProps->memoryTypeCount ); ++ndx )
+                {
+                    const uint32_t              memTypeBits       = ( 1 << ndx );
+                    const bool                  isRequiredMemType = memBits & memTypeBits;
+                    const VkMemoryPropertyFlags props             = pMemProps->memoryTypes[ ndx ].propertyFlags;
+                    const bool                  hasRequiredProps  = ( props & memProps ) == memProps;
+                    if( isRequiredMemType && hasRequiredProps )
+                    {
+                        return static_cast<int32_t>( ndx );
+                    }
+                }
+                return MAX_INT32;
+            }
+
+            static MemoryAccessFlags MapBigosMemoryHeapTypeToMemoryAccessFlags( MEMORY_HEAP_TYPE type )
+            {
+                static const MemoryAccessFlags translateTable[ BGS_ENUM_COUNT( MemoryHeapTypes ) ] = {
+                    static_cast<uint32_t>( MemoryAccessFlagBits::GPU_DEVICE_ACCESS ), // DEFAULT
+                    static_cast<uint32_t>( MemoryAccessFlagBits::CPU_WRITES_TO_DEVICE ) |
+                        static_cast<uint32_t>( MemoryAccessFlagBits::GPU_READS_FROM_DEVICE ), // UPLOAD
+                    static_cast<uint32_t>( MemoryAccessFlagBits::CPU_READS_FROM_DEVICE ),     // READBACK
+                    0,                                                                        // CUSTOM
+                };
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
             RESULT VulkanDevice::CreateQueue( const QueueDesc& desc, IQueue** ppQueue )
@@ -483,8 +513,8 @@ namespace BIGOS
 
             void VulkanDevice::DestroySemaphore( SemaphoreHandle* pHandle )
             {
-                BGS_ASSERT( pHandle != nullptr, "Semaphore handle (pHandle) must be a valid address." );
-                BGS_ASSERT( *pHandle != SemaphoreHandle(), "Semaphore handle (pHandle) must point to valid handle." );
+                BGS_ASSERT( pHandle != nullptr, "Semaphore (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != SemaphoreHandle(), "Semaphore (pHandle) must point to valid handle." );
                 if( ( pHandle != nullptr ) && ( *pHandle != SemaphoreHandle() ) )
                 {
                     VkDevice    nativeDevice    = m_handle.GetNativeHandle();
@@ -492,7 +522,80 @@ namespace BIGOS
 
                     vkDestroySemaphore( nativeDevice, nativeSemaphore, nullptr );
 
-                    *pHandle = SemaphoreHandle( nativeSemaphore );
+                    *pHandle = SemaphoreHandle();
+                }
+            }
+
+            RESULT VulkanDevice::AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Memory (pHandle) must be a valid address." );
+
+                VkDevice      nativeDevice = m_handle.GetNativeHandle();
+                VulkanMemory* pNativeMem   = nullptr;
+
+                MemoryAccessFlags access = desc.access;
+                if( desc.heapType != MemoryHeapTypes::CUSTOM )
+                {
+                    access = MapBigosMemoryHeapTypeToMemoryAccessFlags( desc.heapType );
+                }
+
+                VkMemoryPropertyFlags nativePropsFlags = MapBigosMemoryAccessFlagsToVulkanMemoryPropertFlags( access );
+
+                const VkPhysicalDeviceMemoryProperties& nativeProps = m_heapProperties.memoryProperties;
+                const int32_t                           ndx         = FindMemTypeNdx( &nativeProps, MAX_UINT32, nativePropsFlags );
+                if( ndx < 0 )
+                {
+                    return Results::NOT_FOUND;
+                }
+                // TODO: Handle heap capacity
+
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeMem ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                VkMemoryAllocateInfo allocInfo;
+                allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                allocInfo.pNext           = nullptr;
+                allocInfo.allocationSize  = desc.size;
+                allocInfo.memoryTypeIndex = ndx;
+
+                if( vkAllocateMemory( nativeDevice, &allocInfo, nullptr, &pNativeMem->nativeMemory ) != VK_SUCCESS )
+                {
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeMem );
+                    return Results::FAIL;
+                }
+
+                // Maping memory for futer use i9n D3D12 behaviour emulation
+                if( nativePropsFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT )
+                {
+                    if( vkMapMemory( nativeDevice, pNativeMem->nativeMemory, 0, VK_WHOLE_SIZE, 0, &pNativeMem->pHostMemory ) != VK_SUCCESS )
+                    {
+                        vkFreeMemory( nativeDevice, pNativeMem->nativeMemory, nullptr );
+                        Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeMem );
+                        return Results::FAIL;
+                    }
+                }
+
+                *pHandle = MemoryHandle( pNativeMem );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::FreeMemory( MemoryHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Memory (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != MemoryHandle(), "Memory (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != MemoryHandle() ) )
+                {
+                    VkDevice      nativeDevice = m_handle.GetNativeHandle();
+                    VulkanMemory* pNativeMem   = pHandle->GetNativeHandle();
+
+                    vkFreeMemory( nativeDevice, pNativeMem->nativeMemory, nullptr );
+
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeMem );
+
+                    *pHandle = MemoryHandle();
                 }
             }
 
@@ -589,6 +692,11 @@ namespace BIGOS
                 // TODO: Change to volkLOadDeviceTable() not working right now (24.07.2023)
                 // volkLoadDeviceTable( &m_deviceAPI, nativeDevice );
                 volkLoadDevice( nativeDevice );
+
+                // Geting needed internals
+                m_heapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+                m_heapProperties.pNext = nullptr;
+                vkGetPhysicalDeviceMemoryProperties2( nativeAdapter, &m_heapProperties );
 
                 m_handle = DeviceHandle( nativeDevice );
 

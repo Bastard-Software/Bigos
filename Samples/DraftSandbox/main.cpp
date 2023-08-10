@@ -98,6 +98,31 @@ int main()
 
     BIGOS::Driver::Backend::IDevice* pAPIDevice = pRenderDevice->GetNativeAPIDevice();
 
+    BIGOS::Driver::Backend::MemoryHandle       hBufferMem;
+    BIGOS::Driver::Backend::MemoryHandle       hTextureMem;
+    BIGOS::Driver::Backend::MemoryHandle       hRTMem;
+    BIGOS::Driver::Backend::AllocateMemoryDesc allocDesc;
+    allocDesc.size      = 2048;
+    allocDesc.alignment = 0;
+    allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::UPLOAD;
+    allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::BUFFERS;
+    if( BGS_FAILED( pAPIDevice->AllocateMemory( allocDesc, &hBufferMem ) ) )
+    {
+        return -1;
+    }
+    allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::READBACK;
+    allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::TEXTURES;
+    if( BGS_FAILED( pAPIDevice->AllocateMemory( allocDesc, &hTextureMem ) ) )
+    {
+        return -1;
+    }
+    allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::DEFAULT;
+    allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::RENDER_TARGETS;
+    if( BGS_FAILED( pAPIDevice->AllocateMemory( allocDesc, &hRTMem ) ) )
+    {
+        return -1;
+    }
+
     BIGOS::Driver::Backend::ShaderHandle hVS;
     BIGOS::Driver::Backend::ShaderDesc   shDesc;
     shDesc.pByteCode = pVSBlob->pByteCode;
@@ -264,6 +289,9 @@ int main()
     compiler->DestroyOutput( &pVSBlob );
     compiler->DestroyOutput( &pPSBlob );
 
+    pAPIDevice->FreeMemory( &hBufferMem );
+    pAPIDevice->FreeMemory( &hTextureMem );
+    pAPIDevice->FreeMemory( &hRTMem );
     pAPIDevice->DestroyShader( &hPS );
     pAPIDevice->DestroyShader( &hVS );
     pAPIDevice->DestroyPipeline( &hPipeline );

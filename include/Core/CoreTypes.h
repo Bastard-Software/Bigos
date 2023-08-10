@@ -76,7 +76,11 @@ namespace BIGOS
         static constexpr bool_t BGS_FALSE = 0u;
 
         static constexpr uint32_t MAX_UINT32 = ( static_cast<uint32_t>( ~0 ) );
+        static constexpr int32_t  MAX_INT32  = INT32_MAX;
+        static constexpr int32_t  MIN_INT32  = INT32_MIN;
         static constexpr uint64_t MAX_UINT64 = ( static_cast<uint64_t>( ~0 ) );
+        static constexpr int64_t  MAX_INT64  = INT64_MAX;
+        static constexpr int64_t  MIN_INT64  = INT64_MIN;
         static constexpr size_t   MAX_SIZET  = ( static_cast<size_t>( ~0 ) );
 
         static constexpr handle_t INVALID_HANDLE    = ( static_cast<handle_t>( MAX_UINT64 ) );

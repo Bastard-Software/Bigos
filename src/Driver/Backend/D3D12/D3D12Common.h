@@ -26,6 +26,7 @@ namespace BIGOS
             D3D12_LOGIC_OP                     MapBigosLogicOperationTypeToD3D12LogicOp( LOGIC_OPERATION_TYPE op );
             D3D12_BLEND                        MapBigosBlendFactorToD3D12Blend( BLEND_FACTOR factor );
             D3D12_BLEND_OP                     MapBigosBlendOperationTypeToD3D12BlendOp( BLEND_OPERATION_TYPE op );
+            D3D12_HEAP_FLAGS                   MapBigosMemoryHeapUsageToD3D12HeapFlags( MEMORY_HEAP_USAGE usage );
 
         } // namespace Backend
     }     // namespace Driver

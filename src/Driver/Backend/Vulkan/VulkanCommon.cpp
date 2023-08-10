@@ -274,6 +274,30 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( op ) ];
             }
 
+            VkMemoryPropertyFlags MapBigosMemoryAccessFlagsToVulkanMemoryPropertFlags( MemoryAccessFlags flags )
+            {
+                VkMemoryPropertyFlags nativeFlags = 0;
+
+                if( flags & static_cast<uint32_t>( MemoryAccessFlagBits::GPU_ACCESS ) &&
+                    !( flags & static_cast<uint32_t>( MemoryAccessFlagBits::CPU_ACCESS ) ) )
+                {
+                    // Device access only
+                    nativeFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                }
+                else
+                {
+                    if( flags & static_cast<uint32_t>( MemoryAccessFlagBits::CPU_ACCESS ) )
+                    {
+                        nativeFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                    }
+                    if( flags & static_cast<uint32_t>( MemoryAccessFlagBits::GPU_DEVICE_ACCESS ) )
+                    {
+                        nativeFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                    }
+                }
+                return nativeFlags;
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

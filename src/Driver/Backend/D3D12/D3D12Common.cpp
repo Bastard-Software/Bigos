@@ -304,6 +304,18 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( op ) ];
             }
 
+            D3D12_HEAP_FLAGS MapBigosMemoryHeapUsageToD3D12HeapFlags( MEMORY_HEAP_USAGE usage )
+            {
+                static const D3D12_HEAP_FLAGS translateTable[ BGS_ENUM_COUNT( MemoryHeapUsages ) ] = {
+                    D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS,                                           // BUFFERS
+                    D3D12_HEAP_FLAG_DENY_BUFFERS | D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES, // TEXTURES
+                    D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_BUFFERS |
+                        D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES, // RENDER_TARGETS
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( usage ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
