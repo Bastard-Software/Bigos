@@ -12,6 +12,7 @@
 #include "VulkanFactory.h"
 #include "VulkanMemory.h"
 #include "VulkanQueue.h"
+#include "VulkanResource.h"
 
 namespace BIGOS
 {
@@ -599,6 +600,131 @@ namespace BIGOS
                 }
             }
 
+            RESULT VulkanDevice::CreateResource( const ResourceDesc& desc, ResourceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Memory (pHandle) must be a valid address." );
+                // TODO: Think about validation, because things ale getting complex
+
+                VulkanResource* pRes = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pRes ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( desc.resourceType == ResourceTypes::BUFFER )
+                {
+                    VkBuffer nativeBuffer = VK_NULL_HANDLE;
+                    if( BGS_FAILED( CreateVkBuffer( desc, &nativeBuffer ) ) )
+                    {
+                        return Results::FAIL;
+                    }
+                    pRes->type   = VulkanResourceTypes::BUFFER;
+                    pRes->buffer = nativeBuffer;
+                }
+                else // Images
+                {
+                    VkImage nativeImage = VK_NULL_HANDLE;
+                    if( BGS_FAILED( CreateVkImage( desc, &nativeImage ) ) )
+                    {
+                        return Results::FAIL;
+                    }
+                    pRes->type  = VulkanResourceTypes::IMAGE;
+                    pRes->image = nativeImage;
+                }
+                pRes->pMemory      = nullptr;
+                pRes->memoryOffset = INVALID_OFFSET;
+                pRes->usage        = desc.resourceUsage;
+                *pHandle           = ResourceHandle( pRes );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyResource( ResourceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Resource (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != ResourceHandle(), "Resource (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != ResourceHandle() ) )
+                {
+                    VkDevice        nativeDevice = m_handle.GetNativeHandle();
+                    VulkanResource* pNativeRes   = pHandle->GetNativeHandle();
+
+                    if( pNativeRes->type == VulkanResourceTypes::BUFFER )
+                    {
+                        vkDestroyBuffer( nativeDevice, pNativeRes->buffer, nullptr );
+                    }
+                    else // Images
+                    {
+                        vkDestroyImage( nativeDevice, pNativeRes->image, nullptr );
+                    }
+
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeRes );
+
+                    *pHandle = ResourceHandle();
+                }
+            }
+
+            RESULT VulkanDevice::BindResourceMemory( const BindResourceMemoryDesc& desc )
+            {
+                BGS_ASSERT( desc.hResource != ResourceHandle(), "Resource (desc.hResource) must be a valid handle." )
+                BGS_ASSERT( desc.hResource.GetNativeHandle() != nullptr, "Resource (desc.hResource) must hold valid internal resource." );
+                BGS_ASSERT( desc.hMemory != MemoryHandle(), "Memory (desc.hMemory) must be a valid handle." )
+                BGS_ASSERT( desc.hMemory.GetNativeHandle() != nullptr, "Memory (desc.hMemory) must hold valid internal memory." );
+                if( ( desc.hResource == ResourceHandle() ) && ( desc.hResource.GetNativeHandle() == nullptr ) && ( desc.hMemory == MemoryHandle() ) &&
+                    ( desc.hMemory.GetNativeHandle() == nullptr ) )
+                {
+                    return Results::FAIL;
+                }
+
+                VkDevice        nativeDevice = m_handle.GetNativeHandle();
+                VulkanResource* pRes         = desc.hResource.GetNativeHandle();
+                VkDeviceMemory  nativeMem    = desc.hMemory.GetNativeHandle()->nativeMemory;
+                if( pRes->type == VulkanResourceTypes::BUFFER )
+                {
+                    if( vkBindBufferMemory( nativeDevice, pRes->buffer, nativeMem, desc.memoryOffset ) != VK_SUCCESS )
+                    {
+                        return Results::FAIL;
+                    }
+                }
+                else // Images
+                {
+                    if( vkBindImageMemory( nativeDevice, pRes->image, nativeMem, desc.memoryOffset ) != VK_SUCCESS )
+                    {
+                        return Results::FAIL;
+                    }
+                }
+
+                pRes->memoryOffset = desc.memoryOffset;
+                pRes->pMemory      = desc.hMemory.GetNativeHandle();
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo )
+            {
+                BGS_ASSERT( handle != ResourceHandle(), "Resource (handle) must be a valid handle." )
+                BGS_ASSERT( handle.GetNativeHandle() != nullptr, "Resource (handle) must hold valid internal resource." );
+                BGS_ASSERT( pInfo != nullptr, "Resource allocation info (pInfo) must be a valid address." );
+                if( ( handle != ResourceHandle() ) && ( handle.GetNativeHandle() != nullptr ) && ( pInfo != nullptr ) )
+                {
+                    VkDevice        nativeDevice = m_handle.GetNativeHandle();
+                    VulkanResource* pRes         = handle.GetNativeHandle();
+
+                    VkMemoryRequirements memRequirements;
+
+                    if( pRes->type == VulkanResourceTypes::IMAGE )
+                    {
+                        vkGetImageMemoryRequirements( nativeDevice, pRes->image, &memRequirements );
+                    }
+                    else // Buffer
+                    {
+                        vkGetBufferMemoryRequirements( nativeDevice, pRes->buffer, &memRequirements );
+                    }
+
+                    pInfo->alignment = memRequirements.alignment;
+                    pInfo->size      = memRequirements.size;
+                }
+            }
+
             RESULT VulkanDevice::Create( const DeviceDesc& desc, VulkanFactory* pFactory )
             {
                 BGS_ASSERT( pFactory != nullptr, "Factory (pFactory) must be a valid pointer." );
@@ -934,6 +1060,61 @@ namespace BIGOS
                 }
 
                 *pNativePipeline = nativePipeline;
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::CreateVkBuffer( const ResourceDesc desc, VkBuffer* pBuff )
+            {
+                VkDevice nativeDevice = m_handle.GetNativeHandle();
+
+                static const uint32_t qFamNdx[ 4 ] = { 0, 1, 2, 3 };
+
+                VkBufferCreateInfo buffInfo;
+                buffInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                buffInfo.pNext                 = nullptr;
+                buffInfo.flags                 = 0; // TODO: Handle
+                buffInfo.size                  = desc.size.width;
+                buffInfo.usage                 = MapBigosResourceUsageToVulkanBufferUsageFlags( desc.resourceUsage );
+                buffInfo.sharingMode           = MapBigosResourceSharingModeToVulkanSharingMode( desc.sharingMode );
+                buffInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
+                buffInfo.pQueueFamilyIndices   = qFamNdx;
+
+                if( vkCreateBuffer( nativeDevice, &buffInfo, nullptr, pBuff ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::CreateVkImage( const ResourceDesc desc, VkImage* pImg )
+            {
+                VkDevice nativeDevice = m_handle.GetNativeHandle();
+
+                static const uint32_t qFamNdx[ 4 ] = { 0, 1, 2, 3 };
+
+                VkImageCreateInfo imgInfo;
+                imgInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+                imgInfo.pNext                 = nullptr;
+                imgInfo.flags                 = 0; // TODO: Handle
+                imgInfo.imageType             = MapBigosResourceTypeToVulkanImageType( desc.resourceType );
+                imgInfo.format                = MapBigosFormatToVulkanFormat( desc.format );
+                imgInfo.extent.width          = desc.size.width;
+                imgInfo.extent.height         = desc.size.height;
+                imgInfo.extent.depth          = desc.size.depth;
+                imgInfo.mipLevels             = desc.mipLevelCount;
+                imgInfo.arrayLayers           = desc.arrayLayerCount;
+                imgInfo.samples               = MapBigosSampleCountToVulkanSampleCountFlags( desc.sampleCount );
+                imgInfo.tiling                = MapBigosResourceLayoutToVulkanImageTiling( desc.resourceLayout );
+                imgInfo.usage                 = MapBigosResourceUsageFlagsToVulkanImageUsageFlags( desc.resourceUsage );
+                imgInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
+                imgInfo.pQueueFamilyIndices   = qFamNdx;
+
+                if( vkCreateImage( nativeDevice, &imgInfo, nullptr, pImg ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
 
                 return Results::OK;
             }

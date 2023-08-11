@@ -21,7 +21,7 @@ const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
 
 int main()
 {
@@ -98,12 +98,33 @@ int main()
 
     BIGOS::Driver::Backend::IDevice* pAPIDevice = pRenderDevice->GetNativeAPIDevice();
 
+    BIGOS::Driver::Backend::ResourceHandle hVB;
+    BIGOS::Driver::Backend::ResourceDesc   vbDesc;
+    vbDesc.arrayLayerCount = 1;
+    vbDesc.format          = BIGOS::Driver::Backend::Formats::UNKNOWN;
+    vbDesc.mipLevelCount   = 1;
+    vbDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::LINEAR;
+    vbDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::BUFFER;
+    vbDesc.resourceUsage   = static_cast<uint32_t>( BIGOS::Driver::Backend::ResourceUsageFlagBits::VERTEX_BUFFER );
+    vbDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
+    vbDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
+    vbDesc.size.width      = 64;
+    vbDesc.size.height     = 1;
+    vbDesc.size.depth      = 1;
+    if( BGS_FAILED( pAPIDevice->CreateResource( vbDesc, &hVB ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::ResourceAllocationInfo vbAllocInfo;
+    pAPIDevice->GetResourceAllocationInfo( hVB, &vbAllocInfo );
+
     BIGOS::Driver::Backend::MemoryHandle       hBufferMem;
     BIGOS::Driver::Backend::MemoryHandle       hTextureMem;
     BIGOS::Driver::Backend::MemoryHandle       hRTMem;
     BIGOS::Driver::Backend::AllocateMemoryDesc allocDesc;
-    allocDesc.size      = 2048;
-    allocDesc.alignment = 0;
+    allocDesc.size      = vbAllocInfo.size;
+    allocDesc.alignment = vbAllocInfo.alignment;
     allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::UPLOAD;
     allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::BUFFERS;
     if( BGS_FAILED( pAPIDevice->AllocateMemory( allocDesc, &hBufferMem ) ) )
@@ -119,6 +140,15 @@ int main()
     allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::DEFAULT;
     allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::RENDER_TARGETS;
     if( BGS_FAILED( pAPIDevice->AllocateMemory( allocDesc, &hRTMem ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::BindResourceMemoryDesc vbBindDesc;
+    vbBindDesc.memoryOffset = 0;
+    vbBindDesc.hMemory      = hBufferMem;
+    vbBindDesc.hResource    = hVB;
+    if( BGS_FAILED( pAPIDevice->BindResourceMemory( vbBindDesc ) ) )
     {
         return -1;
     }
@@ -289,6 +319,7 @@ int main()
     compiler->DestroyOutput( &pVSBlob );
     compiler->DestroyOutput( &pPSBlob );
 
+    pAPIDevice->DestroyResource( &hVB );
     pAPIDevice->FreeMemory( &hBufferMem );
     pAPIDevice->FreeMemory( &hTextureMem );
     pAPIDevice->FreeMemory( &hRTMem );

@@ -298,6 +298,116 @@ namespace BIGOS
                 return nativeFlags;
             }
 
+            VkBufferUsageFlags MapBigosResourceUsageToVulkanBufferUsageFlags( ResourceUsageFlags flags )
+            {
+                VkBufferUsageFlags nativeFlags = 0;
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::TRANSFER_SRC ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::TRANSFER_DST ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) ||
+                    flags & static_cast<uint32_t>( ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::CONSTANT_TEXEL_BUFFER ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXEL_BUFFER ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::INDEX_BUFFER ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::CONSTANT_BUFFER ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::VERTEX_BUFFER ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::INDIRECT_BUFFER ) )
+                {
+                    nativeFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+                }
+
+                return nativeFlags;
+            }
+
+            VkSharingMode MapBigosResourceSharingModeToVulkanSharingMode( RESOURCE_SHARING_MODE mode )
+            {
+                static const VkSharingMode translateTable[ BGS_ENUM_COUNT( ResourceSharingModes ) ] = {
+                    VK_SHARING_MODE_EXCLUSIVE,  // EXCLUSIVE_ACCESS
+                    VK_SHARING_MODE_CONCURRENT, // SIMULTANEOUS_ACCESS
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( mode ) ];
+            }
+
+            VkImageUsageFlags MapBigosResourceUsageFlagsToVulkanImageUsageFlags( ResourceUsageFlags flags )
+            {
+                VkImageUsageFlags nativeFlags = 0;
+
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::TRANSFER_SRC ) )
+                {
+                    nativeFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::TRANSFER_DST ) )
+                {
+                    nativeFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::SAMPLED_TEXTURE ) )
+                {
+                    nativeFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXTURE ) )
+                {
+                    nativeFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::COLOR_RENDER_TARGET ) )
+                {
+                    nativeFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::DEPTH_STENCIL_TARGET ) )
+                {
+                    nativeFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+                }
+
+                return nativeFlags;
+            }
+
+            VkImageType MapBigosResourceTypeToVulkanImageType( RESOURCE_TYPE type )
+            {
+                BGS_ASSERT( ( type != ResourceTypes::UNKNOWN ) && ( type != ResourceTypes::BUFFER ) );
+                static const VkImageType translateTable[ BGS_ENUM_COUNT( ResourceTypes ) ] = {
+                    VK_IMAGE_TYPE_MAX_ENUM, // UNKNOWN - invalid for image
+                    VK_IMAGE_TYPE_MAX_ENUM, // BUFFER - invalid for image
+                    VK_IMAGE_TYPE_1D,       // TEXTURE_1D
+                    VK_IMAGE_TYPE_2D,       // TEXTURE_2D
+                    VK_IMAGE_TYPE_3D,       // TEXTURE_3D
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            VkImageTiling MapBigosResourceLayoutToVulkanImageTiling( RESOURCE_LAYOUT layout )
+            {
+                static const VkImageTiling translateTable[ BGS_ENUM_COUNT( ResourceLayouts ) ] = {
+                    VK_IMAGE_TILING_OPTIMAL, // OPTIMAL
+                    VK_IMAGE_TILING_LINEAR,  // LINEAR
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( layout ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

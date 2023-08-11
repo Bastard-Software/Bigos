@@ -11,6 +11,7 @@
 #include "D3D12Fence.h"
 #include "D3D12Pipeline.h"
 #include "D3D12Queue.h"
+#include "D3D12Resource.h"
 #include "D3D12Shader.h"
 #include "Driver/Frontend/RenderSystem.h"
 
@@ -419,6 +420,102 @@ namespace BIGOS
                     RELEASE_COM_PTR( pNativeHeap );
 
                     *pHandle = MemoryHandle();
+                }
+            }
+
+            RESULT D3D12Device::CreateResource( const ResourceDesc& desc, ResourceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Resource (pHandle) must be a valid address." );
+                // TODO: Think about validation, because things ale getting complex
+
+                // In D3D12 we only fill resource desc in this function. Resource will be created while binding to memory (mimicing vulkan
+                // behaviour)
+                D3D12Resource* pResource = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pResource ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                D3D12_RESOURCE_DESC& nativeDesc = pResource->desc;
+                nativeDesc.Dimension            = MapBigosResourceTypeToD3D12ResourceDimension( desc.resourceType );
+                nativeDesc.Alignment            = 0; // TODO: Rethik
+                nativeDesc.Width                = desc.size.width;
+                nativeDesc.Height               = desc.size.height;
+                nativeDesc.DepthOrArraySize     = desc.resourceType == ResourceTypes::TEXTURE_3D ? static_cast<uint16_t>( desc.size.depth )
+                                                                                                 : static_cast<uint16_t>( desc.arrayLayerCount );
+                nativeDesc.MipLevels            = static_cast<uint16_t>( desc.mipLevelCount );
+                nativeDesc.Format               = MapBigosFormatToD3D12Format( desc.format );
+                nativeDesc.SampleDesc.Count     = MapBigosSampleCountToD3D12Uint( desc.sampleCount );
+                nativeDesc.SampleDesc.Quality   = 0; // TODO: Handle (same for pipeline state)
+                // In most case it is the best solution. Textures can be created with D3D12_TEXTURE_LAYOUT_ROW_MAJOR
+                // but only if memory heap can be shared across adapters.
+                nativeDesc.Layout = desc.resourceType == ResourceTypes::BUFFER ? D3D12_TEXTURE_LAYOUT_ROW_MAJOR : D3D12_TEXTURE_LAYOUT_UNKNOWN;
+                nativeDesc.Flags  = MapBigosResourceUsageFlagsToD3D12ResourceFlags( desc.resourceUsage );
+                if( desc.sharingMode == ResourceSharingModes::SIMULTANEOUS_ACCESS )
+                {
+                    nativeDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+                }
+
+                pResource->pNativeResource = nullptr;
+
+                *pHandle = ResourceHandle( pResource );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyResource( ResourceHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Resource (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != ResourceHandle(), "Resource (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != ResourceHandle() ) )
+                {
+                    D3D12Resource* pNativeResource = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeResource->pNativeResource );
+
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeResource );
+
+                    *pHandle = ResourceHandle();
+                }
+            }
+
+            RESULT D3D12Device::BindResourceMemory( const BindResourceMemoryDesc& desc )
+            {
+                BGS_ASSERT( desc.hResource != ResourceHandle(), "Resource (desc.hResource) must be a valid handle." )
+                BGS_ASSERT( desc.hResource.GetNativeHandle() != nullptr, "Resource (desc.hResource) must hold valid internal resource." );
+                BGS_ASSERT( desc.hMemory != MemoryHandle(), "Memory (desc.hMemory) must be a valid handle." )
+                BGS_ASSERT( desc.hMemory.GetNativeHandle() != nullptr, "Memory (desc.hMemory) must hold valid internal memory." );
+                if( ( desc.hResource == ResourceHandle() ) && ( desc.hResource.GetNativeHandle() == nullptr ) && ( desc.hMemory == MemoryHandle() ) &&
+                    ( desc.hMemory.GetNativeHandle() == nullptr ) )
+                {
+                    return Results::FAIL;
+                }
+
+                // Creating D3D12 resource here.
+                ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
+                if( FAILED( pNativeDevice->CreatePlacedResource( desc.hMemory.GetNativeHandle(), desc.memoryOffset,
+                                                                 &desc.hResource.GetNativeHandle()->desc, D3D12_RESOURCE_STATE_COMMON, nullptr,
+                                                                 IID_PPV_ARGS( &desc.hResource.GetNativeHandle()->pNativeResource ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            void D3D12Device::GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo )
+            {
+                BGS_ASSERT( handle != ResourceHandle(), "Resource (handle) must be a valid handle." )
+                BGS_ASSERT( handle.GetNativeHandle() != nullptr, "Resource (handle) must hold valid internal resource." );
+                BGS_ASSERT( pInfo != nullptr, "Resource allocation info (pInfo) must be a valid address." );
+                if( ( handle != ResourceHandle() ) && ( handle.GetNativeHandle() != nullptr ) && ( pInfo != nullptr ) )
+                {
+                    ID3D12Device*                         pNativeDevice = m_handle.GetNativeHandle();
+                    const D3D12_RESOURCE_ALLOCATION_INFO& allocInfo =
+                        pNativeDevice->GetResourceAllocationInfo( 0, 1, &handle.GetNativeHandle()->desc );
+
+                    pInfo->alignment = allocInfo.Alignment;
+                    pInfo->size      = allocInfo.SizeInBytes;
                 }
             }
 

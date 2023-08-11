@@ -60,6 +60,11 @@ namespace BIGOS
                 virtual RESULT AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle ) override;
                 virtual void   FreeMemory( MemoryHandle* pHandle ) override;
 
+                virtual RESULT CreateResource( const ResourceDesc& desc, ResourceHandle* pHandle ) override;
+                virtual void   DestroyResource( ResourceHandle* pHandle ) override;
+                virtual RESULT BindResourceMemory( const BindResourceMemoryDesc& desc ) override;
+                virtual void   GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo ) override;
+
                 // Funcions needed for Vulkan backend
             public:
                 RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );
@@ -72,6 +77,8 @@ namespace BIGOS
             private:
                 RESULT CreateVkDevice();
                 RESULT CreateVkGraphicsPipeline( const GraphicsPipelineDesc& gpDesc, VkPipeline* pNativePipeline );
+                RESULT CreateVkBuffer( const ResourceDesc desc, VkBuffer* pBuff );
+                RESULT CreateVkImage( const ResourceDesc desc, VkImage* pImg );
 
                 void EnumerateNativeQueues();
 

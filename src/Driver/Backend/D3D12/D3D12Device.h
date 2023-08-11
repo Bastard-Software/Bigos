@@ -45,6 +45,11 @@ namespace BIGOS
                 virtual RESULT AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle ) override;
                 virtual void   FreeMemory( MemoryHandle* pHandle ) override;
 
+                virtual RESULT CreateResource( const ResourceDesc& desc, ResourceHandle* pHandle ) override;
+                virtual void   DestroyResource( ResourceHandle* pHandle ) override;
+                virtual RESULT BindResourceMemory( const BindResourceMemoryDesc& desc ) override;
+                virtual void   GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo ) override;
+
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );
                 void   Destroy();
