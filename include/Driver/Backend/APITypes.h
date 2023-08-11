@@ -631,6 +631,78 @@ namespace BIGOS
                 MEMORY_HEAP_USAGE heapUsage;
             };
 
+            enum class ResourceTypes : uint8_t
+            {
+                UNKNOWN,
+                BUFFER,
+                TEXTURE_1D,
+                TEXTURE_2D,
+                TEXTURE_3D,
+                _MAX_ENUM,
+            };
+            using RESOURCE_TYPE = ResourceTypes;
+
+            enum class ResourceLayouts : uint8_t
+            {
+                OPTIMAL,
+                LINEAR,
+                _MAX_ENUM,
+            };
+            using RESOURCE_LAYOUT = ResourceLayouts;
+
+            enum class ResourceUsageFlagBits : uint32_t
+            {
+                TRANSFER_SRC              = 0x00000001,
+                TRANSFER_DST              = 0x00000002,
+                CONSTANT_TEXEL_BUFFER     = 0x00000004,
+                STORAGE_TEXEL_BUFFER      = 0x00000008,
+                CONSTANT_BUFFER           = 0x00000010,
+                READ_ONLY_STORAGE_BUFFER  = 0x00000020,
+                READ_WRITE_STORAGE_BUFFER = 0x00000040,
+                INDIRECT_BUFFER           = 0x00000080,
+                INDEX_BUFFER              = 0x00000100,
+                VERTEX_BUFFER             = 0x00000200,
+                STORAGE_TEXTURE           = 0x00000400,
+                SAMPLED_TEXTURE           = 0x00000800,
+                COLOR_RENDER_TARGET       = 0x00001000,
+                DEPTH_STENCIL_TARGET      = 0x00002000,
+            };
+            using ResourceUsageFlags = uint32_t;
+
+            enum class ResourceSharingModes : uint8_t
+            {
+                EXCLUSIVE_ACCESS,
+                SIMULTANEOUS_ACCESS,
+                _MAX_ENUM,
+            };
+            using RESOURCE_SHARING_MODE = ResourceSharingModes;
+
+            struct ResourceDesc
+            {
+                Size3D                size;
+                SAMPLE_COUNT          sampleCount;
+                FORMAT                format;
+                ResourceUsageFlags    resourceUsage;
+                uint32_t              mipLevelCount;
+                uint32_t              arrayLayerCount;
+                RESOURCE_TYPE         resourceType;
+                RESOURCE_SHARING_MODE sharingMode;
+                RESOURCE_LAYOUT       resourceLayout;
+            };
+
+            struct BindResourceMemoryDesc
+            {
+                ResourceHandle hResource;
+                MemoryHandle   hMemory;
+                uint64_t       memoryOffset;
+            };
+
+            struct ResourceAllocationInfo
+            {
+                uint64_t size;
+                uint64_t alignment;
+            };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

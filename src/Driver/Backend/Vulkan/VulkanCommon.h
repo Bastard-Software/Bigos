@@ -25,6 +25,11 @@ namespace BIGOS
             VkBlendFactor         MapBigosBlendFactorToVulkanBlendFactor( BLEND_FACTOR factor );
             VkBlendOp             MapBigosBlendOperationTypeToVulkanBlendOp( BLEND_OPERATION_TYPE op );
             VkMemoryPropertyFlags MapBigosMemoryAccessFlagsToVulkanMemoryPropertFlags( MemoryAccessFlags flags );
+            VkBufferUsageFlags    MapBigosResourceUsageToVulkanBufferUsageFlags( ResourceUsageFlags flags );
+            VkSharingMode         MapBigosResourceSharingModeToVulkanSharingMode( RESOURCE_SHARING_MODE mode );
+            VkImageUsageFlags     MapBigosResourceUsageFlagsToVulkanImageUsageFlags( ResourceUsageFlags flags );
+            VkImageType           MapBigosResourceTypeToVulkanImageType( RESOURCE_TYPE type );
+            VkImageTiling         MapBigosResourceLayoutToVulkanImageTiling( RESOURCE_LAYOUT layout );
 
         } // namespace Backend
     }     // namespace Driver

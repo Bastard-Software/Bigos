@@ -77,6 +77,11 @@ namespace BIGOS
                 virtual RESULT AllocateMemory( const AllocateMemoryDesc& desc, MemoryHandle* pHandle ) = 0;
                 virtual void   FreeMemory( MemoryHandle* pHandle )                                     = 0;
 
+                virtual RESULT CreateResource( const ResourceDesc& desc, ResourceHandle* pHandle )               = 0;
+                virtual void   DestroyResource( ResourceHandle* pHandle )                                        = 0;
+                virtual RESULT BindResourceMemory( const BindResourceMemoryDesc& desc )                          = 0;
+                virtual void   GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo ) = 0;
+
                 BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
 

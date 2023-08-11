@@ -316,6 +316,41 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( usage ) ];
             }
 
+            D3D12_RESOURCE_DIMENSION MapBigosResourceTypeToD3D12ResourceDimension( RESOURCE_TYPE type )
+            {
+                static const D3D12_RESOURCE_DIMENSION translateTable[ BGS_ENUM_COUNT( ResourceTypes ) ] = {
+                    D3D12_RESOURCE_DIMENSION_UNKNOWN,   // UNKNOWN
+                    D3D12_RESOURCE_DIMENSION_BUFFER,    // BUFFER
+                    D3D12_RESOURCE_DIMENSION_TEXTURE1D, // TEXTURE_1D
+                    D3D12_RESOURCE_DIMENSION_TEXTURE2D, // TEXTURE_2D
+                    D3D12_RESOURCE_DIMENSION_TEXTURE3D, // TEXTURE_3D
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            D3D12_RESOURCE_FLAGS MapBigosResourceUsageFlagsToD3D12ResourceFlags( ResourceUsageFlags flags )
+            {
+                D3D12_RESOURCE_FLAGS nativeFlags = D3D12_RESOURCE_FLAG_NONE;
+
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::COLOR_RENDER_TARGET ) )
+                {
+                    nativeFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+                }
+                if( flags & static_cast<uint32_t>( ResourceUsageFlagBits::DEPTH_STENCIL_TARGET ) )
+                {
+                    nativeFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+                }
+                if( ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXEL_BUFFER ) ) &&
+                    ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXTURE ) ) &&
+                    ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) ) )
+                {
+                    nativeFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+                }
+
+                return nativeFlags;
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

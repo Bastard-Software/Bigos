@@ -12,6 +12,7 @@ namespace BIGOS::Driver::Backend
     struct D3D12Fence;
     struct D3D12ShaderModule;
     struct D3D12Pipeline;
+    struct D3D12Resource;
 } // namespace BIGOS::Driver::Backend
 
 #if BGS_USE_D3D12_HANDLES
@@ -34,6 +35,7 @@ BGS_DECLARE_D3D12_HANDLE( Pipeline, BIGOS::Driver::Backend::D3D12Pipeline* );
 BGS_DECLARE_D3D12_HANDLE( Fence, BIGOS::Driver::Backend::D3D12Fence* );
 BGS_DECLARE_D3D12_HANDLE( Semaphore, ID3D12Fence* );
 BGS_DECLARE_D3D12_HANDLE( Memory, ID3D12Heap* )
+BGS_DECLARE_D3D12_HANDLE( Resource, BIGOS::Driver::Backend::D3D12Resource* )
 
 #endif
 

@@ -6,6 +6,7 @@
 namespace BIGOS::Driver::Backend
 {
     struct VulkanMemory;
+    struct VulkanResource;
 } // namespace BIGOS::Driver::Backend
 
 #if BGS_USE_VULKAN_HANDLES
@@ -28,6 +29,7 @@ BGS_DECLARE_VULKAN_HANDLE( Pipeline, VkPipeline );
 BGS_DECLARE_VULKAN_HANDLE( Fence, VkSemaphore );
 BGS_DECLARE_VULKAN_HANDLE( Semaphore, VkSemaphore );
 BGS_DECLARE_VULKAN_HANDLE( Memory, BIGOS::Driver::Backend::VulkanMemory* )
+BGS_DECLARE_VULKAN_HANDLE( Resource, BIGOS::Driver::Backend::VulkanResource* )
 
 #endif
 
@@ -38,5 +40,13 @@ namespace BIGOS::Driver::Backend
     class VulkanAdapter;
     class VulkanFactory;
     class VulkanDevice;
+
+    enum class VulkanResourceTypes : uint8_t
+    {
+        BUFFER,
+        IMAGE,
+        _MAX_ENUM,
+    };
+    using VULKAN_RESOURCE_TYPE = VulkanResourceTypes;
 
 } // namespace BIGOS::Driver::Backend

@@ -167,5 +167,58 @@ namespace BIGOS
             uint16_t patch;
             uint16_t build;
         };
+
+        template<typename T>
+        struct TExtent2D
+        {
+            union
+            {
+                struct
+                {
+                    T width;
+                    T height;
+                };
+                struct
+                {
+                    T x;
+                    T y;
+                };
+            };
+        };
+
+        using Offset2D = TExtent2D<int32_t>;
+        using Size2D   = TExtent2D<uint32_t>;
+
+        template<typename T>
+        struct TRect2D
+        {
+            TExtent2D<T> offset;
+            TExtent2D<T> size;
+        };
+
+        using Rect2D = TRect2D<uint32_t>;
+
+        template<typename T>
+        struct TExtent3D
+        {
+            union
+            {
+                struct
+                {
+                    T width;
+                    T height;
+                    T depth;
+                };
+                struct
+                {
+                    T x;
+                    T y;
+                    T z;
+                };
+            };
+        };
+
+        using Offset3D = TExtent3D<int32_t>;
+        using Size3D   = TExtent3D<uint32_t>;
     } // namespace Core
 } // namespace BIGOS
