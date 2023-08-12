@@ -30,6 +30,7 @@ namespace BIGOS
             VkImageUsageFlags     MapBigosResourceUsageFlagsToVulkanImageUsageFlags( ResourceUsageFlags flags );
             VkImageType           MapBigosResourceTypeToVulkanImageType( RESOURCE_TYPE type );
             VkImageTiling         MapBigosResourceLayoutToVulkanImageTiling( RESOURCE_LAYOUT layout );
+            VkImageAspectFlags    MapBigosTextureComponentFlagsToVulkanImageAspectFlags( TextureComponentFlags flags );
 
         } // namespace Backend
     }     // namespace Driver

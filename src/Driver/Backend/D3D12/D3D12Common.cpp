@@ -351,6 +351,11 @@ namespace BIGOS
                 return nativeFlags;
             }
 
+            UINT MapBigosTextureComponentFlagsToD3D12PlaneSlice( TextureComponentFlags flags )
+            {
+                return flags & static_cast<uint32_t>( TextureComponentFlagBits::STENCIL ) ? 1 : 0;
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

@@ -725,6 +725,109 @@ namespace BIGOS
                 }
             }
 
+            RESULT VulkanDevice::MapResource( const MapResourceDesc& desc, void** ppResource )
+            {
+                BGS_ASSERT( desc.hResource != ResourceHandle(), "Resource (hResource) must be a valid handle." );
+                BGS_ASSERT( desc.hResource.GetNativeHandle() != nullptr, "Resource (hResource) must hold valid internal resource." );
+                BGS_ASSERT( ppResource != nullptr, "Memory (ppResource) must be a valid address." );
+                if( ( desc.hResource == ResourceHandle() ) && ( ppResource == nullptr ) )
+                {
+                    return Results::FAIL;
+                }
+
+                VkDevice        nativeDevice = m_handle.GetNativeHandle();
+                VulkanResource* pRes         = desc.hResource.GetNativeHandle();
+                VkDeviceSize    offset       = pRes->memoryOffset;
+                VkDeviceSize    size;
+                if( pRes->type == VulkanResourceTypes::IMAGE )
+                {
+                    VkImage             nativeImage = pRes->image;
+                    VkSubresourceLayout subresourceLayout;
+                    VkImageSubresource  subresource;
+                    subresource.aspectMask = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.textureRange.components );
+                    subresource.arrayLayer = desc.textureRange.arrayLayer;
+                    subresource.mipLevel   = desc.textureRange.mipLevel;
+
+                    vkGetImageSubresourceLayout( nativeDevice, nativeImage, &subresource, &subresourceLayout );
+
+                    // Note that subresourceLayout.offset is offset from begining of resource
+                    offset += subresourceLayout.offset;
+                    size = subresourceLayout.size;
+                }
+                else
+                {
+                    offset += desc.bufferRange.offset;
+                    size = desc.bufferRange.size;
+                }
+
+                VkMappedMemoryRange nativeMemRange;
+                nativeMemRange.sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+                nativeMemRange.pNext  = nullptr;
+                nativeMemRange.memory = pRes->pMemory->nativeMemory;
+                nativeMemRange.size   = size;
+                nativeMemRange.offset = offset;
+
+                if( vkInvalidateMappedMemoryRanges( nativeDevice, 1, &nativeMemRange ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                byte_t* pMem = static_cast<byte_t*>( pRes->pMemory->pHostMemory );
+                pMem += offset;
+                *ppResource = static_cast<void*>( pMem );
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::UnmapResource( const MapResourceDesc& desc )
+            {
+                BGS_ASSERT( desc.hResource != ResourceHandle(), "Resource (hResource) must be a valid handle." );
+                BGS_ASSERT( desc.hResource.GetNativeHandle() != nullptr, "Resource (hResource) must hold valid internal resource." );
+                if( desc.hResource == ResourceHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                VkDevice        nativeDevice = m_handle.GetNativeHandle();
+                VulkanResource* pRes         = desc.hResource.GetNativeHandle();
+                VkDeviceSize    offset       = pRes->memoryOffset;
+                VkDeviceSize    size;
+                if( pRes->type == VulkanResourceTypes::IMAGE )
+                {
+                    VkImage             nativeImage = pRes->image;
+                    VkSubresourceLayout subresourceLayout;
+                    VkImageSubresource  subresource;
+                    subresource.aspectMask = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.textureRange.components );
+                    subresource.arrayLayer = desc.textureRange.arrayLayer;
+                    subresource.mipLevel   = desc.textureRange.mipLevel;
+
+                    vkGetImageSubresourceLayout( nativeDevice, nativeImage, &subresource, &subresourceLayout );
+
+                    // Note that subresourceLayout.offset is offset from begining of resource
+                    offset += subresourceLayout.offset;
+                    size = subresourceLayout.size;
+                }
+                else
+                {
+                    offset += desc.bufferRange.offset;
+                    size = desc.bufferRange.size;
+                }
+
+                VkMappedMemoryRange nativeMemRange;
+                nativeMemRange.sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+                nativeMemRange.pNext  = nullptr;
+                nativeMemRange.memory = pRes->pMemory->nativeMemory;
+                nativeMemRange.size   = size;
+                nativeMemRange.offset = offset;
+
+                if( vkFlushMappedMemoryRanges( nativeDevice, 1, &nativeMemRange ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
             RESULT VulkanDevice::Create( const DeviceDesc& desc, VulkanFactory* pFactory )
             {
                 BGS_ASSERT( pFactory != nullptr, "Factory (pFactory) must be a valid pointer." );

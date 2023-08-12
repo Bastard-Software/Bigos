@@ -64,6 +64,8 @@ namespace BIGOS
                 virtual void   DestroyResource( ResourceHandle* pHandle ) override;
                 virtual RESULT BindResourceMemory( const BindResourceMemoryDesc& desc ) override;
                 virtual void   GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo ) override;
+                virtual RESULT MapResource( const MapResourceDesc& desc, void** ppResource ) override;
+                virtual RESULT UnmapResource( const MapResourceDesc& desc ) override;
 
                 // Funcions needed for Vulkan backend
             public:

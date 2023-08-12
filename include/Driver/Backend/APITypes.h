@@ -703,6 +703,39 @@ namespace BIGOS
                 uint64_t alignment;
             };
 
+            enum class TextureComponentFlagBits : uint32_t
+            {
+                COLOR   = 0x00000001,
+                DEPTH   = 0x00000002,
+                STENCIL = 0x00000004,
+            };
+            using TextureComponentFlags = uint32_t;
+
+            struct TextureRangeDesc
+            {
+                TextureComponentFlags components;
+                uint32_t              mipLevel;
+                uint32_t              mipLevelCount;
+                uint32_t              arrayLayer;
+                uint32_t              arrayLayerCount;
+            };
+
+            struct BufferRangeDesc
+            {
+                uint64_t size;
+                uint64_t offset;
+            };
+
+            struct MapResourceDesc
+            {
+                union
+                {
+                    TextureRangeDesc textureRange;
+                    BufferRangeDesc  bufferRange;
+                };
+                ResourceHandle hResource;
+            };
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
