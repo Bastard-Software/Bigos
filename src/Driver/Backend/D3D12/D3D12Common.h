@@ -29,6 +29,7 @@ namespace BIGOS
             D3D12_HEAP_FLAGS                   MapBigosMemoryHeapUsageToD3D12HeapFlags( MEMORY_HEAP_USAGE usage );
             D3D12_RESOURCE_DIMENSION           MapBigosResourceTypeToD3D12ResourceDimension( RESOURCE_TYPE type );
             D3D12_RESOURCE_FLAGS               MapBigosResourceUsageFlagsToD3D12ResourceFlags( ResourceUsageFlags flags );
+            UINT                               MapBigosTextureComponentFlagsToD3D12PlaneSlice( TextureComponentFlags flags );
 
         } // namespace Backend
     }     // namespace Driver

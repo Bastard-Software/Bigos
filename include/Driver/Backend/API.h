@@ -81,6 +81,8 @@ namespace BIGOS
                 virtual void   DestroyResource( ResourceHandle* pHandle )                                        = 0;
                 virtual RESULT BindResourceMemory( const BindResourceMemoryDesc& desc )                          = 0;
                 virtual void   GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo ) = 0;
+                virtual RESULT MapResource( const MapResourceDesc& desc, void** ppResource )                     = 0;
+                virtual RESULT UnmapResource( const MapResourceDesc& desc )                                      = 0;
 
                 BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }

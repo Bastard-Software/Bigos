@@ -505,7 +505,7 @@ namespace BIGOS
 
             void D3D12Device::GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo )
             {
-                BGS_ASSERT( handle != ResourceHandle(), "Resource (handle) must be a valid handle." )
+                BGS_ASSERT( handle != ResourceHandle(), "Resource (handle) must be a valid handle." );
                 BGS_ASSERT( handle.GetNativeHandle() != nullptr, "Resource (handle) must hold valid internal resource." );
                 BGS_ASSERT( pInfo != nullptr, "Resource allocation info (pInfo) must be a valid address." );
                 if( ( handle != ResourceHandle() ) && ( handle.GetNativeHandle() != nullptr ) && ( pInfo != nullptr ) )
@@ -517,6 +517,76 @@ namespace BIGOS
                     pInfo->alignment = allocInfo.Alignment;
                     pInfo->size      = allocInfo.SizeInBytes;
                 }
+            }
+
+            RESULT D3D12Device::MapResource( const MapResourceDesc& desc, void** ppResource )
+            {
+                BGS_ASSERT( desc.hResource != ResourceHandle(), "Resource (hResource) must be a valid handle." );
+                BGS_ASSERT( desc.hResource.GetNativeHandle() != nullptr, "Resource (hResource) must hold valid internal resource." );
+                BGS_ASSERT( ppResource != nullptr, "Memory (ppResource) must be a valid address." );
+                if( ( desc.hResource == ResourceHandle() ) && ( ppResource == nullptr ) )
+                {
+                    return Results::FAIL;
+                }
+
+                ID3D12Resource*            pNativeResource = desc.hResource.GetNativeHandle()->pNativeResource;
+                const D3D12_RESOURCE_DESC& resDesc         = desc.hResource.GetNativeHandle()->desc;
+                uint32_t                   subResNdx       = 0;
+                D3D12_RANGE*               pResRange       = nullptr;
+                D3D12_RANGE                resRange;
+                if( resDesc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER )
+                {
+                    // From D3D12 docs: MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize;
+                    subResNdx = desc.textureRange.mipLevel + desc.textureRange.arrayLayer * desc.textureRange.mipLevelCount +
+                                MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.textureRange.components ) * desc.textureRange.mipLevelCount *
+                                    desc.textureRange.arrayLayerCount;
+                }
+                else // Buffers
+                {
+                    resRange.Begin = desc.bufferRange.offset;
+                    resRange.End   = desc.bufferRange.offset + desc.bufferRange.size;
+                    pResRange      = &resRange;
+                }
+
+                if( FAILED( pNativeResource->Map( subResNdx, pResRange, ppResource ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            RESULT D3D12Device::UnmapResource( const MapResourceDesc& desc )
+            {
+                BGS_ASSERT( desc.hResource != ResourceHandle(), "Resource (hResource) must be a valid handle." );
+                BGS_ASSERT( desc.hResource.GetNativeHandle() != nullptr, "Resource (hResource) must hold valid internal resource." );
+                if( desc.hResource == ResourceHandle() )
+                {
+                    return Results::FAIL;
+                }
+
+                ID3D12Resource*            pNativeResource = desc.hResource.GetNativeHandle()->pNativeResource;
+                const D3D12_RESOURCE_DESC& resDesc         = desc.hResource.GetNativeHandle()->desc;
+                uint32_t                   subResNdx       = 0;
+                D3D12_RANGE*               pResRange       = nullptr;
+                D3D12_RANGE                resRange;
+                if( resDesc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER )
+                {
+                    // From D3D12 docs: MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize;
+                    subResNdx = desc.textureRange.mipLevel + desc.textureRange.arrayLayer * desc.textureRange.mipLevelCount +
+                                MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.textureRange.components ) * desc.textureRange.mipLevelCount *
+                                    desc.textureRange.arrayLayerCount;
+                }
+                else
+                {
+                    resRange.Begin = desc.bufferRange.offset;
+                    resRange.End   = desc.bufferRange.offset + desc.bufferRange.size;
+                    pResRange      = &resRange;
+                }
+
+                pNativeResource->Unmap( subResNdx, pResRange );
+
+                return Results::OK;
             }
 
             RESULT D3D12Device::Create( const DeviceDesc& desc, D3D12Factory* pFactory )

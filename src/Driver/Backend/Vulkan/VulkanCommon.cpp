@@ -408,6 +408,24 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( layout ) ];
             }
 
+            VkImageAspectFlags MapBigosTextureComponentFlagsToVulkanImageAspectFlags( TextureComponentFlags flags )
+            {
+                VkImageAspectFlags nativeFlags = 0;
+                if( flags & static_cast<uint32_t>( TextureComponentFlagBits::COLOR ) )
+                {
+                    nativeFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
+                }
+                if( flags & static_cast<uint32_t>( TextureComponentFlagBits::DEPTH ) )
+                {
+                    nativeFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+                }
+                if( flags & static_cast<uint32_t>( TextureComponentFlagBits::STENCIL ) )
+                {
+                    nativeFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                }
+                return nativeFlags;
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
