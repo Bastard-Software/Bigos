@@ -11,9 +11,8 @@ set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/Samples")
 set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/src/ThirdParty")
 
-if(BGS_VULKAN_API)
-    add_subdirectory(${THIRD_PARTY_DIR}/volk)
-endif()
+include ("${ROOT_DIR}/CMakeScripts/CompilerSettings.cmake" NO_POLICY_SCOPE)
+include ("${ROOT_DIR}/CMakeScripts/CompilerDefinitions.cmake" NO_POLICY_SCOPE)
 
 add_subdirectory(${SOURCE_DIR}/Core)
 add_subdirectory(${SOURCE_DIR}/Driver)
@@ -24,7 +23,6 @@ add_subdirectory(${SOURCE_DIR}/BigosEngine)
 
 add_subdirectory(${SAMPLES_DIR}/DraftSandbox)
 
-# TODO: Needs to be included 2 times, dont know why, bug.
 if(BGS_VULKAN_API)
     add_subdirectory(${THIRD_PARTY_DIR}/volk)
 endif()

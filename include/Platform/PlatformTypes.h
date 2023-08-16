@@ -5,6 +5,7 @@
 #    include <Windows.h>
 using LibraryHandle = HMODULE;
 using WindowHandle  = HWND;
+using WindowModule  = HMODULE;
 using WindowContext = HDC;
 #else
 #    error
@@ -42,6 +43,7 @@ namespace BIGOS
         {
 #if( BGS_WINDOWS )
             WindowHandle  hWnd;
+            WindowModule  hModule;
             WindowContext hDC;
 #else
 #    error

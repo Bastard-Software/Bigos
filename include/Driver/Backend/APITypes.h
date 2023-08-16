@@ -2,6 +2,7 @@
 #include "APIHandles.h"
 
 #include "Core/CoreTypes.h"
+#include "Platform/PlatformTypes.h"
 
 #include "BigosFramework/Config.h"
 
@@ -22,7 +23,10 @@ namespace BIGOS
             class ICommandBuffer;
             class ISwapchain;
 
-            using AdapterArray = HeapArray<IAdapter*>;
+            struct BackBufferInfo;
+
+            using AdapterArray    = HeapArray<IAdapter*>;
+            using BackBufferArray = HeapArray<BackBufferInfo>;
 
             enum class AdapterTypes : uint8_t
             {
@@ -180,6 +184,37 @@ namespace BIGOS
                 _MAX_ENUM,
             };
             using FORMAT = Formats;
+
+            struct SwapchainDesc
+            {
+                Platform::Window* pWindow;
+                IQueue*           pQueue;
+                uint32_t          backBufferCount;
+                bool_t            vSync;
+                FORMAT            format;
+            };
+
+            struct SwapchainResizeDesc
+            {
+            };
+
+            struct SwapchainPresentDesc
+            {
+                SemaphoreHandle* pWaitSemaphores;
+                uint32_t         waitSemaphoreCount;
+            };
+
+            struct FrameInfo
+            {
+                SemaphoreHandle hBackBufferAvailableSemaphore;
+                uint32_t        swapChainBackBufferIndex;
+            };
+
+            struct BackBufferInfo
+            {
+                ResourceHandle  hBackBuffer;
+                SemaphoreHandle hBackBufferAvailableSemaphore;
+            };
 
             struct CommandPoolDesc
             {

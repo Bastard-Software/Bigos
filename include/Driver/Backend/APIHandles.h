@@ -7,6 +7,7 @@ namespace BIGOS::Driver::Backend
     BGS_DECLARE_HANDLE( Factory );
     BGS_DECLARE_HANDLE( Device );
     BGS_DECLARE_HANDLE( Queue );
+    BGS_DECLARE_HANDLE( Swapchain );
     BGS_DECLARE_HANDLE( CommandPool );
     BGS_DECLARE_HANDLE( CommandBuffer );
     BGS_DECLARE_HANDLE( Shader );

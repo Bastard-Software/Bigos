@@ -10,7 +10,7 @@ namespace BIGOS
             friend class WindowSystem;
 
         public:
-            Window()  = default;
+            Window();
             ~Window() = default;
 
             // TODO: Hide, minimize?

@@ -35,6 +35,9 @@ namespace BIGOS
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
                 virtual void   DestroyQueue( IQueue** ppQueue ) override;
 
+                virtual RESULT CreateSwapchain( const SwapchainDesc& desc, ISwapchain** ppSwapchain ) override;
+                virtual void   DestroySwapchain( ISwapchain** ppSwapchain ) override;
+
                 virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) override;
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle ) override;
                 virtual RESULT ResetCommandPool( CommandPoolHandle handle ) override;
@@ -71,6 +74,8 @@ namespace BIGOS
             public:
                 RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );
                 void   FreeNativeQueue( uint32_t familyIndex, uint32_t queueIndex );
+
+                BGS_FORCEINLINE VulkanFactory* GetParent() const { return m_pParent; }
 
             protected:
                 RESULT Create( const DeviceDesc& desc, VulkanFactory* pFactory );

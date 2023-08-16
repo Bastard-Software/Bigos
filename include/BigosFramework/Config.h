@@ -13,9 +13,15 @@ namespace BIGOS
                 constexpr uint32_t MAX_DESCRIPTION_TEXT_LENGHT = 256U;
             }
 
+            namespace Swapchain
+            {
+                constexpr uint32_t MAX_BACK_BUFFER_COUNT = 16U;
+            }
+
             namespace Synchronization
             {
-                constexpr uint32_t MAX_FENCES_TO_WAIT_COUNT = 8U;
+                constexpr uint32_t MAX_SEMAPHORES_TO_WAIT_COUNT = 8U;
+                constexpr uint32_t MAX_FENCES_TO_WAIT_COUNT     = 8U;
             } // namespace Synchronization
 
             namespace Shader
