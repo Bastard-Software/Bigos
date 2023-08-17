@@ -156,7 +156,9 @@ namespace BIGOS
             NO_MEMORY,
             NOT_FOUND,
             TIMEOUT,
+            NOT_READY,
             // TODO: Add more during development
+            _MAX_ENUM,
         };
         using RESULT = Results;
 

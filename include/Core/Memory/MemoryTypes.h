@@ -34,7 +34,7 @@ namespace BIGOS
 
 #if( BGS_MEMORY_DEBUG )
 
-            enum class AllocationBlockTypes : uint8_t
+            enum class AllocationBlockTypes : uint32_t
             {
                 NORMAL,
                 ALIGNED,

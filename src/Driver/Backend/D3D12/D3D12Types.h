@@ -27,6 +27,7 @@ BGS_DECLARE_D3D12_HANDLE( Factory, IDXGIFactory4* );
 BGS_DECLARE_D3D12_HANDLE( Adapter, IDXGIAdapter1* );
 BGS_DECLARE_D3D12_HANDLE( Device, ID3D12Device* );
 BGS_DECLARE_D3D12_HANDLE( Queue, ID3D12CommandQueue* );
+BGS_DECLARE_D3D12_HANDLE( Swapchain, IDXGISwapChain3* );
 BGS_DECLARE_D3D12_HANDLE( CommandPool, ID3D12CommandAllocator* );
 BGS_DECLARE_D3D12_HANDLE( CommandBuffer, ID3D12GraphicsCommandList4* );
 BGS_DECLARE_D3D12_HANDLE( Shader, BIGOS::Driver::Backend::D3D12ShaderModule* );
@@ -46,6 +47,15 @@ namespace BIGOS::Driver::Backend
     class D3D12Adapter;
     class D3D12Factory;
     class D3D12Device;
+
+    enum class D3D12SemaphoreStates : uint64_t
+    {
+        NOT_SIGNALED,
+        SIGNALED,
+        _MAX_ENUM,
+    };
+    using D3D12_SEMAPHORE_STATE = D3D12SemaphoreStates;
+
 } // namespace BIGOS::Driver::Backend
 
 #define RELEASE_COM_PTR( _x )                                                                                                                        \

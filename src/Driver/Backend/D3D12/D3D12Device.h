@@ -20,6 +20,9 @@ namespace BIGOS
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
                 virtual void   DestroyQueue( IQueue** ppQueue ) override;
 
+                virtual RESULT CreateSwapchain( const SwapchainDesc& desc, ISwapchain** ppSwapchain ) override;
+                virtual void   DestroySwapchain( ISwapchain** ppSwapchain ) override;
+
                 virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) override;
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle ) override;
                 virtual RESULT ResetCommandPool( CommandPoolHandle handle ) override;
@@ -51,6 +54,10 @@ namespace BIGOS
                 virtual void   GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo ) override;
                 virtual RESULT MapResource( const MapResourceDesc& desc, void** ppResource ) override;
                 virtual RESULT UnmapResource( const MapResourceDesc& desc ) override;
+
+                // Function needed for D3D12 backend
+            public:
+                D3D12Factory* GetParent() const { return m_pParent; }
 
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );

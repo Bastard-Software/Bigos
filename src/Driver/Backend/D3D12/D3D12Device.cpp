@@ -13,6 +13,7 @@
 #include "D3D12Queue.h"
 #include "D3D12Resource.h"
 #include "D3D12Shader.h"
+#include "D3D12Swapchain.h"
 #include "Driver/Frontend/RenderSystem.h"
 
 namespace BIGOS
@@ -56,6 +57,49 @@ namespace BIGOS
                 {
                     static_cast<D3D12Queue*>( *ppQueue )->Destroy();
                     Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), ppQueue );
+                }
+            }
+
+            RESULT D3D12Device::CreateSwapchain( const SwapchainDesc& desc, ISwapchain** ppSwapchain )
+            {
+                BGS_ASSERT( ppSwapchain != nullptr, "Swapchain (ppQueue) must be a valid address." );
+                BGS_ASSERT( *ppSwapchain == nullptr, "There is a pointer at the given address. Swapchain (*ppSwapchain) must be nullptr." );
+                BGS_ASSERT( desc.pWindow != nullptr, "Window (desc.pWindow) must be a valid pointer." );
+                BGS_ASSERT( desc.pQueue != nullptr, "Queue (desc.pQueue) must be a valid pointer." );
+                BGS_ASSERT( desc.pQueue->GetDesc().type == QueueTypes::GRAPHICS, "Queue (desc.pQueue) must be a graphics queue." );
+                // TODO: Better validation
+                if( ( ppSwapchain == nullptr ) || ( *ppSwapchain != nullptr ) || ( desc.pWindow == nullptr ) || ( desc.pQueue == nullptr ) ||
+                    ( desc.pQueue->GetDesc().type != QueueTypes::GRAPHICS ) )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12Swapchain* pSwapchain = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pSwapchain ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                BGS_ASSERT( pSwapchain != nullptr );
+
+                if( BGS_FAILED( pSwapchain->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pSwapchain );
+                    return Results::FAIL;
+                }
+
+                *ppSwapchain = pSwapchain;
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroySwapchain( ISwapchain** ppSwapchain )
+            {
+                BGS_ASSERT( ppSwapchain != nullptr, "Swapchain (ppSwapchain) must be a valid address." );
+                BGS_ASSERT( *ppSwapchain != nullptr, "Swapchain (*ppSwapchain) must be a valid pointer." );
+                if( ( ppSwapchain != nullptr ) && ( *ppSwapchain != nullptr ) )
+                {
+                    static_cast<D3D12Swapchain*>( *ppSwapchain )->Destroy();
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), ppSwapchain );
                 }
             }
 
@@ -288,7 +332,7 @@ namespace BIGOS
             RESULT D3D12Device::WaitForFences( const WaitForFencesDesc& desc, uint64_t timeout )
             {
                 BGS_ASSERT( desc.pFences != nullptr, "Fence (desc.pFences) must be a valid pointer." );
-                BGS_ASSERT( desc.pWaitValues != nullptr, "Uint array (desc.pWaitValues) must be a valid pointer." );
+                BGS_ASSERT( desc.pWaitValues != nullptr, "Uint array (desc.pWaitValues) must be a valid address." );
                 BGS_ASSERT( desc.fenceCount < Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT,
                             "Fence count (desc.fenceCount) must be less than %d", Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT );
                 if( ( desc.pFences == nullptr ) || ( desc.pWaitValues == nullptr ) ||

@@ -70,6 +70,13 @@ namespace BIGOS
             return nativeDesc;
         }
 
+        Window::Window()
+            : m_desc()
+            , m_internals()
+            , m_pParent( nullptr )
+        {
+        }
+
         void Window::Show()
         {
             BGS_ASSERT( m_internals.hWnd != nullptr, "Invalid internal window handle." );
@@ -106,7 +113,7 @@ namespace BIGOS
             winClass.lpfnWndProc   = WndProc;
             winClass.cbClsExtra    = NULL;
             winClass.cbWndExtra    = NULL;
-            winClass.hInstance     = NULL;
+            winClass.hInstance     = m_internals.hModule;
             winClass.hIcon         = LoadIcon( NULL, IDI_APPLICATION );
             winClass.hCursor       = LoadCursor( NULL, IDC_ARROW );
             winClass.hbrBackground = reinterpret_cast<HBRUSH>( COLOR_WINDOW + 1 );
@@ -131,7 +138,7 @@ namespace BIGOS
                                                nativeDesc.wndRect.bottom - nativeDesc.wndRect.top, // window height
                                                NULL,                                               // parent window
                                                NULL,                                               // menu
-                                               NULL,                                               // instance handle
+                                               m_internals.hModule,                                // instance handle
                                                NULL                                                // additional application data
             );
 
@@ -164,7 +171,7 @@ namespace BIGOS
                     ::ReleaseDC( m_internals.hWnd, m_internals.hDC );
                 }
                 ::DestroyWindow( m_internals.hWnd );
-                UnregisterClass( m_desc.pTitle, NULL );
+                UnregisterClass( m_desc.pTitle, m_internals.hModule );
             }
         }
 

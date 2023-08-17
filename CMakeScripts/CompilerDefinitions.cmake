@@ -40,10 +40,10 @@ EnableOption(BGS_RENDER_DEBUG)
 EnableOption(BGS_MEMORY_DEBUG)
 
 if(BGS_VULKAN_API)
-set(VOLK_STATIC_DEFINES 1)
     add_definitions(-DVK_NO_PROTOTYPES)
     if(BGS_WINDOWS)
         add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+        set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
     endif()
 endif()
 

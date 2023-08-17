@@ -97,9 +97,9 @@ namespace BIGOS
             {
                 BGS_ASSERT( ( ppFirst != nullptr ) && ( *ppFirst == nullptr ) );
                 BGS_ASSERT( pAllocator != nullptr );
-
+                
                 void* pMem = nullptr;
-                if( BGS_SUCCESS( pAllocator->AllocateAligned( elemCount * sizeof( T ), alignment, &pMem ) ) )
+                if( BGS_SUCCESS( pAllocator->AllocateAligned( elemCount * sizeof( T ), alignment, & pMem ) ) )
                 {
                     *ppFirst = static_cast<T*>( pMem );
                     return Results::OK;
@@ -116,7 +116,7 @@ namespace BIGOS
                 BGS_ASSERT( ( ppMem != nullptr ) && ( *ppMem != nullptr ) );
                 BGS_ASSERT( pAllocator != nullptr );
 
-                pAllocator->FreeAligned( static_cast<void**>( ppMem ) );
+                pAllocator->FreeAligned( reinterpret_cast<void**>( ppMem ) );
             }
 
             template<class AllocatorT>

@@ -240,8 +240,20 @@ int main()
     BIGOS::Driver::Backend::QueueDesc queueDesc;
     queueDesc.type     = BIGOS::Driver::Backend::QueueTypes::GRAPHICS;
     queueDesc.priority = BIGOS::Driver::Backend::QueuePriorityTypes::NORMAL;
-
     if( BGS_FAILED( pAPIDevice->CreateQueue( queueDesc, &pGraphicsQueue ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::ISwapchain*   pSwapchain = nullptr;
+    BIGOS::Driver::Backend::SwapchainDesc swapDesc;
+    swapDesc.pQueue          = pGraphicsQueue;
+    swapDesc.pWindow         = pWnd;
+    swapDesc.vSync           = BIGOS::Core::BGS_TRUE;
+    swapDesc.backBufferCount = 2;
+    swapDesc.format          = BIGOS::Driver::Backend::Formats::B8G8R8A8_UNORM;
+
+    if( BGS_FAILED( pAPIDevice->CreateSwapchain( swapDesc, &pSwapchain ) ) )
     {
         return -1;
     }
@@ -249,7 +261,6 @@ int main()
     BIGOS::Driver::Backend::CommandPoolHandle hCmdPool;
     BIGOS::Driver::Backend::CommandPoolDesc   cmdPoolDesc;
     cmdPoolDesc.pQueue = pGraphicsQueue;
-
     if( BGS_FAILED( pAPIDevice->CreateCommandPool( cmdPoolDesc, &hCmdPool ) ) )
     {
         return -1;
@@ -334,6 +345,7 @@ int main()
     compiler->DestroyOutput( &pVSBlob );
     compiler->DestroyOutput( &pPSBlob );
 
+    pAPIDevice->DestroySwapchain( &pSwapchain );
     pAPIDevice->DestroyResource( &hVB );
     pAPIDevice->FreeMemory( &hBufferMem );
     pAPIDevice->FreeMemory( &hTextureMem );

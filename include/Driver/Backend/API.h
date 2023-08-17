@@ -52,6 +52,9 @@ namespace BIGOS
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) = 0;
                 virtual void   DestroyQueue( IQueue** ppQueue )                       = 0;
 
+                virtual RESULT CreateSwapchain( const SwapchainDesc& desc, ISwapchain** ppSwapchain ) = 0;
+                virtual void   DestroySwapchain( ISwapchain** ppSwapchain )                            = 0;
+
                 virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) = 0;
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle )                             = 0;
                 virtual RESULT ResetCommandPool( CommandPoolHandle handle )                                 = 0;
@@ -108,6 +111,25 @@ namespace BIGOS
                 QueueDesc   m_desc;
                 QueueLimits m_limits;
                 QueueHandle m_handle;
+            };
+
+            class BGS_API BGS_API_INTERFACE ISwapchain
+            {
+            public:
+                virtual ~ISwapchain() = default;
+
+                virtual RESULT Resize( const SwapchainResizeDesc& desc )   = 0;
+                virtual RESULT Present( const SwapchainPresentDesc& desc ) = 0;
+                virtual RESULT GetNextFrame( FrameInfo* pInfo )            = 0;
+
+                BGS_FORCEINLINE const SwapchainDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const BackBufferArray& GetBackBuffers() const { return m_backBuffers; }
+                BGS_FORCEINLINE const SwapchainHandle  GetHandle() const { return m_handle; }
+
+            protected:
+                SwapchainDesc   m_desc;
+                SwapchainHandle m_handle;
+                BackBufferArray m_backBuffers;
             };
 
             class BGS_API BGS_API_INTERFACE ICommandBuffer
