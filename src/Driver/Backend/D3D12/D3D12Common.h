@@ -30,6 +30,11 @@ namespace BIGOS
             D3D12_RESOURCE_DIMENSION           MapBigosResourceTypeToD3D12ResourceDimension( RESOURCE_TYPE type );
             D3D12_RESOURCE_FLAGS               MapBigosResourceUsageFlagsToD3D12ResourceFlags( ResourceUsageFlags flags );
             UINT                               MapBigosTextureComponentFlagsToD3D12PlaneSlice( TextureComponentFlags flags );
+            D3D12_FILTER                MapBigosFiltesToD3D12Filter( FILTER_TYPE min, FILTER_TYPE mag, FILTER_TYPE mip, SAMPLER_REDUCTION_MODE mode,
+                                                                     bool_t anisotropy, bool_t compare );
+            D3D12_TEXTURE_ADDRESS_MODE  MapBigosTextureAddressModeToD3D12TextureAddressMode( TEXTURE_ADDRESS_MODE mode );
+            D3D12_SHADER_VISIBILITY     MapBigosShaderVisibilityToD3D12ShaderVisibility( SHADER_VISIBILITY vis );
+            D3D12_DESCRIPTOR_RANGE_TYPE MapBigosBindingTypeToD3D12DescriptorRangeType( BINDING_TYPE type );
 
         } // namespace Backend
     }     // namespace Driver

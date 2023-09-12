@@ -704,6 +704,9 @@ namespace BIGOS
             };
             using ResourceUsageFlags = uint32_t;
 
+            using ResourceViewUsageFlagBits = ResourceUsageFlagBits;
+            using ResourceViewUsageFlags    = uint32_t;
+
             enum class ResourceSharingModes : uint8_t
             {
                 EXCLUSIVE_ACCESS,
@@ -769,6 +772,157 @@ namespace BIGOS
                     BufferRangeDesc  bufferRange;
                 };
                 ResourceHandle hResource;
+            };
+
+            struct ResourceViewDesc
+            {
+                ResourceHandle         hResource;
+                ResourceViewUsageFlags usage;
+            };
+
+            struct BufferViewDesc : public ResourceViewDesc
+            {
+                BufferRangeDesc range;
+            };
+
+            enum class TextureTypes : uint8_t
+            {
+                TEXTURE_1D,
+                TEXTURE_1D_ARRAY,
+                TEXTURE_2D,
+                TEXTURE_2D_ARRAY,
+                TEXTURE_3D,
+                TEXURTE_CUBE,
+                TEXURTE_CUBE_ARRAY,
+                _MAX_ENUM,
+            };
+            using TEXTURE_TYPE = TextureTypes;
+
+            struct TextureViewDesc : public ResourceViewDesc
+            {
+                TextureRangeDesc range;
+                FORMAT           format;
+                TEXTURE_TYPE     type;
+            };
+
+            struct Color
+            {
+                float r;
+                float g;
+                float b;
+                float a;
+            };
+
+            enum class FilterTypes : uint8_t
+            {
+                NEAREST,
+                LINEAR,
+                _MAX_ENUM,
+            };
+            using FILTER_TYPE = FilterTypes;
+
+            enum class TextureAddressModes : uint8_t
+            {
+                REPEAT,
+                MIRRORED_REPEAT,
+                MIRRORED_ONCE,
+                CLAMP_TO_EDGE,
+                CLAMP_TO_BORDER,
+                _MAX_ENUM,
+            };
+            using TEXTURE_ADDRESS_MODE = TextureAddressModes;
+
+            enum class SamplerReductionModes : uint8_t
+            {
+                WEIGHTED_AVERAGE,
+                MIN,
+                MAX,
+                _MAX_ENUM,
+            };
+            using SAMPLER_REDUCTION_MODE = SamplerReductionModes;
+
+            struct SamplerDesc
+            {
+                Color                  borderColor;
+                float                  mipLodBias;
+                float                  maxAnisotropy;
+                float                  minLod;
+                float                  maxLod;
+                bool_t                 anisotropyEnable;
+                bool_t                 compareEnable;
+                FILTER_TYPE            minFilter;
+                FILTER_TYPE            magFilter;
+                FILTER_TYPE            mipMapFilter;
+                TEXTURE_ADDRESS_MODE   addressU;
+                TEXTURE_ADDRESS_MODE   addressV;
+                TEXTURE_ADDRESS_MODE   addressW;
+                COMPARE_OPERATION_TYPE compareOperation;
+                SAMPLER_REDUCTION_MODE reductionMode;
+            };
+
+            enum class BindingTypes : uint8_t
+            {
+                SAMPLER,
+                // TODO: Support Combined image sampler?
+                SAMPLED_TEXTURE,
+                STORAGE_TEXTURE,
+                CONSTANT_TEXEL_BUFFER,
+                STORAGE_TEXEL_BUFFER,
+                CONSTANT_BUFFER,
+                READ_ONLY_STORAGE_BUFFER,
+                READ_WRITE_STORAGE_BUFFER,
+                _MAX_ENUM,
+            };
+            using BINDING_TYPE = BindingTypes;
+
+            enum class ShaderVisibilities : uint8_t
+            {
+                VERTEX,
+                PIXEL,
+                GEOMETRY,
+                HULL,
+                DOMAIN,
+                COMPUTE,
+                AMPLIFICATION,
+                MESH,
+                ALL_GRAPHICS,
+                ALL,
+                _MAX_ENUM,
+            };
+            using SHADER_VISIBILITY = ShaderVisibilities;
+
+            struct ImmutableSamplerInfo
+            {
+                const SamplerHandle* phSamplers;
+                SHADER_VISIBILITY    visibility;
+            };
+
+            struct BindingRangeDesc
+            {
+                ImmutableSamplerInfo immutableSampler; // Only valid for binding type SAMPLER
+                uint32_t             bindingCount;
+                uint32_t             baseBindingSlot;
+                uint32_t             baseShaderRegister;
+                BINDING_TYPE         type;
+            };
+
+            struct BindingHeapLayoutDesc
+            {
+                const BindingRangeDesc* pBindingRanges;
+                uint32_t                bindingRangeCount;
+                SHADER_VISIBILITY       visibility;
+            };
+
+            struct BindingHeapDesc
+            {
+            };
+
+            struct CopyBindingDesc
+            {
+            };
+
+            struct SetBindingDesc
+            {
             };
 
         } // namespace Backend

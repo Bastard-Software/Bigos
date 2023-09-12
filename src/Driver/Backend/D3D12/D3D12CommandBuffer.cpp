@@ -173,6 +173,17 @@ namespace BIGOS
                 type;
             }
 
+            void D3D12CommandBuffer::SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap )
+            {
+                hShaderResourceHeap;
+                hSamplerHeap;
+            }
+
+            void D3D12CommandBuffer::SetBinding( const SetBindingDesc& desc )
+            {
+                desc;
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

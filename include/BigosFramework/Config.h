@@ -11,12 +11,12 @@ namespace BIGOS
             namespace Adapter
             {
                 constexpr uint32_t MAX_DESCRIPTION_TEXT_LENGHT = 256U;
-            }
+            } // namespace Adapter
 
             namespace Swapchain
             {
                 constexpr uint32_t MAX_BACK_BUFFER_COUNT = 16U;
-            }
+            } // namespace Swapchain
 
             namespace Synchronization
             {
@@ -29,6 +29,12 @@ namespace BIGOS
                 constexpr uint32_t MAX_SHADER_ENTRY_POINT_NAME_LENGHT = 32U;
                 constexpr uint32_t MAX_SHADER_COMPILER_ARGUMENT_COUNT = 32U;
             } // namespace Shader
+
+            namespace Binding
+            {
+                constexpr uint32_t MAX_BINDING_RANGE_COUNT     = 64U;
+                constexpr uint32_t MAX_IMMUTABLE_SAMPLER_COUNT = 16U;
+            } // namespace Binding
 
             namespace Pipeline
             {

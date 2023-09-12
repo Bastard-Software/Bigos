@@ -70,6 +70,17 @@ namespace BIGOS
                 virtual RESULT MapResource( const MapResourceDesc& desc, void** ppResource ) override;
                 virtual RESULT UnmapResource( const MapResourceDesc& desc ) override;
 
+                virtual RESULT CreateResourceView( const ResourceViewDesc& desc, ResourceViewHandle* pHandle ) override;
+                virtual void   DestroyResourceView( ResourceViewHandle* pHandle ) override;
+                virtual RESULT CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle ) override;
+                virtual void   DestroySampler( SamplerHandle* pHandle ) override;
+
+                virtual RESULT CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle ) override;
+                virtual void   DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle ) override;
+                virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle ) override;
+                virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle ) override;
+                virtual void   CopyBinding( const CopyBindingDesc& desc ) override;
+
                 // Funcions needed for Vulkan backend
             public:
                 RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );
