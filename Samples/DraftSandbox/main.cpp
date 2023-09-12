@@ -21,7 +21,7 @@ const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
 
 int main()
 {
@@ -291,6 +291,80 @@ int main()
         return -1;
     }
 
+    BIGOS::Driver::Backend::SamplerHandle hSampler;
+    BIGOS::Driver::Backend::SamplerDesc   samplerDesc;
+    samplerDesc.minFilter        = BIGOS::Driver::Backend::FilterTypes::LINEAR;
+    samplerDesc.magFilter        = BIGOS::Driver::Backend::FilterTypes::LINEAR;
+    samplerDesc.mipMapFilter     = BIGOS::Driver::Backend::FilterTypes::LINEAR;
+    samplerDesc.addressU         = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
+    samplerDesc.addressV         = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
+    samplerDesc.addressW         = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
+    samplerDesc.anisotropyEnable = BIGOS::BGS_FALSE;
+    samplerDesc.compareEnable    = BIGOS::BGS_FALSE;
+    samplerDesc.compareOperation = BIGOS::Driver::Backend::CompareOperationTypes::NEVER;
+    samplerDesc.reductionMode    = BIGOS::Driver::Backend::SamplerReductionModes::WEIGHTED_AVERAGE;
+    samplerDesc.minLod           = 0;
+    samplerDesc.maxLod           = 0;
+    samplerDesc.mipLodBias       = 0;
+    samplerDesc.borderColor.r    = 1.0f;
+    samplerDesc.borderColor.g    = 1.0f;
+    samplerDesc.borderColor.b    = 1.0f;
+    samplerDesc.borderColor.a    = 1.0f;
+
+    if( BGS_FAILED( pAPIDevice->CreateSampler( samplerDesc, &hSampler ) ) )
+    {
+        return -1;
+    }
+
+    // Bindings
+    BIGOS::Driver::Backend::BindingRangeDesc immutableSamplerRange;
+    immutableSamplerRange.type                        = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
+    immutableSamplerRange.baseShaderRegister          = 0;
+    immutableSamplerRange.baseBindingSlot             = 0;
+    immutableSamplerRange.bindingCount                = 1;
+    immutableSamplerRange.immutableSampler.phSamplers = &hSampler;
+    immutableSamplerRange.immutableSampler.visibility = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
+
+    BIGOS::Driver::Backend::BindingRangeDesc samplerRange;
+    samplerRange.type                        = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
+    samplerRange.baseShaderRegister          = 1;
+    samplerRange.baseBindingSlot             = 1;
+    samplerRange.bindingCount                = 2;
+    samplerRange.immutableSampler.phSamplers = nullptr;
+
+    BIGOS::Driver::Backend::BindingRangeDesc cbRange;
+    cbRange.type                        = BIGOS::Driver::Backend::BindingTypes::CONSTANT_BUFFER;
+    cbRange.baseShaderRegister          = 0;
+    cbRange.baseBindingSlot             = 4;
+    cbRange.bindingCount                = 2;
+    cbRange.immutableSampler.phSamplers = nullptr;
+
+    BIGOS::Driver::Backend::BindingRangeDesc texRange;
+    texRange.type                        = BIGOS::Driver::Backend::BindingTypes::SAMPLED_TEXTURE;
+    texRange.baseShaderRegister          = 0;
+    texRange.baseBindingSlot             = 6;
+    texRange.bindingCount                = 2;
+    texRange.immutableSampler.phSamplers = nullptr;
+
+    BIGOS::Driver::Backend::BindingRangeDesc sbRange;
+    sbRange.type                        = BIGOS::Driver::Backend::BindingTypes::READ_WRITE_STORAGE_BUFFER;
+    sbRange.baseShaderRegister          = 0;
+    sbRange.baseBindingSlot             = 8;
+    sbRange.bindingCount                = 2;
+    sbRange.immutableSampler.phSamplers = nullptr;
+
+    BIGOS::Driver::Backend::BindingRangeDesc ranges[] = { immutableSamplerRange, samplerRange, cbRange, texRange, sbRange };
+
+    BIGOS::Driver::Backend::BindingHeapLayoutHandle hBindingLayout;
+    BIGOS::Driver::Backend::BindingHeapLayoutDesc   bindingLayoutDesc;
+    bindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
+    bindingLayoutDesc.bindingRangeCount = 5;
+    bindingLayoutDesc.pBindingRanges    = ranges;
+    if( BGS_FAILED( pAPIDevice->CreateBindingHeapLayout( bindingLayoutDesc, &hBindingLayout ) ) )
+    {
+        return -1;
+    }
+
     // TODO: Close into loop
     if( BGS_FAILED( pAPIDevice->ResetCommandPool( hCmdPool ) ) )
     {
@@ -345,6 +419,8 @@ int main()
     compiler->DestroyOutput( &pVSBlob );
     compiler->DestroyOutput( &pPSBlob );
 
+    pAPIDevice->DestroySampler( &hSampler );
+    pAPIDevice->DestroyBindingHeapLayout( &hBindingLayout );
     pAPIDevice->DestroySwapchain( &pSwapchain );
     pAPIDevice->DestroyResource( &hVB );
     pAPIDevice->FreeMemory( &hBufferMem );

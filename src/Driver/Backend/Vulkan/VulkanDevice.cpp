@@ -12,8 +12,8 @@
 #include "VulkanFactory.h"
 #include "VulkanMemory.h"
 #include "VulkanQueue.h"
-#include "VulkanSwapchain.h"
 #include "VulkanResource.h"
+#include "VulkanSwapchain.h"
 
 namespace BIGOS
 {
@@ -30,6 +30,7 @@ namespace BIGOS
                     , m_dev11Features()
                     , m_dev12Features()
                     , m_dev13Features()
+                    , m_customBorderColorFeatures()
                     , m_extensions()
                     , m_pNext( nullptr )
                 {
@@ -45,21 +46,27 @@ namespace BIGOS
                     m_dev11Features.pNext = &m_dev12Features;
 
                     // Vulkan 1.2 features
-                    m_dev12Features.sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-                    m_dev12Features.pNext             = &m_dev13Features;
-                    m_dev12Features.drawIndirectCount = VK_TRUE;
-                    // m_dev12Features.samplerMirrorClampToEdge = VK_TRUE;
-                    m_dev12Features.timelineSemaphore = VK_TRUE; // Crucial for synchronization
+                    m_dev12Features.sType                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                    m_dev12Features.pNext                    = &m_dev13Features;
+                    m_dev12Features.drawIndirectCount        = VK_TRUE;
+                    m_dev12Features.samplerMirrorClampToEdge = VK_TRUE;
+                    m_dev12Features.timelineSemaphore        = VK_TRUE; // Crucial for synchronization
 
                     // Vulkan 1.3 features
-                    m_dev13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-                    // m_dev13Features.pNext = next p chain
+                    m_dev13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                    m_dev13Features.pNext            = &m_customBorderColorFeatures;
                     m_dev13Features.synchronization2 = VK_TRUE; // Crucial for synchronization
+
+                    // Custom border color features
+                    m_customBorderColorFeatures.sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
+                    m_customBorderColorFeatures.pNext                          = nullptr;
+                    m_customBorderColorFeatures.customBorderColors             = VK_TRUE;
+                    m_customBorderColorFeatures.customBorderColorWithoutFormat = VK_TRUE;
 
                     m_pNext = &m_dev11Features;
 
                     // Extensions
-                    m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+                    m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME };
                     // TODO: Add logic
                 }
 
@@ -73,10 +80,11 @@ namespace BIGOS
             private:
                 DeviceDesc m_devDesc;
 
-                VkPhysicalDeviceFeatures         m_devCoreFeatures;
-                VkPhysicalDeviceVulkan11Features m_dev11Features;
-                VkPhysicalDeviceVulkan12Features m_dev12Features;
-                VkPhysicalDeviceVulkan13Features m_dev13Features;
+                VkPhysicalDeviceFeatures                     m_devCoreFeatures;
+                VkPhysicalDeviceVulkan11Features             m_dev11Features;
+                VkPhysicalDeviceVulkan12Features             m_dev12Features;
+                VkPhysicalDeviceVulkan13Features             m_dev13Features;
+                VkPhysicalDeviceCustomBorderColorFeaturesEXT m_customBorderColorFeatures;
 
                 HeapArray<const char*> m_extensions;
 
@@ -870,6 +878,183 @@ namespace BIGOS
                 }
 
                 return Results::OK;
+            }
+
+            RESULT VulkanDevice::CreateResourceView( const ResourceViewDesc& desc, ResourceViewHandle* pHandle )
+            {
+                desc;
+                pHandle;
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyResourceView( ResourceViewHandle* pHandle )
+            {
+                pHandle;
+            }
+
+            RESULT VulkanDevice::CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Sampler (pHandle) must be a valid address." );
+                if( ( pHandle == nullptr ) ) // TODO: Validation
+                {
+                    return Results::FAIL;
+                }
+
+                VkDevice  nativeDevice  = m_handle.GetNativeHandle();
+                VkSampler nativeSampler = VK_NULL_HANDLE;
+
+                VkSamplerReductionModeCreateInfo reductionModeInfo;
+                reductionModeInfo.sType         = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+                reductionModeInfo.pNext         = nullptr;
+                reductionModeInfo.reductionMode = MapBigosSamplerReductionModeToVulkanSamplerReductionMode( desc.reductionMode );
+
+                VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo;
+                borderColorInfo.sType                          = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
+                borderColorInfo.pNext                          = &reductionModeInfo;
+                borderColorInfo.format                         = VK_FORMAT_UNDEFINED;
+                borderColorInfo.customBorderColor.float32[ 0 ] = desc.borderColor.r;
+                borderColorInfo.customBorderColor.float32[ 1 ] = desc.borderColor.g;
+                borderColorInfo.customBorderColor.float32[ 2 ] = desc.borderColor.b;
+                borderColorInfo.customBorderColor.float32[ 3 ] = desc.borderColor.a;
+
+                VkSamplerCreateInfo samplerInfo;
+                samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+                samplerInfo.pNext                   = &borderColorInfo;
+                samplerInfo.flags                   = 0;
+                samplerInfo.minFilter               = MapBigosFilterTypeToVulkanFilterType( desc.minFilter );
+                samplerInfo.magFilter               = MapBigosFilterTypeToVulkanFilterType( desc.magFilter );
+                samplerInfo.mipmapMode              = MapBigosFilterTypeToVulkanMipMapMode( desc.mipMapFilter );
+                samplerInfo.addressModeU            = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressU );
+                samplerInfo.addressModeV            = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressV );
+                samplerInfo.addressModeW            = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressW );
+                samplerInfo.anisotropyEnable        = desc.anisotropyEnable;
+                samplerInfo.maxAnisotropy           = desc.maxAnisotropy;
+                samplerInfo.compareEnable           = desc.compareEnable;
+                samplerInfo.compareOp               = MapBigosCompareOperationTypeToVulkanCompareOp( desc.compareOperation );
+                samplerInfo.minLod                  = desc.minLod;
+                samplerInfo.maxLod                  = desc.maxLod;
+                samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
+                samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+                if( vkCreateSampler( nativeDevice, &samplerInfo, nullptr, &nativeSampler ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = SamplerHandle( nativeSampler );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroySampler( SamplerHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Sampler (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != SamplerHandle(), "Sampler (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != SamplerHandle() ) )
+                {
+                    VkDevice  nativeDevice  = m_handle.GetNativeHandle();
+                    VkSampler nativeSampler = pHandle->GetNativeHandle();
+
+                    vkDestroySampler( nativeDevice, nativeSampler, nullptr );
+
+                    *pHandle = SamplerHandle();
+                }
+            }
+
+            RESULT VulkanDevice::CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.bindingRangeCount <= Config::Driver::Binding::MAX_BINDING_RANGE_COUNT,
+                            "Binding count (desc.bindingCount) must be less than %d", Config::Driver::Binding::MAX_BINDING_RANGE_COUNT );
+                if( ( pHandle == nullptr ) || ( desc.bindingRangeCount > Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ) )
+                {
+                    return Results::FAIL;
+                }
+
+                uint32_t                     immutableSamplerCnt = 0;
+                VkDevice                     nativeDevice        = m_handle.GetNativeHandle();
+                VkDescriptorSetLayout        nativeLayout        = VK_NULL_HANDLE;
+                VkDescriptorSetLayoutBinding layoutBindings[ Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ];
+                VkSampler                    immutableSamplerRanges[ Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ]
+                                                [ Config::Driver::Binding::MAX_IMMUTABLE_SAMPLER_COUNT ];
+                for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
+                {
+                    const BindingRangeDesc&       currDesc    = desc.pBindingRanges[ ndx ];
+                    VkDescriptorSetLayoutBinding& currBinding = layoutBindings[ ndx ];
+
+                    currBinding.descriptorCount = currDesc.bindingCount;
+                    currBinding.binding         = currDesc.baseBindingSlot;
+                    currBinding.descriptorType  = MapBigosBindingTypeToVulkanDescriptorType( currDesc.type );
+                    if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers != nullptr ) )
+                    {
+                        // Creating immutable samplers
+                        for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
+                        {
+                            immutableSamplerRanges[ ndx ][ ndy ] = currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle();
+                        }
+
+                        currBinding.pImmutableSamplers = immutableSamplerRanges[ ndx ];
+                        currBinding.stageFlags         = MapBigosShaderVisibilityToVulkanShaderStageFlags( currDesc.immutableSampler.visibility );
+                        immutableSamplerCnt += currDesc.bindingCount;
+                        if( immutableSamplerCnt > Config::Driver::Binding::MAX_IMMUTABLE_SAMPLER_COUNT )
+                        {
+                            return Results::FAIL;
+                        }
+                    }
+                    else
+                    {
+                        currBinding.pImmutableSamplers = nullptr;
+                        currBinding.stageFlags         = MapBigosShaderVisibilityToVulkanShaderStageFlags( desc.visibility );
+                    }
+                }
+
+                VkDescriptorSetLayoutCreateInfo layoutInfo;
+                layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                layoutInfo.flags        = 0;
+                layoutInfo.pNext        = nullptr;
+                layoutInfo.pBindings    = layoutBindings;
+                layoutInfo.bindingCount = desc.bindingRangeCount;
+
+                if( vkCreateDescriptorSetLayout( nativeDevice, &layoutInfo, nullptr, &nativeLayout ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = BindingHeapLayoutHandle( nativeLayout );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != BindingHeapLayoutHandle(), "Binding heap layout (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != BindingHeapLayoutHandle() ) )
+                {
+                    VkDevice              nativeDevice = m_handle.GetNativeHandle();
+                    VkDescriptorSetLayout nativeLayout = pHandle->GetNativeHandle();
+
+                    vkDestroyDescriptorSetLayout( nativeDevice, nativeLayout, nullptr );
+
+                    *pHandle = BindingHeapLayoutHandle();
+                }
+            }
+
+            RESULT VulkanDevice::CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )
+            {
+                desc;
+                pHandle;
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyBindingHeap( BindingHeapHandle* pHandle )
+            {
+                pHandle;
+            }
+
+            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
+            {
+                desc;
             }
 
             RESULT VulkanDevice::Create( const DeviceDesc& desc, VulkanFactory* pFactory )

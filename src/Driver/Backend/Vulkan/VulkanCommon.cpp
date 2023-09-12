@@ -426,6 +426,84 @@ namespace BIGOS
                 return nativeFlags;
             }
 
+            VkSamplerReductionMode MapBigosSamplerReductionModeToVulkanSamplerReductionMode( SAMPLER_REDUCTION_MODE mode )
+            {
+                static const VkSamplerReductionMode translateTable[ BGS_ENUM_COUNT( SamplerReductionModes ) ] = {
+                    VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE, // WEIGHTED_AVERAGE
+                    VK_SAMPLER_REDUCTION_MODE_MIN,              // MIN
+                    VK_SAMPLER_REDUCTION_MODE_MAX,              // MAX
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( mode ) ];
+            }
+
+            VkFilter MapBigosFilterTypeToVulkanFilterType( FILTER_TYPE type )
+            {
+                static const VkFilter translateTable[ BGS_ENUM_COUNT( FilterTypes ) ] = {
+                    VK_FILTER_NEAREST, // NEAREST
+                    VK_FILTER_LINEAR,  // LINEAR
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            VkSamplerMipmapMode MapBigosFilterTypeToVulkanMipMapMode( FILTER_TYPE type )
+            {
+                static const VkSamplerMipmapMode translateTable[ BGS_ENUM_COUNT( FilterTypes ) ] = {
+                    VK_SAMPLER_MIPMAP_MODE_NEAREST, // NEAREST
+                    VK_SAMPLER_MIPMAP_MODE_LINEAR,  // LINEAR
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            VkSamplerAddressMode MapBigosTextureAddressModeToVultakSamplerAddressMode( TEXTURE_ADDRESS_MODE mode )
+            {
+                static const VkSamplerAddressMode translateTable[ BGS_ENUM_COUNT( TextureAddressModes ) ] = {
+                    VK_SAMPLER_ADDRESS_MODE_REPEAT,               // REPEAT
+                    VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,      // MIRRORED_REPEAT
+                    VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE, // MIRRORED_ONCE
+                    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,        // CLAMP_TO_EDGE
+                    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,      // CLAMP_TO_BORDER
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( mode ) ];
+            }
+
+            VkDescriptorType MapBigosBindingTypeToVulkanDescriptorType( BINDING_TYPE type )
+            {
+                static const VkDescriptorType translateTable[ BGS_ENUM_COUNT( BindingTypes ) ] = {
+                    VK_DESCRIPTOR_TYPE_SAMPLER,              // SAMPLER
+                    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        // SAMPLED_TEXTURE
+                    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        // STORAGE_TEXTURE
+                    VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, // CONSTANT_TEXEL_BUFFER
+                    VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, // STORAGE_TEXEL_BUFFER
+                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,       // CONSTANT_BUFFER
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       // READ_ONLY_STORAGE_BUFFER
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       // READ_WRITE_STORAGE_BUFFER
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            VkShaderStageFlags MapBigosShaderVisibilityToVulkanShaderStageFlags( SHADER_VISIBILITY vis )
+            {
+                static const uint32_t translateTable[ BGS_ENUM_COUNT( ShaderVisibilities ) ] = {
+                    VK_SHADER_STAGE_VERTEX_BIT,                  // VERTEX
+                    VK_SHADER_STAGE_FRAGMENT_BIT,                // PIXEL
+                    VK_SHADER_STAGE_GEOMETRY_BIT,                // GEOMETRY
+                    VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,    // HULL
+                    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, // DOMAIN
+                    VK_SHADER_STAGE_COMPUTE_BIT,                 // COMPUTE
+                    VK_SHADER_STAGE_ALL_GRAPHICS,                // AMPLIFICATION
+                    VK_SHADER_STAGE_ALL_GRAPHICS,                // MESH
+                    VK_SHADER_STAGE_ALL_GRAPHICS,                // ALL_GRAPHICS
+                    VK_SHADER_STAGE_ALL,                         // ALL
+                };
+
+                return static_cast<VkShaderStageFlags>( translateTable[ BGS_ENUM_INDEX( vis ) ] );
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

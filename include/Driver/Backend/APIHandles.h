@@ -17,4 +17,8 @@ namespace BIGOS::Driver::Backend
     BGS_DECLARE_HANDLE( Semaphore );
     BGS_DECLARE_HANDLE( Memory );
     BGS_DECLARE_HANDLE( Resource );
+    BGS_DECLARE_HANDLE( ResourceView );
+    BGS_DECLARE_HANDLE( Sampler );
+    BGS_DECLARE_HANDLE( BindingHeapLayout );
+    BGS_DECLARE_HANDLE( BindingHeap );
 } // namespace BIGOS::Driver::Backend

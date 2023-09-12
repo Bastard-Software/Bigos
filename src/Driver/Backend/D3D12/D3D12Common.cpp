@@ -356,6 +356,97 @@ namespace BIGOS
                 return flags & static_cast<uint32_t>( TextureComponentFlagBits::STENCIL ) ? 1 : 0;
             }
 
+            D3D12_FILTER MapBigosFiltesToD3D12Filter( FILTER_TYPE min, FILTER_TYPE mag, FILTER_TYPE mip, SAMPLER_REDUCTION_MODE mode,
+                                                      bool_t anisotropy, bool_t compare )
+            {
+                uint32_t nativeFilter = 0;
+
+                if( mip == FilterTypes::LINEAR )
+                {
+                    SET_BIT( nativeFilter, 0 );
+                }
+                if( mag == FilterTypes::LINEAR )
+                {
+                    SET_BIT( nativeFilter, 2 );
+                }
+                if( min == FilterTypes::LINEAR )
+                {
+                    SET_BIT( nativeFilter, 4 );
+                }
+                if( anisotropy )
+                {
+                    SET_BIT( nativeFilter, 0 );
+                    SET_BIT( nativeFilter, 2 );
+                    SET_BIT( nativeFilter, 4 );
+                    SET_BIT( nativeFilter, 6 );
+                }
+                if( compare )
+                {
+                    SET_BIT( nativeFilter, 7 );
+                }
+                if( mode == SamplerReductionModes::MIN )
+                {
+                    SET_BIT( nativeFilter, 8 );
+                    // If compare is true and mode == SamplerReductionModes::MIN, we would get the same state as mode == SamplerReductionModes::MAX.
+                    // Thats why we need to clear 7th BIT
+                    CLEAR_BIT( nativeFilter, 7 );
+                }
+                if( mode == SamplerReductionModes::MAX )
+                {
+                    SET_BIT( nativeFilter, 7 );
+                    SET_BIT( nativeFilter, 8 );
+                }
+
+                return static_cast<D3D12_FILTER>( nativeFilter );
+            }
+
+            D3D12_TEXTURE_ADDRESS_MODE MapBigosTextureAddressModeToD3D12TextureAddressMode( TEXTURE_ADDRESS_MODE mode )
+            {
+                static const D3D12_TEXTURE_ADDRESS_MODE translateTable[ BGS_ENUM_COUNT( TextureAddressModes ) ] = {
+                    D3D12_TEXTURE_ADDRESS_MODE_WRAP,        // REPEAT
+                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR,      // MIRRORED_REPEAT
+                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE, // MIRRORED_ONCE
+                    D3D12_TEXTURE_ADDRESS_MODE_CLAMP,       // CLAMP_TO_EDGE
+                    D3D12_TEXTURE_ADDRESS_MODE_BORDER,      // CLAMP_TO_BORDER
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( mode ) ];
+            }
+
+            D3D12_SHADER_VISIBILITY MapBigosShaderVisibilityToD3D12ShaderVisibility( SHADER_VISIBILITY vis )
+            {
+                static const D3D12_SHADER_VISIBILITY translateTable[ BGS_ENUM_COUNT( ShaderVisibilities ) ] = {
+                    D3D12_SHADER_VISIBILITY_VERTEX,        // VERTEX
+                    D3D12_SHADER_VISIBILITY_PIXEL,         // PIXEL
+                    D3D12_SHADER_VISIBILITY_GEOMETRY,      // GEOMETRY
+                    D3D12_SHADER_VISIBILITY_HULL,          // HULL
+                    D3D12_SHADER_VISIBILITY_DOMAIN,        // DOMAIN
+                    D3D12_SHADER_VISIBILITY_ALL,           // COMPUTE
+                    D3D12_SHADER_VISIBILITY_AMPLIFICATION, // AMPLIFICATION
+                    D3D12_SHADER_VISIBILITY_MESH,          // MESH
+                    D3D12_SHADER_VISIBILITY_ALL,           // ALL_GRAPHICS
+                    D3D12_SHADER_VISIBILITY_ALL,           // ALL
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( vis ) ];
+            }
+
+            D3D12_DESCRIPTOR_RANGE_TYPE MapBigosBindingTypeToD3D12DescriptorRangeType( BINDING_TYPE type )
+            {
+                static const D3D12_DESCRIPTOR_RANGE_TYPE translateTable[ BGS_ENUM_COUNT( BindingTypes ) ] = {
+                    D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, // SAMPLER
+                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // SAMPLED_TEXTURE
+                    D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // STORAGE_TEXTURE
+                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // CONSTANT_TEXEL_BUFFER
+                    D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // STORAGE_TEXEL_BUFFER
+                    D3D12_DESCRIPTOR_RANGE_TYPE_CBV,     // CONSTANT_BUFFER
+                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // READ_ONLY_STORAGE_BUFFER
+                    D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // READ_WRITE_STORAGE_BUFFER
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

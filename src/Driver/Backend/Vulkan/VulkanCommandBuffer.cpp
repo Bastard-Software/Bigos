@@ -178,6 +178,17 @@ namespace BIGOS
                 type;
             }
 
+            void VulkanCommandBuffer::SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap )
+            {
+                hShaderResourceHeap;
+                hSamplerHeap;
+            }
+
+            void VulkanCommandBuffer::SetBinding( const SetBindingDesc& desc )
+            {
+                desc;
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

@@ -5,6 +5,7 @@
 #include "BigosFramework/Config.h"
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
+#include "D3D12BindingHeapLayout.h"
 #include "D3D12CommandBuffer.h"
 #include "D3D12Common.h"
 #include "D3D12Factory.h"
@@ -210,7 +211,7 @@ namespace BIGOS
                 byte_t*            pMem          = nullptr;
                 if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pMem, allocSize ) ) )
                 {
-                    return Results::FAIL;
+                    return Results::NO_MEMORY;
                 }
 
                 pNativeShader            = reinterpret_cast<D3D12ShaderModule*>( pMem );
@@ -631,6 +632,193 @@ namespace BIGOS
                 pNativeResource->Unmap( subResNdx, pResRange );
 
                 return Results::OK;
+            }
+
+            RESULT D3D12Device::CreateResourceView( const ResourceViewDesc& desc, ResourceViewHandle* pHandle )
+            {
+                desc;
+                pHandle;
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyResourceView( ResourceViewHandle* pHandle )
+            {
+                pHandle;
+            }
+
+            RESULT D3D12Device::CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Sampler (pHandle) must be a valid address." );
+                if( ( pHandle == nullptr ) ) // TODO: Validation
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12_SAMPLER_DESC* pSampler = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pSampler ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                pSampler->Filter           = MapBigosFiltesToD3D12Filter( desc.minFilter, desc.magFilter, desc.mipMapFilter, desc.reductionMode,
+                                                                          desc.anisotropyEnable, desc.compareEnable );
+                pSampler->AddressU         = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressU );
+                pSampler->AddressV         = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressV );
+                pSampler->AddressW         = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressW );
+                pSampler->MaxAnisotropy    = desc.anisotropyEnable == BGS_FALSE ? 1 : static_cast<UINT>( desc.maxAnisotropy );
+                pSampler->MipLODBias       = desc.mipLodBias;
+                pSampler->MinLOD           = desc.minLod;
+                pSampler->MaxLOD           = desc.maxLod;
+                pSampler->ComparisonFunc   = MapBigosCompareOperationTypeToD3D12ComparsionFunc( desc.compareOperation );
+                pSampler->BorderColor[ 0 ] = desc.borderColor.r;
+                pSampler->BorderColor[ 1 ] = desc.borderColor.g;
+                pSampler->BorderColor[ 2 ] = desc.borderColor.b;
+                pSampler->BorderColor[ 3 ] = desc.borderColor.a;
+
+                *pHandle = SamplerHandle( pSampler );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroySampler( SamplerHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Sampler (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != SamplerHandle(), "Sampler (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != SamplerHandle() ) )
+                {
+                    D3D12_SAMPLER_DESC* pNativeSampler = pHandle->GetNativeHandle();
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeSampler );
+
+                    *pHandle = SamplerHandle();
+                }
+            }
+
+            RESULT D3D12Device::CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.bindingRangeCount <= Config::Driver::Binding::MAX_BINDING_RANGE_COUNT,
+                            "Binding count (desc.bindingCount) must be less than %d", Config::Driver::Binding::MAX_BINDING_RANGE_COUNT );
+                if( ( pHandle == nullptr ) || ( desc.bindingRangeCount > Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ) )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12BindingHeapLayout* pLayout                  = nullptr;
+                byte_t*                 pMem                     = nullptr;
+                uint32_t                immutableSamplerCnt      = 0;
+                uint32_t                immutableSamplerRangeCnt = 0;
+
+                // Calculating size of needed memory allocation
+                uint32_t allocSize = 0;
+                // Memory for immutable samplers
+                for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
+                {
+                    const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
+                    if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers != nullptr ) )
+                    {
+                        allocSize += currDesc.bindingCount * sizeof( D3D12ImmutableSampler );
+                        immutableSamplerCnt += currDesc.bindingCount;
+                        ++immutableSamplerRangeCnt;
+                    }
+                }
+                // Crash if we have to much immutable samplers
+                if( immutableSamplerCnt > Config::Driver::Binding::MAX_IMMUTABLE_SAMPLER_COUNT )
+                {
+                    return Results::FAIL;
+                }
+                // Memory for descriptor ranges ( we need to subtract those used as static samplers )
+                const uint32_t shaderResRangeCnt = desc.bindingRangeCount - immutableSamplerRangeCnt;
+                allocSize += shaderResRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                // Memory for binding set layout emulation
+                allocSize += sizeof( D3D12BindingHeapLayout );
+
+                if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pMem, allocSize ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                // We want pLayout at the start of the mem block to free it easily
+                pLayout = reinterpret_cast<D3D12BindingHeapLayout*>( pMem );
+                pMem += sizeof( D3D12BindingHeapLayout );
+
+                // Filling in immutable samplers
+                D3D12ImmutableSampler* pSamplers = reinterpret_cast<D3D12ImmutableSampler*>( pMem );
+                pMem += immutableSamplerCnt * sizeof( D3D12ImmutableSampler );
+                uint32_t samplerNdx = 0;
+                for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
+                {
+                    const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
+                    if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers != nullptr ) )
+                    {
+                        for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
+                        {
+                            D3D12ImmutableSampler& sampler = pSamplers[ samplerNdx++ ];
+
+                            sampler.pSampler       = currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle();
+                            sampler.visibility     = MapBigosShaderVisibilityToD3D12ShaderVisibility( currDesc.immutableSampler.visibility );
+                            sampler.shaderRegister = currDesc.baseShaderRegister + static_cast<uint32_t>( ndy );
+                        }
+                    }
+                }
+
+                // Filling in descriptor ranges
+                D3D12_DESCRIPTOR_RANGE1* pRanges = reinterpret_cast<D3D12_DESCRIPTOR_RANGE1*>( pMem );
+                pMem += shaderResRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                uint32_t rangeNdx = 0;
+                for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
+                {
+                    const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
+                    if( currDesc.immutableSampler.phSamplers == nullptr )
+                    {
+                        D3D12_DESCRIPTOR_RANGE1& range          = pRanges[ rangeNdx++ ];
+                        range.BaseShaderRegister                = currDesc.baseShaderRegister;
+                        range.RegisterSpace                     = 0; // TODO: Handle
+                        range.NumDescriptors                    = currDesc.bindingCount;
+                        range.RangeType                         = MapBigosBindingTypeToD3D12DescriptorRangeType( currDesc.type );
+                        range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+                        range.Flags                             = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+                    }
+                }
+
+                // Filling in binding heap layout emulation
+                pLayout->bindingTable.pDescriptorRanges   = pRanges;
+                pLayout->bindingTable.NumDescriptorRanges = shaderResRangeCnt;
+                pLayout->pImmutableSamplers               = pSamplers;
+                pLayout->immutableSamplerCount            = immutableSamplerCnt;
+                pLayout->visibility                       = MapBigosShaderVisibilityToD3D12ShaderVisibility( desc.visibility );
+
+                *pHandle = BindingHeapLayoutHandle( pLayout );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != BindingHeapLayoutHandle(), "Binding heap layout (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != BindingHeapLayoutHandle() ) )
+                {
+                    D3D12BindingHeapLayout* pNativeLayout = pHandle->GetNativeHandle();
+                    Core::Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeLayout );
+
+                    *pHandle = BindingHeapLayoutHandle();
+                }
+            }
+
+            RESULT D3D12Device::CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )
+            {
+                desc;
+                pHandle;
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyBindingHeap( BindingHeapHandle* pHandle )
+            {
+                pHandle;
+            }
+
+            void D3D12Device::CopyBinding( const CopyBindingDesc& desc )
+            {
+                desc;
             }
 
             RESULT D3D12Device::Create( const DeviceDesc& desc, D3D12Factory* pFactory )

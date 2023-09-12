@@ -53,7 +53,7 @@ namespace BIGOS
                 virtual void   DestroyQueue( IQueue** ppQueue )                       = 0;
 
                 virtual RESULT CreateSwapchain( const SwapchainDesc& desc, ISwapchain** ppSwapchain ) = 0;
-                virtual void   DestroySwapchain( ISwapchain** ppSwapchain )                            = 0;
+                virtual void   DestroySwapchain( ISwapchain** ppSwapchain )                           = 0;
 
                 virtual RESULT CreateCommandPool( const CommandPoolDesc& desc, CommandPoolHandle* pHandle ) = 0;
                 virtual void   DestroyCommandPool( CommandPoolHandle* pHandle )                             = 0;
@@ -86,6 +86,17 @@ namespace BIGOS
                 virtual void   GetResourceAllocationInfo( ResourceHandle handle, ResourceAllocationInfo* pInfo ) = 0;
                 virtual RESULT MapResource( const MapResourceDesc& desc, void** ppResource )                     = 0;
                 virtual RESULT UnmapResource( const MapResourceDesc& desc )                                      = 0;
+
+                virtual RESULT CreateResourceView( const ResourceViewDesc& desc, ResourceViewHandle* pHandle ) = 0;
+                virtual void   DestroyResourceView( ResourceViewHandle* pHandle )                              = 0;
+                virtual RESULT CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )                = 0;
+                virtual void   DestroySampler( SamplerHandle* pHandle )                                        = 0;
+
+                virtual RESULT CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle ) = 0;
+                virtual void   DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle )                                   = 0;
+                virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )                   = 0;
+                virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle )                                               = 0;
+                virtual void   CopyBinding( const CopyBindingDesc& desc )                                                     = 0;
 
                 BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
@@ -154,7 +165,9 @@ namespace BIGOS
 
                 virtual void Barrier( uint32_t barrierCount, const BarierDesc* pBarriers ) = 0;
 
-                virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type ) = 0;
+                virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )                                 = 0;
+                virtual void SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap ) = 0;
+                virtual void SetBinding( const SetBindingDesc& desc )                                                 = 0;
 
                 BGS_FORCEINLINE const CommandBufferDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const CommandBufferHandle GetHandle() const { return m_handle; }

@@ -32,6 +32,8 @@ namespace BIGOS
                 virtual void Barrier( uint32_t barrierCount, const BarierDesc* pBarriers ) override;
 
                 virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type ) override;
+                virtual void SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap ) override;
+                virtual void SetBinding( const SetBindingDesc& desc ) override;
 
             protected:
                 RESULT Create( const CommandBufferDesc& desc, VulkanDevice* pDevice );
