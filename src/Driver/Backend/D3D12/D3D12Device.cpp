@@ -5,6 +5,7 @@
 #include "BigosFramework/Config.h"
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
+#include "Core/Utils/String.h"
 #include "D3D12BindingHeapLayout.h"
 #include "D3D12CommandBuffer.h"
 #include "D3D12Common.h"
@@ -237,6 +238,108 @@ namespace BIGOS
                     Core::Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeShader );
 
                     *pHandle = ShaderHandle();
+                }
+            }
+
+            RESULT D3D12Device::CreatePipelineLayout( const PipelineLayoutDesc& desc, PipelineLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Pipeline layout (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.constantRangeCount <= 8, "Push constant range count (desc.constantRangeCount) must be less than %d", 8 );
+                if( desc.constantRangeCount > 8 )
+                {
+                    return Results::FAIL;
+                }
+
+                // TODO: D3D12 feature support helper same as in vulkan
+                D3D12_ROOT_PARAMETER1 rootParameters[ 8 + 1 + 1 ]; // eight for push constant ranges (each for one of shader visibility) one for
+                                                                   // sampler table and one for shader resources
+                const D3D12_STATIC_SAMPLER_DESC* pImmutableSamplers  = nullptr;
+                uint32_t                         immutableSamplerCnt = 0;
+                uint32_t                         rootParamCnt        = 0;
+                if( desc.hBindigHeapLayout != BindingHeapLayoutHandle() )
+                {
+                    const D3D12BindingHeapLayout& resourceLayout      = *desc.hBindigHeapLayout.GetNativeHandle();
+                    D3D12_ROOT_PARAMETER1&        samplerTable        = rootParameters[ rootParamCnt++ ];
+                    D3D12_ROOT_PARAMETER1&        shaderResourceTable = rootParameters[ rootParamCnt++ ];
+
+                    samplerTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+                    samplerTable.DescriptorTable  = resourceLayout.samplerTable;
+                    samplerTable.ShaderVisibility = resourceLayout.visibility;
+
+                    shaderResourceTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+                    shaderResourceTable.DescriptorTable  = resourceLayout.shaderResourceTable;
+                    shaderResourceTable.ShaderVisibility = resourceLayout.visibility;
+
+                    pImmutableSamplers  = resourceLayout.pImmutableSamplers;
+                    immutableSamplerCnt = resourceLayout.immutableSamplerCount;
+                }
+
+                if( ( desc.pConstantRanges != nullptr ) && ( desc.constantRangeCount != 0 ) )
+                {
+                    for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.constantRangeCount; ++ndx )
+                    {
+                        const PushConstantRangeDesc& currRange = desc.pConstantRanges[ ndx ];
+                        D3D12_ROOT_PARAMETER1&       param     = rootParameters[ rootParamCnt++ ];
+
+                        param.ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+                        param.Constants.Num32BitValues = currRange.constantCount;
+                        param.Constants.ShaderRegister = currRange.shaderRegister;
+                        param.Constants.RegisterSpace  = 0; // TODO: Handle
+                        param.ShaderVisibility         = MapBigosShaderVisibilityToD3D12ShaderVisibility( currRange.visibility );
+                    }
+                }
+
+                D3D12_ROOT_SIGNATURE_DESC1 nativeDesc;
+                nativeDesc.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // Mimicking vulkan behaviour
+                nativeDesc.NumParameters     = rootParamCnt;
+                nativeDesc.pParameters       = rootParameters;
+                nativeDesc.NumStaticSamplers = immutableSamplerCnt;
+                nativeDesc.pStaticSamplers   = pImmutableSamplers;
+
+                ID3D12Device*        pNativeDevice        = m_handle.GetNativeHandle();
+                ID3D12RootSignature* pNativeRootSignature = nullptr;
+                ID3DBlob*            pSignature           = nullptr;
+                ID3DBlob*            pError               = nullptr;
+
+                D3D12_VERSIONED_ROOT_SIGNATURE_DESC serializeDesc;
+                serializeDesc.Version  = D3D_ROOT_SIGNATURE_VERSION_1_1;
+                serializeDesc.Desc_1_1 = nativeDesc;
+
+                if( FAILED( D3D12SerializeVersionedRootSignature( &serializeDesc, &pSignature, &pError ) ) )
+                {
+                    char  buffer[ 2048 ];
+                    char* pBuffer = buffer;
+                    Core::Utils::String::Copy( pBuffer, static_cast<size_t>( pError->GetBufferSize() ),
+                                               static_cast<const char*>( pError->GetBufferPointer() ) );
+                    printf( "%s", buffer );
+                    return Results::FAIL;
+                }
+                if( FAILED( pNativeDevice->CreateRootSignature( 0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(),
+                                                                IID_PPV_ARGS( &pNativeRootSignature ) ) ) )
+                {
+                    RELEASE_COM_PTR( pSignature );
+                    RELEASE_COM_PTR( pError );
+                    return Results::FAIL;
+                }
+                RELEASE_COM_PTR( pSignature );
+                RELEASE_COM_PTR( pError );
+
+                *pHandle = PipelineLayoutHandle( pNativeRootSignature );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyPipelineLayout( PipelineLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Pipeline layout (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != PipelineLayoutHandle(), "Pipeline layout (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != PipelineLayoutHandle() ) )
+                {
+                    ID3D12RootSignature* pNativeRootSignature = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeRootSignature );
+
+                    *pHandle = PipelineLayoutHandle();
                 }
             }
 
@@ -715,10 +818,12 @@ namespace BIGOS
                 byte_t*                 pMem                     = nullptr;
                 uint32_t                immutableSamplerCnt      = 0;
                 uint32_t                immutableSamplerRangeCnt = 0;
+                uint32_t                shaderResourceRangeCnt   = 0;
+                uint32_t                samplerRangeCnt          = 0;
 
                 // Calculating size of needed memory allocation
                 uint32_t allocSize = 0;
-                // Memory for immutable samplers
+                // Scanning for binding types
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
                     const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
@@ -728,15 +833,24 @@ namespace BIGOS
                         immutableSamplerCnt += currDesc.bindingCount;
                         ++immutableSamplerRangeCnt;
                     }
+                    else if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers == nullptr ) )
+                    {
+                        samplerRangeCnt++;
+                    }
+                    else // other shader resources
+                    {
+                        shaderResourceRangeCnt++;
+                    }
                 }
                 // Crash if we have to much immutable samplers
                 if( immutableSamplerCnt > Config::Driver::Binding::MAX_IMMUTABLE_SAMPLER_COUNT )
                 {
                     return Results::FAIL;
                 }
-                // Memory for descriptor ranges ( we need to subtract those used as static samplers )
-                const uint32_t shaderResRangeCnt = desc.bindingRangeCount - immutableSamplerRangeCnt;
-                allocSize += shaderResRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                // Memory for samplers
+                allocSize += samplerRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                // Memory for shader resources
+                allocSize += shaderResourceRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
                 // Memory for binding set layout emulation
                 allocSize += sizeof( D3D12BindingHeapLayout );
 
@@ -749,9 +863,9 @@ namespace BIGOS
                 pMem += sizeof( D3D12BindingHeapLayout );
 
                 // Filling in immutable samplers
-                D3D12_STATIC_SAMPLER_DESC* pSamplers = reinterpret_cast<D3D12_STATIC_SAMPLER_DESC*>( pMem );
+                D3D12_STATIC_SAMPLER_DESC* pImmutableSamplers = reinterpret_cast<D3D12_STATIC_SAMPLER_DESC*>( pMem );
                 pMem += immutableSamplerCnt * sizeof( D3D12_STATIC_SAMPLER_DESC );
-                uint32_t samplerNdx = 0;
+                uint32_t immutableSamplerNdx = 0;
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
                     const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
@@ -759,7 +873,7 @@ namespace BIGOS
                     {
                         for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
                         {
-                            D3D12_STATIC_SAMPLER_DESC& immutableSampler = pSamplers[ samplerNdx++ ];
+                            D3D12_STATIC_SAMPLER_DESC& immutableSampler = pImmutableSamplers[ immutableSamplerNdx++ ];
                             const D3D12Sampler&        currSampler      = *currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle();
 
                             immutableSampler.Filter         = currSampler.sampler.Filter;
@@ -780,16 +894,29 @@ namespace BIGOS
                     }
                 }
 
-                // Filling in descriptor ranges
-                D3D12_DESCRIPTOR_RANGE1* pRanges = reinterpret_cast<D3D12_DESCRIPTOR_RANGE1*>( pMem );
-                pMem += shaderResRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
-                uint32_t rangeNdx = 0;
+                // Filling in samplers and shader resources
+                D3D12_DESCRIPTOR_RANGE1* pSamplerRanges = reinterpret_cast<D3D12_DESCRIPTOR_RANGE1*>( pMem );
+                pMem += samplerRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                D3D12_DESCRIPTOR_RANGE1* pShaderResourceRanges = reinterpret_cast<D3D12_DESCRIPTOR_RANGE1*>( pMem );
+                pMem += shaderResourceRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                uint32_t samplerNdx   = 0;
+                uint32_t shaderResNdx = 0;
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
                     const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
-                    if( currDesc.immutableSampler.phSamplers == nullptr )
+                    if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers == nullptr ) )
                     {
-                        D3D12_DESCRIPTOR_RANGE1& range          = pRanges[ rangeNdx++ ];
+                        D3D12_DESCRIPTOR_RANGE1& range          = pSamplerRanges[ samplerNdx++ ];
+                        range.BaseShaderRegister                = currDesc.baseShaderRegister;
+                        range.RegisterSpace                     = 0; // TODO: Handle
+                        range.NumDescriptors                    = currDesc.bindingCount;
+                        range.RangeType                         = MapBigosBindingTypeToD3D12DescriptorRangeType( currDesc.type );
+                        range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+                        range.Flags                             = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+                    }
+                    else if( currDesc.type != BindingTypes::SAMPLER )
+                    {
+                        D3D12_DESCRIPTOR_RANGE1& range          = pShaderResourceRanges[ shaderResNdx++ ];
                         range.BaseShaderRegister                = currDesc.baseShaderRegister;
                         range.RegisterSpace                     = 0; // TODO: Handle
                         range.NumDescriptors                    = currDesc.bindingCount;
@@ -800,11 +927,13 @@ namespace BIGOS
                 }
 
                 // Filling in binding heap layout emulation
-                pLayout->bindingTable.pDescriptorRanges   = pRanges;
-                pLayout->bindingTable.NumDescriptorRanges = shaderResRangeCnt;
-                pLayout->pImmutableSamplers               = pSamplers;
-                pLayout->immutableSamplerCount            = immutableSamplerCnt;
-                pLayout->visibility                       = MapBigosShaderVisibilityToD3D12ShaderVisibility( desc.visibility );
+                pLayout->samplerTable.pDescriptorRanges          = pSamplerRanges;
+                pLayout->samplerTable.NumDescriptorRanges        = samplerRangeCnt;
+                pLayout->shaderResourceTable.pDescriptorRanges   = pShaderResourceRanges;
+                pLayout->shaderResourceTable.NumDescriptorRanges = shaderResourceRangeCnt;
+                pLayout->pImmutableSamplers                      = pImmutableSamplers;
+                pLayout->immutableSamplerCount                   = immutableSamplerCnt;
+                pLayout->visibility                              = MapBigosShaderVisibilityToD3D12ShaderVisibility( desc.visibility );
 
                 *pHandle = BindingHeapLayoutHandle( pLayout );
 

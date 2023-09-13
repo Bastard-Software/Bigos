@@ -507,8 +507,6 @@ namespace BIGOS
                     VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,    // HULL
                     VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, // DOMAIN
                     VK_SHADER_STAGE_COMPUTE_BIT,                 // COMPUTE
-                    VK_SHADER_STAGE_ALL_GRAPHICS,                // AMPLIFICATION
-                    VK_SHADER_STAGE_ALL_GRAPHICS,                // MESH
                     VK_SHADER_STAGE_ALL_GRAPHICS,                // ALL_GRAPHICS
                     VK_SHADER_STAGE_ALL,                         // ALL
                 };

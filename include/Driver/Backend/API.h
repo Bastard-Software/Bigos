@@ -65,6 +65,8 @@ namespace BIGOS
                 virtual RESULT CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle ) = 0;
                 virtual void   DestroyShader( ShaderHandle* pHandle )                        = 0;
 
+                virtual RESULT CreatePipelineLayout( const PipelineLayoutDesc& desc, PipelineLayoutHandle* pHandle ) = 0;
+                virtual void   DestroyPipelineLayout( PipelineLayoutHandle* pHandle )                                = 0;
                 virtual RESULT CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle ) = 0;
                 virtual void   DestroyPipeline( PipelineHandle* pHandle )                          = 0;
 

@@ -359,6 +359,68 @@ namespace BIGOS
                 }
             }
 
+            RESULT VulkanDevice::CreatePipelineLayout( const PipelineLayoutDesc& desc, PipelineLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Pipeline layout (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.constantRangeCount <= 8, "Push constant range count (desc.constantRangeCount) must be less than %d",
+                            Config::Driver::Binding::MAX_PUSH_CONSTANT_RANGE_COUNT );
+                if( desc.constantRangeCount > 8 )
+                {
+                    return Results::FAIL;
+                }
+
+                VkDevice         nativeDevice = m_handle.GetNativeHandle();
+                VkPipelineLayout nativeLayout = VK_NULL_HANDLE;
+
+                VkPushConstantRange   constantRanges[ 8 ]; // each for one of shader visibility
+                VkDescriptorSetLayout nativeSetLayout =
+                    desc.hBindigHeapLayout != BindingHeapLayoutHandle() ? desc.hBindigHeapLayout.GetNativeHandle() : nullptr;
+
+                for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.constantRangeCount; ++ndx )
+                {
+                    const PushConstantRangeDesc& currDesc = desc.pConstantRanges[ ndx ];
+                    VkPushConstantRange&         range    = constantRanges[ ndx ];
+
+                    // Mimicing D3D12 behaviour as constants are 32 bits there
+                    range.offset     = 4 * currDesc.baseConstantSlot;
+                    range.size       = 4 * currDesc.constantCount;
+                    range.stageFlags = MapBigosShaderVisibilityToVulkanShaderStageFlags( currDesc.visibility );
+                }
+
+                VkPipelineLayoutCreateInfo layoutInfo;
+                layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+                layoutInfo.pNext                  = nullptr;
+                layoutInfo.flags                  = 0;
+                layoutInfo.setLayoutCount         = 1;
+                layoutInfo.pSetLayouts            = &nativeSetLayout;
+                layoutInfo.pushConstantRangeCount = desc.constantRangeCount;
+                layoutInfo.pPushConstantRanges    = constantRanges;
+
+                if( vkCreatePipelineLayout( nativeDevice, &layoutInfo, nullptr, &nativeLayout ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = PipelineLayoutHandle( nativeLayout );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyPipelineLayout( PipelineLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Pipeline layout (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != PipelineLayoutHandle(), "Pipeline layout (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != PipelineLayoutHandle() ) )
+                {
+                    VkDevice         nativeDevice = m_handle.GetNativeHandle();
+                    VkPipelineLayout nativeLayout = pHandle->GetNativeHandle();
+
+                    vkDestroyPipelineLayout( nativeDevice, nativeLayout, nullptr );
+
+                    *pHandle = PipelineLayoutHandle();
+                }
+            }
+
             RESULT VulkanDevice::CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );

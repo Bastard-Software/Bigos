@@ -351,14 +351,46 @@ int main()
     sbRange.bindingCount                = 2;
     sbRange.immutableSampler.phSamplers = nullptr;
 
-    BIGOS::Driver::Backend::BindingRangeDesc ranges[] = { immutableSamplerRange, samplerRange, cbRange, texRange, sbRange };
+    BIGOS::Driver::Backend::BindingRangeDesc sTexRange;
+    sTexRange.type                        = BIGOS::Driver::Backend::BindingTypes::STORAGE_TEXTURE;
+    sTexRange.baseShaderRegister          = 2;
+    sTexRange.baseBindingSlot             = 10;
+    sTexRange.bindingCount                = 2;
+    sTexRange.immutableSampler.phSamplers = nullptr;
+
+    BIGOS::Driver::Backend::BindingRangeDesc bindingRanges[] = { immutableSamplerRange, samplerRange, cbRange, texRange, sbRange, sTexRange };
 
     BIGOS::Driver::Backend::BindingHeapLayoutHandle hBindingLayout;
     BIGOS::Driver::Backend::BindingHeapLayoutDesc   bindingLayoutDesc;
     bindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
     bindingLayoutDesc.bindingRangeCount = 5;
-    bindingLayoutDesc.pBindingRanges    = ranges;
+    bindingLayoutDesc.pBindingRanges    = bindingRanges;
     if( BGS_FAILED( pAPIDevice->CreateBindingHeapLayout( bindingLayoutDesc, &hBindingLayout ) ) )
+    {
+        return -1;
+    }
+
+    // Pipeline layout
+    BIGOS::Driver::Backend::PushConstantRangeDesc psRange;
+    psRange.baseConstantSlot = 0;
+    psRange.shaderRegister   = 2;
+    psRange.constantCount    = 4;
+    psRange.visibility       = BIGOS::Driver::Backend::ShaderVisibilities::COMPUTE;
+
+    BIGOS::Driver::Backend::PushConstantRangeDesc allRange;
+    allRange.baseConstantSlot = 4;
+    allRange.shaderRegister   = 3;
+    allRange.constantCount    = 2;
+    allRange.visibility       = BIGOS::Driver::Backend::ShaderVisibilities::ALL_GRAPHICS;
+
+    BIGOS::Driver::Backend::PushConstantRangeDesc constantRanges[] = { psRange, allRange };
+
+    BIGOS::Driver::Backend::PipelineLayoutHandle hPipelineLayout;
+    BIGOS::Driver::Backend::PipelineLayoutDesc   pipelineLayoutDesc;
+    pipelineLayoutDesc.hBindigHeapLayout  = hBindingLayout;
+    pipelineLayoutDesc.pConstantRanges    = constantRanges;
+    pipelineLayoutDesc.constantRangeCount = 2;
+    if( BGS_FAILED( pAPIDevice->CreatePipelineLayout( pipelineLayoutDesc, &hPipelineLayout ) ) )
     {
         return -1;
     }
@@ -417,6 +449,7 @@ int main()
     compiler->DestroyOutput( &pVSBlob );
     compiler->DestroyOutput( &pPSBlob );
 
+    pAPIDevice->DestroyPipelineLayout( &hPipelineLayout );
     pAPIDevice->DestroySampler( &hSampler );
     pAPIDevice->DestroyBindingHeapLayout( &hBindingLayout );
     pAPIDevice->DestroySwapchain( &pSwapchain );
