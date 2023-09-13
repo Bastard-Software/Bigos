@@ -56,6 +56,7 @@ namespace BIGOS
                     m_dev13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
                     m_dev13Features.pNext            = &m_customBorderColorFeatures;
                     m_dev13Features.synchronization2 = VK_TRUE; // Crucial for synchronization
+                    m_dev13Features.dynamicRendering = VK_TRUE; // Crucial for rendering
 
                     // Custom border color features
                     m_customBorderColorFeatures.sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
@@ -362,9 +363,11 @@ namespace BIGOS
             RESULT VulkanDevice::CreatePipelineLayout( const PipelineLayoutDesc& desc, PipelineLayoutHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Pipeline layout (pHandle) must be a valid address." );
-                BGS_ASSERT( desc.constantRangeCount <= 8, "Push constant range count (desc.constantRangeCount) must be less than %d",
-                            Config::Driver::Binding::MAX_PUSH_CONSTANT_RANGE_COUNT );
-                if( desc.constantRangeCount > 8 )
+                BGS_ASSERT( desc.constantRangeCount <= BGS_ENUM_COUNT( ShaderVisibilities ),
+                            "Push constant range count (desc.constantRangeCount) must be less than %d.", BGS_ENUM_COUNT( ShaderVisibilities ) );
+                BGS_ASSERT( desc.hBindigHeapLayout != BindingHeapLayoutHandle(),
+                            "Binding heap layout (desc.hBindigHeapLayout) must be valid handle." )
+                if( ( desc.constantRangeCount > BGS_ENUM_COUNT( ShaderVisibilities ) ) || ( desc.hBindigHeapLayout == BindingHeapLayoutHandle() ) )
                 {
                     return Results::FAIL;
                 }
@@ -372,9 +375,8 @@ namespace BIGOS
                 VkDevice         nativeDevice = m_handle.GetNativeHandle();
                 VkPipelineLayout nativeLayout = VK_NULL_HANDLE;
 
-                VkPushConstantRange   constantRanges[ 8 ]; // each for one of shader visibility
-                VkDescriptorSetLayout nativeSetLayout =
-                    desc.hBindigHeapLayout != BindingHeapLayoutHandle() ? desc.hBindigHeapLayout.GetNativeHandle() : nullptr;
+                VkPushConstantRange   constantRanges[ BGS_ENUM_COUNT( ShaderVisibilities ) ]; // each for one of shader visibility
+                VkDescriptorSetLayout nativeSetLayout = desc.hBindigHeapLayout.GetNativeHandle();
 
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.constantRangeCount; ++ndx )
                 {
@@ -424,6 +426,10 @@ namespace BIGOS
             RESULT VulkanDevice::CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
+                if( pHandle == nullptr )
+                {
+                    return Results::FAIL;
+                }
 
                 VkPipeline nativePipeline = VK_NULL_HANDLE;
 
@@ -1230,6 +1236,12 @@ namespace BIGOS
 
             RESULT VulkanDevice::CreateVkGraphicsPipeline( const GraphicsPipelineDesc& gpDesc, VkPipeline* pNativePipeline )
             {
+                BGS_ASSERT( gpDesc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (gpDesc.hPipelineLayout) must be valid handle." );
+                if( ( gpDesc.hPipelineLayout == PipelineLayoutHandle() ) )
+                {
+                    return Results::FAIL;
+                }
+
                 // Shader stages
                 VkPipelineShaderStageCreateInfo shaderStages[ 5 ];
                 uint32_t                        stageCnt = 0;
@@ -1312,7 +1324,7 @@ namespace BIGOS
                 rasterInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
                 rasterInfo.pNext                   = nullptr;
                 rasterInfo.flags                   = 0;
-                rasterInfo.rasterizerDiscardEnable = VK_FALSE;
+                rasterInfo.rasterizerDiscardEnable = VK_TRUE; // Required for viewport dynamic state with prerasterization shader active
                 rasterInfo.depthClampEnable        = gpDesc.rasterizeState.depthClipEnable;
                 rasterInfo.polygonMode             = MapBigosPolygonFillModeToVulkanPolygonMode( gpDesc.rasterizeState.fillMode );
                 rasterInfo.cullMode                = MapBigosCullModeToVulkanCullModeFlags( gpDesc.rasterizeState.cullMode );
@@ -1434,6 +1446,7 @@ namespace BIGOS
                 pipelineInfo.pNext               = &dynamicInfo;
                 pipelineInfo.flags               = 0;
                 pipelineInfo.pStages             = shaderStages;
+                pipelineInfo.stageCount          = stageCnt;
                 pipelineInfo.pVertexInputState   = &viInfo;
                 pipelineInfo.pInputAssemblyState = &inputAssembly;
                 pipelineInfo.pTessellationState  = nullptr;

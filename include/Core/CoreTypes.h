@@ -53,12 +53,13 @@
 #define BGS_FAILED( result )  ( ( result ) != BIGOS::Core::Results::OK )
 #define BGS_SUCCESS( result ) ( ( result ) == BIGOS::Core::Results::OK )
 
-#define SET_BITS( var, ndx ) ( ( var ) |= ~( ~0u << ( ndx ) ) )
-#define SET_BIT( var, ndx )  ( ( var ) |= 1 << ( ndx ) )
+#define SET_BITS( var, ndx )  ( ( var ) |= ~( ~0u << ( ndx ) ) )
+#define SET_BIT( var, ndx )   ( ( var ) |= 1 << ( ndx ) )
 #define CLEAR_BIT( var, ndx ) ( ( var ) &= ~( 1u << ( ndx ) ) )
 
 #define BGS_ENUM_COUNT( enumClass ) static_cast<uint32_t>( ( enumClass::_MAX_ENUM ) )
 #define BGS_ENUM_INDEX( enumVal )   static_cast<uint32_t>( ( enumVal ) )
+#define BGS_BOOL_INDEX( boolVal )   !!( boolVal )
 
 namespace BIGOS
 {

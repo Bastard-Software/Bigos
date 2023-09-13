@@ -33,6 +33,7 @@ namespace BIGOS
                     L"_6_5", // SHADER_MODEL_6_5
                     L"_6_6", // SHADER_MODEL_6_6
                     L"_6_7", // SHADER_MODEL_6_7
+                    L"_6_8", // SHADER_MODEL_6_7
                 };
 
                 return translateTable[ BGS_ENUM_INDEX( model ) ];

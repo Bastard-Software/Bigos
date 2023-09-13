@@ -209,7 +209,7 @@ namespace BIGOS
                     D3D12_DEPTH_WRITE_MASK_ALL,  // BGS_TRUE
                 };
 
-                return translateTable[ write ];
+                return translateTable[ BGS_BOOL_INDEX( write ) ];
             }
 
             D3D12_STENCIL_OP MapBigosStencilOperationTypeToD3D12StencilOp( STENCIL_OPERATION_TYPE op )
