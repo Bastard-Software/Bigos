@@ -5,10 +5,10 @@
 namespace BIGOS::Driver::Backend
 {
 
-    struct D3D12Pipeline
+    struct D3D12Sampler
     {
-        ID3D12PipelineState* pPipeline;
-        ID3D12RootSignature* pRootSignature;
+        D3D12_SAMPLER_DESC        sampler;
+        D3D12_STATIC_BORDER_COLOR staticColor;
     };
 
 } // namespace BIGOS::Driver::Backend

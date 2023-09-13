@@ -903,37 +903,42 @@ namespace BIGOS
                 VkDevice  nativeDevice  = m_handle.GetNativeHandle();
                 VkSampler nativeSampler = VK_NULL_HANDLE;
 
+                VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo;
+                if( desc.type == SamplerTypes::NORMAL )
+                {
+                    borderColorInfo.sType                          = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
+                    borderColorInfo.pNext                          = nullptr;
+                    borderColorInfo.format                         = VK_FORMAT_UNDEFINED;
+                    borderColorInfo.customBorderColor.float32[ 0 ] = desc.customBorderColor.r;
+                    borderColorInfo.customBorderColor.float32[ 1 ] = desc.customBorderColor.g;
+                    borderColorInfo.customBorderColor.float32[ 2 ] = desc.customBorderColor.b;
+                    borderColorInfo.customBorderColor.float32[ 3 ] = desc.customBorderColor.a;
+                }
+
                 VkSamplerReductionModeCreateInfo reductionModeInfo;
                 reductionModeInfo.sType         = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
-                reductionModeInfo.pNext         = nullptr;
+                reductionModeInfo.pNext         = desc.type == SamplerTypes::NORMAL ? &borderColorInfo : nullptr;
                 reductionModeInfo.reductionMode = MapBigosSamplerReductionModeToVulkanSamplerReductionMode( desc.reductionMode );
 
-                VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo;
-                borderColorInfo.sType                          = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
-                borderColorInfo.pNext                          = &reductionModeInfo;
-                borderColorInfo.format                         = VK_FORMAT_UNDEFINED;
-                borderColorInfo.customBorderColor.float32[ 0 ] = desc.borderColor.r;
-                borderColorInfo.customBorderColor.float32[ 1 ] = desc.borderColor.g;
-                borderColorInfo.customBorderColor.float32[ 2 ] = desc.borderColor.b;
-                borderColorInfo.customBorderColor.float32[ 3 ] = desc.borderColor.a;
-
                 VkSamplerCreateInfo samplerInfo;
-                samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-                samplerInfo.pNext                   = &borderColorInfo;
-                samplerInfo.flags                   = 0;
-                samplerInfo.minFilter               = MapBigosFilterTypeToVulkanFilterType( desc.minFilter );
-                samplerInfo.magFilter               = MapBigosFilterTypeToVulkanFilterType( desc.magFilter );
-                samplerInfo.mipmapMode              = MapBigosFilterTypeToVulkanMipMapMode( desc.mipMapFilter );
-                samplerInfo.addressModeU            = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressU );
-                samplerInfo.addressModeV            = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressV );
-                samplerInfo.addressModeW            = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressW );
-                samplerInfo.anisotropyEnable        = desc.anisotropyEnable;
-                samplerInfo.maxAnisotropy           = desc.maxAnisotropy;
-                samplerInfo.compareEnable           = desc.compareEnable;
-                samplerInfo.compareOp               = MapBigosCompareOperationTypeToVulkanCompareOp( desc.compareOperation );
-                samplerInfo.minLod                  = desc.minLod;
-                samplerInfo.maxLod                  = desc.maxLod;
-                samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
+                samplerInfo.sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+                samplerInfo.pNext            = &reductionModeInfo;
+                samplerInfo.flags            = 0;
+                samplerInfo.minFilter        = MapBigosFilterTypeToVulkanFilterType( desc.minFilter );
+                samplerInfo.magFilter        = MapBigosFilterTypeToVulkanFilterType( desc.magFilter );
+                samplerInfo.mipmapMode       = MapBigosFilterTypeToVulkanMipMapMode( desc.mipMapFilter );
+                samplerInfo.addressModeU     = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressU );
+                samplerInfo.addressModeV     = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressV );
+                samplerInfo.addressModeW     = MapBigosTextureAddressModeToVultakSamplerAddressMode( desc.addressW );
+                samplerInfo.anisotropyEnable = desc.anisotropyEnable;
+                samplerInfo.maxAnisotropy    = desc.maxAnisotropy;
+                samplerInfo.compareEnable    = desc.compareEnable;
+                samplerInfo.compareOp        = MapBigosCompareOperationTypeToVulkanCompareOp( desc.compareOperation );
+                samplerInfo.minLod           = desc.minLod;
+                samplerInfo.maxLod           = desc.maxLod;
+                samplerInfo.mipLodBias       = desc.mipLodBias;
+                samplerInfo.borderColor      = desc.type == SamplerTypes::IMMUTABLE ? MapBigosBorderColorToVulkanBorderColor( desc.enumBorderColor )
+                                                                                    : VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
                 samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
                 if( vkCreateSampler( nativeDevice, &samplerInfo, nullptr, &nativeSampler ) != VK_SUCCESS )

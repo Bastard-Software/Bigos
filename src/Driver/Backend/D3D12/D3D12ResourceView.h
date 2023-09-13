@@ -2,22 +2,16 @@
 
 #include "D3D12Types.h"
 
-namespace BIGOS
+namespace BIGOS::Driver::Backend
 {
-    namespace Driver
+
+    struct D3D12ResourceView
     {
-        namespace Backend
+        union
         {
+            BufferViewDesc  bufferView;
+            TextureViewDesc textureView;
+        };
+    };
 
-            struct D3D12ResourceView
-            {
-                union
-                {
-                    BufferViewDesc  bufferView;
-                    TextureViewDesc textureView;
-                };
-            };
-
-        } // namespace Backend
-    }     // namespace Driver
-} // namespace BIGOS
+} // namespace BIGOS::Driver::Backend

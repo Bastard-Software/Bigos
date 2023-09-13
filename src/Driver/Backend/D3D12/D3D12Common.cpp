@@ -400,6 +400,17 @@ namespace BIGOS
                 return static_cast<D3D12_FILTER>( nativeFilter );
             }
 
+            D3D12_STATIC_BORDER_COLOR MapBigosBorderColorToD3D12StaticBorderColor( BORDER_COLOR color )
+            {
+                static const D3D12_STATIC_BORDER_COLOR translateTable[ BGS_ENUM_COUNT( BorderColors ) ] = {
+                    D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK, // TRANSPARENT_BLACK
+                    D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,      // OPAQUE_BLACK
+                    D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,      // OPAQUE_WHITE
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( color ) ];
+            }
+
             D3D12_TEXTURE_ADDRESS_MODE MapBigosTextureAddressModeToD3D12TextureAddressMode( TEXTURE_ADDRESS_MODE mode )
             {
                 static const D3D12_TEXTURE_ADDRESS_MODE translateTable[ BGS_ENUM_COUNT( TextureAddressModes ) ] = {

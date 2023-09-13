@@ -457,6 +457,18 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
+            VkBorderColor MapBigosBorderColorToVulkanBorderColor( BORDER_COLOR color )
+            {
+                // Using only floats to mimic D3D12 behaviour
+                static const VkBorderColor translateTable[ BGS_ENUM_COUNT( BorderColors ) ] = {
+                    VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK, // TRANSPARENT_BLACK
+                    VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,      // OPAQUE_BLACK
+                    VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,      // OPAQUE_WHITE
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( color ) ];
+            }
+
             VkSamplerAddressMode MapBigosTextureAddressModeToVultakSamplerAddressMode( TEXTURE_ADDRESS_MODE mode )
             {
                 static const VkSamplerAddressMode translateTable[ BGS_ENUM_COUNT( TextureAddressModes ) ] = {

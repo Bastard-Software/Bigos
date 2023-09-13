@@ -14,6 +14,7 @@ namespace BIGOS::Driver::Backend
     struct D3D12Pipeline;
     struct D3D12Resource;
     struct D3D12ResourceView;
+    struct D3D12Sampler;
     struct D3D12BindingHeapLayout;
 } // namespace BIGOS::Driver::Backend
 
@@ -40,7 +41,7 @@ BGS_DECLARE_D3D12_HANDLE( Semaphore, ID3D12Fence* );
 BGS_DECLARE_D3D12_HANDLE( Memory, ID3D12Heap* )
 BGS_DECLARE_D3D12_HANDLE( Resource, BIGOS::Driver::Backend::D3D12Resource* )
 BGS_DECLARE_D3D12_HANDLE( ResourceView, BIGOS::Driver::Backend::D3D12ResourceView* )
-BGS_DECLARE_D3D12_HANDLE( Sampler, D3D12_SAMPLER_DESC* )
+BGS_DECLARE_D3D12_HANDLE( Sampler, BIGOS::Driver::Backend::D3D12Sampler* )
 BGS_DECLARE_D3D12_HANDLE( BindingHeapLayout, BIGOS::Driver::Backend::D3D12BindingHeapLayout* )
 BGS_DECLARE_D3D12_HANDLE( BindingHeap, ID3D12DescriptorHeap* )
 
