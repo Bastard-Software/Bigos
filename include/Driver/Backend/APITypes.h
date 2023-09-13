@@ -805,6 +805,14 @@ namespace BIGOS
                 TEXTURE_TYPE     type;
             };
 
+            enum class SamplerTypes : uint8_t
+            {
+                NORMAL,
+                IMMUTABLE,
+                _MAX_ENUM,
+            };
+            using SAMPLER_TYPE = SamplerTypes;
+
             struct Color
             {
                 float r;
@@ -812,6 +820,15 @@ namespace BIGOS
                 float b;
                 float a;
             };
+
+            enum class BorderColors : uint8_t
+            {
+                TRANSPARENT_BLACK,
+                OPAQUE_BLACK,
+                OPAQUE_WHITE,
+                _MAX_ENUM,
+            };
+            using BORDER_COLOR = BorderColors;
 
             enum class FilterTypes : uint8_t
             {
@@ -843,7 +860,11 @@ namespace BIGOS
 
             struct SamplerDesc
             {
-                Color                  borderColor;
+                union
+                {
+                    Color        customBorderColor;
+                    BORDER_COLOR enumBorderColor;
+                };
                 float                  mipLodBias;
                 float                  maxAnisotropy;
                 float                  minLod;
@@ -858,6 +879,7 @@ namespace BIGOS
                 TEXTURE_ADDRESS_MODE   addressW;
                 COMPARE_OPERATION_TYPE compareOperation;
                 SAMPLER_REDUCTION_MODE reductionMode;
+                SAMPLER_TYPE           type;
             };
 
             enum class BindingTypes : uint8_t

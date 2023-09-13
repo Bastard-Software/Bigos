@@ -13,6 +13,7 @@
 #include "D3D12Pipeline.h"
 #include "D3D12Queue.h"
 #include "D3D12Resource.h"
+#include "D3D12Sampler.h"
 #include "D3D12Shader.h"
 #include "D3D12Swapchain.h"
 #include "Driver/Frontend/RenderSystem.h"
@@ -654,26 +655,33 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                D3D12_SAMPLER_DESC* pSampler = nullptr;
+                D3D12Sampler* pSampler = nullptr;
                 if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pSampler ) ) )
                 {
                     return Results::NO_MEMORY;
                 }
 
-                pSampler->Filter           = MapBigosFiltesToD3D12Filter( desc.minFilter, desc.magFilter, desc.mipMapFilter, desc.reductionMode,
-                                                                          desc.anisotropyEnable, desc.compareEnable );
-                pSampler->AddressU         = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressU );
-                pSampler->AddressV         = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressV );
-                pSampler->AddressW         = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressW );
-                pSampler->MaxAnisotropy    = desc.anisotropyEnable == BGS_FALSE ? 1 : static_cast<UINT>( desc.maxAnisotropy );
-                pSampler->MipLODBias       = desc.mipLodBias;
-                pSampler->MinLOD           = desc.minLod;
-                pSampler->MaxLOD           = desc.maxLod;
-                pSampler->ComparisonFunc   = MapBigosCompareOperationTypeToD3D12ComparsionFunc( desc.compareOperation );
-                pSampler->BorderColor[ 0 ] = desc.borderColor.r;
-                pSampler->BorderColor[ 1 ] = desc.borderColor.g;
-                pSampler->BorderColor[ 2 ] = desc.borderColor.b;
-                pSampler->BorderColor[ 3 ] = desc.borderColor.a;
+                pSampler->sampler.Filter         = MapBigosFiltesToD3D12Filter( desc.minFilter, desc.magFilter, desc.mipMapFilter, desc.reductionMode,
+                                                                                desc.anisotropyEnable, desc.compareEnable );
+                pSampler->sampler.AddressU       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressU );
+                pSampler->sampler.AddressV       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressV );
+                pSampler->sampler.AddressW       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressW );
+                pSampler->sampler.MaxAnisotropy  = desc.anisotropyEnable == BGS_FALSE ? 1 : static_cast<UINT>( desc.maxAnisotropy );
+                pSampler->sampler.MipLODBias     = desc.mipLodBias;
+                pSampler->sampler.MinLOD         = desc.minLod;
+                pSampler->sampler.MaxLOD         = desc.maxLod;
+                pSampler->sampler.ComparisonFunc = MapBigosCompareOperationTypeToD3D12ComparsionFunc( desc.compareOperation );
+                if( desc.type == SamplerTypes::NORMAL )
+                {
+                    pSampler->sampler.BorderColor[ 0 ] = desc.customBorderColor.r;
+                    pSampler->sampler.BorderColor[ 1 ] = desc.customBorderColor.g;
+                    pSampler->sampler.BorderColor[ 2 ] = desc.customBorderColor.b;
+                    pSampler->sampler.BorderColor[ 3 ] = desc.customBorderColor.a;
+                }
+                else // desc.type == SamplerTypes::IMMUTABLE
+                {
+                    pSampler->staticColor = MapBigosBorderColorToD3D12StaticBorderColor( desc.enumBorderColor );
+                }
 
                 *pHandle = SamplerHandle( pSampler );
 
@@ -686,7 +694,7 @@ namespace BIGOS
                 BGS_ASSERT( *pHandle != SamplerHandle(), "Sampler (pHandle) must point to valid handle." );
                 if( ( pHandle != nullptr ) && ( *pHandle != SamplerHandle() ) )
                 {
-                    D3D12_SAMPLER_DESC* pNativeSampler = pHandle->GetNativeHandle();
+                    D3D12Sampler* pNativeSampler = pHandle->GetNativeHandle();
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeSampler );
 
                     *pHandle = SamplerHandle();
@@ -716,7 +724,7 @@ namespace BIGOS
                     const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
                     if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers != nullptr ) )
                     {
-                        allocSize += currDesc.bindingCount * sizeof( D3D12ImmutableSampler );
+                        allocSize += currDesc.bindingCount * sizeof( D3D12_STATIC_SAMPLER_DESC );
                         immutableSamplerCnt += currDesc.bindingCount;
                         ++immutableSamplerRangeCnt;
                     }
@@ -741,8 +749,8 @@ namespace BIGOS
                 pMem += sizeof( D3D12BindingHeapLayout );
 
                 // Filling in immutable samplers
-                D3D12ImmutableSampler* pSamplers = reinterpret_cast<D3D12ImmutableSampler*>( pMem );
-                pMem += immutableSamplerCnt * sizeof( D3D12ImmutableSampler );
+                D3D12_STATIC_SAMPLER_DESC* pSamplers = reinterpret_cast<D3D12_STATIC_SAMPLER_DESC*>( pMem );
+                pMem += immutableSamplerCnt * sizeof( D3D12_STATIC_SAMPLER_DESC );
                 uint32_t samplerNdx = 0;
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
@@ -751,11 +759,23 @@ namespace BIGOS
                     {
                         for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
                         {
-                            D3D12ImmutableSampler& sampler = pSamplers[ samplerNdx++ ];
+                            D3D12_STATIC_SAMPLER_DESC& immutableSampler = pSamplers[ samplerNdx++ ];
+                            const D3D12Sampler&        currSampler      = *currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle();
 
-                            sampler.pSampler       = currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle();
-                            sampler.visibility     = MapBigosShaderVisibilityToD3D12ShaderVisibility( currDesc.immutableSampler.visibility );
-                            sampler.shaderRegister = currDesc.baseShaderRegister + static_cast<uint32_t>( ndy );
+                            immutableSampler.Filter         = currSampler.sampler.Filter;
+                            immutableSampler.AddressU       = currSampler.sampler.AddressU;
+                            immutableSampler.AddressW       = currSampler.sampler.AddressW;
+                            immutableSampler.AddressV       = currSampler.sampler.AddressV;
+                            immutableSampler.MipLODBias     = currSampler.sampler.MipLODBias;
+                            immutableSampler.MaxAnisotropy  = currSampler.sampler.MaxAnisotropy;
+                            immutableSampler.ComparisonFunc = currSampler.sampler.ComparisonFunc;
+                            immutableSampler.BorderColor    = currSampler.staticColor;
+                            immutableSampler.MinLOD         = currSampler.sampler.MinLOD;
+                            immutableSampler.MaxLOD         = currSampler.sampler.MaxLOD;
+                            immutableSampler.ShaderRegister = currDesc.baseShaderRegister + static_cast<uint32_t>( ndy );
+                            immutableSampler.RegisterSpace  = 0;
+                            immutableSampler.ShaderVisibility =
+                                MapBigosShaderVisibilityToD3D12ShaderVisibility( currDesc.immutableSampler.visibility );
                         }
                     }
                 }

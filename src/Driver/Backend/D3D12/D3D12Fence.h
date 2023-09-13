@@ -2,17 +2,13 @@
 
 #include "D3D12Types.h"
 
-namespace BIGOS
+namespace BIGOS::Driver::Backend
 {
-    namespace Driver
+
+    struct D3D12Fence
     {
-        namespace Backend
-        {
-            struct D3D12Fence
-            {
-                ID3D12Fence* pFence;
-                HANDLE       hEvent;
-            };
-        } // namespace Backend
-    }     // namespace Driver
-} // namespace BIGOS
+        ID3D12Fence* pFence;
+        HANDLE       hEvent;
+    };
+
+} // namespace BIGOS::Driver::Backend

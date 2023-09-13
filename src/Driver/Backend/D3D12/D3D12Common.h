@@ -32,6 +32,7 @@ namespace BIGOS
             UINT                               MapBigosTextureComponentFlagsToD3D12PlaneSlice( TextureComponentFlags flags );
             D3D12_FILTER                MapBigosFiltesToD3D12Filter( FILTER_TYPE min, FILTER_TYPE mag, FILTER_TYPE mip, SAMPLER_REDUCTION_MODE mode,
                                                                      bool_t anisotropy, bool_t compare );
+            D3D12_STATIC_BORDER_COLOR   MapBigosBorderColorToD3D12StaticBorderColor( BORDER_COLOR color );
             D3D12_TEXTURE_ADDRESS_MODE  MapBigosTextureAddressModeToD3D12TextureAddressMode( TEXTURE_ADDRESS_MODE mode );
             D3D12_SHADER_VISIBILITY     MapBigosShaderVisibilityToD3D12ShaderVisibility( SHADER_VISIBILITY vis );
             D3D12_DESCRIPTOR_RANGE_TYPE MapBigosBindingTypeToD3D12DescriptorRangeType( BINDING_TYPE type );

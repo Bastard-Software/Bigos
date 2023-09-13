@@ -34,6 +34,7 @@ namespace BIGOS
             VkSamplerReductionMode MapBigosSamplerReductionModeToVulkanSamplerReductionMode( SAMPLER_REDUCTION_MODE mode );
             VkFilter               MapBigosFilterTypeToVulkanFilterType( FILTER_TYPE type );
             VkSamplerMipmapMode    MapBigosFilterTypeToVulkanMipMapMode( FILTER_TYPE type );
+            VkBorderColor          MapBigosBorderColorToVulkanBorderColor( BORDER_COLOR color );
             VkSamplerAddressMode   MapBigosTextureAddressModeToVultakSamplerAddressMode( TEXTURE_ADDRESS_MODE mode );
             VkDescriptorType       MapBigosBindingTypeToVulkanDescriptorType( BINDING_TYPE type );
             VkShaderStageFlags     MapBigosShaderVisibilityToVulkanShaderStageFlags( SHADER_VISIBILITY vis );

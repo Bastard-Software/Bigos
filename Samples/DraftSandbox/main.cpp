@@ -21,7 +21,7 @@ const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
 
 int main()
 {
@@ -293,6 +293,7 @@ int main()
 
     BIGOS::Driver::Backend::SamplerHandle hSampler;
     BIGOS::Driver::Backend::SamplerDesc   samplerDesc;
+    samplerDesc.type             = BIGOS::Driver::Backend::SamplerTypes::IMMUTABLE;
     samplerDesc.minFilter        = BIGOS::Driver::Backend::FilterTypes::LINEAR;
     samplerDesc.magFilter        = BIGOS::Driver::Backend::FilterTypes::LINEAR;
     samplerDesc.mipMapFilter     = BIGOS::Driver::Backend::FilterTypes::LINEAR;
@@ -306,10 +307,7 @@ int main()
     samplerDesc.minLod           = 0;
     samplerDesc.maxLod           = 0;
     samplerDesc.mipLodBias       = 0;
-    samplerDesc.borderColor.r    = 1.0f;
-    samplerDesc.borderColor.g    = 1.0f;
-    samplerDesc.borderColor.b    = 1.0f;
-    samplerDesc.borderColor.a    = 1.0f;
+    samplerDesc.enumBorderColor  = BIGOS::Driver::Backend::BorderColors::TRANSPARENT_BLACK;
 
     if( BGS_FAILED( pAPIDevice->CreateSampler( samplerDesc, &hSampler ) ) )
     {
