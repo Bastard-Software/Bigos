@@ -117,6 +117,35 @@ namespace BIGOS
                 // TODO: Fill
             };
 
+            enum class ShaderVisibilities : uint8_t
+            {
+                VERTEX,
+                PIXEL,
+                GEOMETRY,
+                HULL,
+                DOMAIN,
+                COMPUTE,
+                ALL_GRAPHICS,
+                ALL,
+                _MAX_ENUM,
+            };
+            using SHADER_VISIBILITY = ShaderVisibilities;
+
+            struct PushConstantRangeDesc
+            {
+                SHADER_VISIBILITY visibility;
+                uint32_t          baseConstantSlot;
+                uint32_t          constantCount;
+                uint32_t          shaderRegister;
+            };
+
+            struct PipelineLayoutDesc
+            {
+                BindingHeapLayoutHandle      hBindigHeapLayout;
+                const PushConstantRangeDesc* pConstantRanges;
+                uint32_t                     constantRangeCount;
+            };
+
             enum class Formats : uint8_t
             {
                 UNKNOWN,
@@ -896,22 +925,6 @@ namespace BIGOS
                 _MAX_ENUM,
             };
             using BINDING_TYPE = BindingTypes;
-
-            enum class ShaderVisibilities : uint8_t
-            {
-                VERTEX,
-                PIXEL,
-                GEOMETRY,
-                HULL,
-                DOMAIN,
-                COMPUTE,
-                AMPLIFICATION,
-                MESH,
-                ALL_GRAPHICS,
-                ALL,
-                _MAX_ENUM,
-            };
-            using SHADER_VISIBILITY = ShaderVisibilities;
 
             struct ImmutableSamplerInfo
             {

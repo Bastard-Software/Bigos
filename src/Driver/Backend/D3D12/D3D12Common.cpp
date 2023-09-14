@@ -429,12 +429,10 @@ namespace BIGOS
                 static const D3D12_SHADER_VISIBILITY translateTable[ BGS_ENUM_COUNT( ShaderVisibilities ) ] = {
                     D3D12_SHADER_VISIBILITY_VERTEX,        // VERTEX
                     D3D12_SHADER_VISIBILITY_PIXEL,         // PIXEL
-                    D3D12_SHADER_VISIBILITY_GEOMETRY,      // GEOMETRY
+                    D3D12_SHADER_VISIBILITY_GEOMETRY,      // GEOMETRYs
                     D3D12_SHADER_VISIBILITY_HULL,          // HULL
                     D3D12_SHADER_VISIBILITY_DOMAIN,        // DOMAIN
                     D3D12_SHADER_VISIBILITY_ALL,           // COMPUTE
-                    D3D12_SHADER_VISIBILITY_AMPLIFICATION, // AMPLIFICATION
-                    D3D12_SHADER_VISIBILITY_MESH,          // MESH
                     D3D12_SHADER_VISIBILITY_ALL,           // ALL_GRAPHICS
                     D3D12_SHADER_VISIBILITY_ALL,           // ALL
                 };

@@ -8,9 +8,10 @@ namespace BIGOS::Driver::Backend
     struct D3D12BindingHeapLayout
     {
         const D3D12_STATIC_SAMPLER_DESC* pImmutableSamplers;
-        D3D12_ROOT_DESCRIPTOR_TABLE1 bindingTable;
-        uint32_t                     immutableSamplerCount;
-        D3D12_SHADER_VISIBILITY      visibility;
+        D3D12_ROOT_DESCRIPTOR_TABLE1     shaderResourceTable;
+        D3D12_ROOT_DESCRIPTOR_TABLE1     samplerTable;
+        uint32_t                         immutableSamplerCount;
+        D3D12_SHADER_VISIBILITY          visibility;
     };
 
 } // namespace BIGOS::Driver::Backend

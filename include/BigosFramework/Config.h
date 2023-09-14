@@ -32,8 +32,8 @@ namespace BIGOS
 
             namespace Binding
             {
-                constexpr uint32_t MAX_BINDING_RANGE_COUNT     = 64U;
-                constexpr uint32_t MAX_IMMUTABLE_SAMPLER_COUNT = 16U;
+                constexpr uint32_t MAX_BINDING_RANGE_COUNT       = 64U;
+                constexpr uint32_t MAX_IMMUTABLE_SAMPLER_COUNT   = 16U;
             } // namespace Binding
 
             namespace Pipeline

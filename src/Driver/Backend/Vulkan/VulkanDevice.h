@@ -48,6 +48,8 @@ namespace BIGOS
                 virtual RESULT CreateShader( const ShaderDesc& desc, ShaderHandle* pHandle ) override;
                 virtual void   DestroyShader( ShaderHandle* pHandle ) override;
 
+                virtual RESULT CreatePipelineLayout( const PipelineLayoutDesc& desc, PipelineLayoutHandle* pHandle ) override;
+                virtual void   DestroyPipelineLayout( PipelineLayoutHandle* pHandle ) override;
                 virtual RESULT CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle ) override;
                 virtual void   DestroyPipeline( PipelineHandle* pHandle ) override;
 
