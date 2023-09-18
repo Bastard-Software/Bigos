@@ -244,35 +244,40 @@ namespace BIGOS
             RESULT D3D12Device::CreatePipelineLayout( const PipelineLayoutDesc& desc, PipelineLayoutHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Pipeline layout (pHandle) must be a valid address." );
-                BGS_ASSERT( desc.constantRangeCount <= 8, "Push constant range count (desc.constantRangeCount) must be less than %d", 8 );
-                if( desc.constantRangeCount > 8 )
+                BGS_ASSERT( desc.constantRangeCount <= BGS_ENUM_COUNT( ShaderVisibilities ),
+                            "Push constant range count (desc.constantRangeCount) must be less than %d.", BGS_ENUM_COUNT( ShaderVisibilities ) );
+                BGS_ASSERT( desc.hBindigHeapLayout != BindingHeapLayoutHandle(),
+                            "Binding heap layout (desc.hBindigHeapLayout) must be valid handle." )
+                if( ( desc.constantRangeCount > BGS_ENUM_COUNT( ShaderVisibilities ) ) || ( desc.hBindigHeapLayout == BindingHeapLayoutHandle() ) )
                 {
                     return Results::FAIL;
                 }
 
                 // TODO: D3D12 feature support helper same as in vulkan
-                D3D12_ROOT_PARAMETER1 rootParameters[ 8 + 1 + 1 ]; // eight for push constant ranges (each for one of shader visibility) one for
-                                                                   // sampler table and one for shader resources
+                D3D12_ROOT_PARAMETER1 rootParameters[ BGS_ENUM_COUNT( ShaderVisibilities ) + 1 + 1 ]; // each for one of shader visibility, one for
+                                                                                                      // sampler table and one for shader resources
                 const D3D12_STATIC_SAMPLER_DESC* pImmutableSamplers  = nullptr;
                 uint32_t                         immutableSamplerCnt = 0;
                 uint32_t                         rootParamCnt        = 0;
-                if( desc.hBindigHeapLayout != BindingHeapLayoutHandle() )
-                {
-                    const D3D12BindingHeapLayout& resourceLayout      = *desc.hBindigHeapLayout.GetNativeHandle();
-                    D3D12_ROOT_PARAMETER1&        samplerTable        = rootParameters[ rootParamCnt++ ];
-                    D3D12_ROOT_PARAMETER1&        shaderResourceTable = rootParameters[ rootParamCnt++ ];
+                bool_t                           createEmpty         = BGS_TRUE;
 
-                    samplerTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-                    samplerTable.DescriptorTable  = resourceLayout.samplerTable;
-                    samplerTable.ShaderVisibility = resourceLayout.visibility;
+                const D3D12BindingHeapLayout& resourceLayout      = *desc.hBindigHeapLayout.GetNativeHandle();
+                D3D12_ROOT_PARAMETER1&        samplerTable        = rootParameters[ rootParamCnt++ ];
+                D3D12_ROOT_PARAMETER1&        shaderResourceTable = rootParameters[ rootParamCnt++ ];
 
-                    shaderResourceTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-                    shaderResourceTable.DescriptorTable  = resourceLayout.shaderResourceTable;
-                    shaderResourceTable.ShaderVisibility = resourceLayout.visibility;
+                samplerTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+                samplerTable.DescriptorTable  = resourceLayout.samplerTable;
+                samplerTable.ShaderVisibility = resourceLayout.visibility;
+                createEmpty                   = resourceLayout.samplerTable.NumDescriptorRanges != 0 ? BGS_FALSE : BGS_TRUE;
 
-                    pImmutableSamplers  = resourceLayout.pImmutableSamplers;
-                    immutableSamplerCnt = resourceLayout.immutableSamplerCount;
-                }
+                shaderResourceTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+                shaderResourceTable.DescriptorTable  = resourceLayout.shaderResourceTable;
+                shaderResourceTable.ShaderVisibility = resourceLayout.visibility;
+                createEmpty                          = resourceLayout.shaderResourceTable.NumDescriptorRanges != 0 ? BGS_FALSE : BGS_TRUE;
+
+                pImmutableSamplers  = resourceLayout.pImmutableSamplers;
+                immutableSamplerCnt = resourceLayout.immutableSamplerCount;
+                createEmpty         = resourceLayout.immutableSamplerCount != 0 ? BGS_FALSE : BGS_TRUE;
 
                 if( ( desc.pConstantRanges != nullptr ) && ( desc.constantRangeCount != 0 ) )
                 {
@@ -287,14 +292,16 @@ namespace BIGOS
                         param.Constants.RegisterSpace  = 0; // TODO: Handle
                         param.ShaderVisibility         = MapBigosShaderVisibilityToD3D12ShaderVisibility( currRange.visibility );
                     }
+
+                    createEmpty = BGS_FALSE;
                 }
 
                 D3D12_ROOT_SIGNATURE_DESC1 nativeDesc;
                 nativeDesc.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // Mimicking vulkan behaviour
-                nativeDesc.NumParameters     = rootParamCnt;
-                nativeDesc.pParameters       = rootParameters;
-                nativeDesc.NumStaticSamplers = immutableSamplerCnt;
-                nativeDesc.pStaticSamplers   = pImmutableSamplers;
+                nativeDesc.NumParameters     = createEmpty ? 0 : rootParamCnt;
+                nativeDesc.pParameters       = createEmpty ? nullptr : rootParameters;
+                nativeDesc.NumStaticSamplers = createEmpty ? 0 : immutableSamplerCnt;
+                nativeDesc.pStaticSamplers   = createEmpty ? nullptr : pImmutableSamplers;
 
                 ID3D12Device*        pNativeDevice        = m_handle.GetNativeHandle();
                 ID3D12RootSignature* pNativeRootSignature = nullptr;
@@ -346,6 +353,10 @@ namespace BIGOS
             RESULT D3D12Device::CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
+                if( pHandle == nullptr )
+                {
+                    return Results::FAIL;
+                }
 
                 D3D12Pipeline* pNativePipeline = nullptr;
 
@@ -380,7 +391,17 @@ namespace BIGOS
 
             void D3D12Device::DestroyPipeline( PipelineHandle* pHandle )
             {
-                pHandle;
+                BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != PipelineHandle(), "Pipeline (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != PipelineHandle() ) )
+                {
+                    D3D12Pipeline* pNativePipeline = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativePipeline->pPipeline );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativePipeline );
+
+                    *pHandle = PipelineHandle();
+                }
             }
 
             RESULT D3D12Device::CreateFence( const FenceDesc& desc, FenceHandle* pHandle )
@@ -1027,6 +1048,12 @@ namespace BIGOS
 
             RESULT D3D12Device::CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline )
             {
+                BGS_ASSERT( gpDesc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (gpDesc.hPipelineLayout) must be valid handle." );
+                if( ( gpDesc.hPipelineLayout == PipelineLayoutHandle() ) )
+                {
+                    return Results::FAIL;
+                }
+
                 D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
                 // Shader stages
                 if( gpDesc.vertexShader.hShader != ShaderHandle() )
@@ -1181,18 +1208,18 @@ namespace BIGOS
                 for( index_t ndx = 0; ndx < static_cast<index_t>( gpDesc.blendState.renderTargetBlendDescCount ); ++ndx )
                 {
                     const RenderTargetBlendDesc&    currDesc   = gpDesc.blendState.pRenderTargetBlendDescs[ ndx ];
-                    D3D12_RENDER_TARGET_BLEND_DESC& currAttach = blendState.RenderTarget[ ndx ];
+                    D3D12_RENDER_TARGET_BLEND_DESC& currTarget = blendState.RenderTarget[ ndx ];
 
-                    currAttach.SrcBlend              = MapBigosBlendFactorToD3D12Blend( currDesc.srcColorBlendFactor );
-                    currAttach.DestBlend             = MapBigosBlendFactorToD3D12Blend( currDesc.dstColorBlendFactor );
-                    currAttach.BlendOp               = MapBigosBlendOperationTypeToD3D12BlendOp( currDesc.colorBlendOp );
-                    currAttach.SrcBlendAlpha         = MapBigosBlendFactorToD3D12Blend( currDesc.srcAlphaBlendFactor );
-                    currAttach.DestBlendAlpha        = MapBigosBlendFactorToD3D12Blend( currDesc.dstAlphaBlendFactor );
-                    currAttach.BlendOpAlpha          = MapBigosBlendOperationTypeToD3D12BlendOp( currDesc.alphaBlendOp );
-                    currAttach.RenderTargetWriteMask = static_cast<UINT8>( static_cast<uint32_t>( currDesc.writeFlag ) );
-                    currAttach.BlendEnable           = currDesc.blendEnable;
-                    currAttach.LogicOpEnable         = gpDesc.blendState.enableLogicOperations;
-                    currAttach.LogicOp               = MapBigosLogicOperationTypeToD3D12LogicOp( gpDesc.blendState.logicOperation );
+                    currTarget.SrcBlend              = MapBigosBlendFactorToD3D12Blend( currDesc.srcColorBlendFactor );
+                    currTarget.DestBlend             = MapBigosBlendFactorToD3D12Blend( currDesc.dstColorBlendFactor );
+                    currTarget.BlendOp               = MapBigosBlendOperationTypeToD3D12BlendOp( currDesc.colorBlendOp );
+                    currTarget.SrcBlendAlpha         = MapBigosBlendFactorToD3D12Blend( currDesc.srcAlphaBlendFactor );
+                    currTarget.DestBlendAlpha        = MapBigosBlendFactorToD3D12Blend( currDesc.dstAlphaBlendFactor );
+                    currTarget.BlendOpAlpha          = MapBigosBlendOperationTypeToD3D12BlendOp( currDesc.alphaBlendOp );
+                    currTarget.RenderTargetWriteMask = currDesc.blendEnable ? static_cast<UINT8>( currDesc.writeFlag ) : 0;
+                    currTarget.BlendEnable           = currDesc.blendEnable;
+                    currTarget.LogicOpEnable         = gpDesc.blendState.enableLogicOperations;
+                    currTarget.LogicOp               = MapBigosLogicOperationTypeToD3D12LogicOp( gpDesc.blendState.logicOperation );
                 }
                 blendState.AlphaToCoverageEnable  = FALSE; // To mimic vulkan behaviour
                 blendState.IndependentBlendEnable = FALSE; // To mimic vulkan behaviour
@@ -1219,6 +1246,7 @@ namespace BIGOS
                 D3D12_CACHED_PIPELINE_STATE cachedPipeline{};
 
                 // Pipeline desc
+                psoDesc.pRootSignature        = gpDesc.hPipelineLayout.GetNativeHandle();
                 psoDesc.InputLayout           = inputLayout;
                 psoDesc.PrimitiveTopologyType = MapBigosPrimitiveTopologyToD3D12PrimitiveTopologyType( gpDesc.inputAssemblerState.topology );
                 psoDesc.IBStripCutValue   = MapBigosIndexRestartValueToD3D12IndexBufferStripCutValue( gpDesc.inputAssemblerState.indexRestartValue );
@@ -1239,7 +1267,7 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                D3D12Pipeline* pPipeline;
+                D3D12Pipeline* pPipeline = nullptr;
                 if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pPipeline ) ) )
                 {
                     RELEASE_COM_PTR( pNativePipeline );
@@ -1247,7 +1275,7 @@ namespace BIGOS
                 }
 
                 pPipeline->pPipeline      = pNativePipeline;
-                pPipeline->pRootSignature = gpDesc.hPipelineLayout != PipelineLayoutHandle() ? gpDesc.hPipelineLayout.GetNativeHandle() : nullptr;
+                pPipeline->pRootSignature = gpDesc.hPipelineLayout.GetNativeHandle();
 
                 *ppPipeline = pPipeline;
 

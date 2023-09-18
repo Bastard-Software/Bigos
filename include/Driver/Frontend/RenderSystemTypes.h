@@ -72,8 +72,9 @@ namespace BIGOS
                 SHADER_MODEL_6_5,
                 SHADER_MODEL_6_6,
                 SHADER_MODEL_6_7,
+                SHADER_MODEL_6_8,
                 _MAX_ENUM,
-                SHADER_MODEL_LATEST = SHADER_MODEL_6_7,
+                SHADER_MODEL_LATEST = SHADER_MODEL_6_8,
             };
             using SHADER_MODEL = ShaderModels;
 

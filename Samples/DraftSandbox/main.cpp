@@ -70,7 +70,7 @@ int main()
     shaderDesc.ppArgs             = nullptr;
     shaderDesc.outputFormat       = API_TYPE == BIGOS::Driver::Backend::APITypes::D3D12 ? BIGOS::Driver::Frontend::ShaderFormats::DXIL
                                                                                         : BIGOS::Driver::Frontend::ShaderFormats::SPIRV;
-    shaderDesc.model              = BIGOS::Driver::Frontend::ShaderModels::SHADER_MODEL_6_7;
+    shaderDesc.model              = BIGOS::Driver::Frontend::ShaderModels::SHADER_MODEL_6_5;
     shaderDesc.source.pSourceCode = SHADER;
     shaderDesc.source.sourceSize  = static_cast<uint32_t>( BIGOS::Core::Utils::String::Length( SHADER ) );
     shaderDesc.type               = BIGOS::Driver::Backend::ShaderTypes::VERTEX;
@@ -185,8 +185,31 @@ int main()
         return -1;
     }
 
+    // Emplty binding heap layout, pipeline layout and pipeline
+    BIGOS::Driver::Backend::BindingHeapLayoutHandle hEmptyBindingLayout;
+    BIGOS::Driver::Backend::BindingHeapLayoutDesc   emptyBindingLayoutDesc;
+    emptyBindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
+    emptyBindingLayoutDesc.bindingRangeCount = 0;
+    emptyBindingLayoutDesc.pBindingRanges    = nullptr;
+    if( BGS_FAILED( pAPIDevice->CreateBindingHeapLayout( emptyBindingLayoutDesc, &hEmptyBindingLayout ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::PipelineLayoutHandle hEmptyLayout;
+    BIGOS::Driver::Backend::PipelineLayoutDesc   emptyLayoutDesc;
+    emptyLayoutDesc.constantRangeCount = 0;
+    emptyLayoutDesc.hBindigHeapLayout  = hEmptyBindingLayout;
+    emptyLayoutDesc.pConstantRanges    = nullptr;
+    if( BGS_FAILED( pAPIDevice->CreatePipelineLayout( emptyLayoutDesc, &hEmptyLayout ) ) )
+    {
+        return -1;
+    }
+
     BIGOS::Driver::Backend::PipelineHandle       hPipeline;
     BIGOS::Driver::Backend::GraphicsPipelineDesc pipelineDesc;
+    // Type
+    pipelineDesc.type = BIGOS::Driver::Backend::PipelineTypes::GRAPHICS;
     // Shaders
     pipelineDesc.vertexShader.hShader     = hVS;
     pipelineDesc.vertexShader.pEntryPoint = "VSMain";
@@ -230,7 +253,8 @@ int main()
     pipelineDesc.renderTargetCount                       = 1;
     pipelineDesc.depthStencilFormat                      = BIGOS::Driver::Backend::Formats::UNKNOWN;
     // PL
-    pipelineDesc.hPipelineLayout = BIGOS::Driver::Backend::PipelineLayoutHandle();
+    pipelineDesc.hPipelineLayout = hEmptyLayout;
+    // D3D12 crash https://github.com/microsoft/DirectXShaderCompiler/issues/2550
     if( BGS_FAILED( pAPIDevice->CreatePipeline( pipelineDesc, &hPipeline ) ) )
     {
         return -1;
@@ -460,6 +484,8 @@ int main()
     pAPIDevice->DestroyShader( &hPS );
     pAPIDevice->DestroyShader( &hVS );
     pAPIDevice->DestroyPipeline( &hPipeline );
+    pAPIDevice->DestroyPipelineLayout( &hEmptyLayout );
+    pAPIDevice->DestroyBindingHeapLayout( &hEmptyBindingLayout );
     pAPIDevice->DestroyCommandBuffer( &pCmdBuffer );
     pAPIDevice->DestroyCommandPool( &hCmdPool );
     pAPIDevice->DestroySemaphore( &hSemaphore );
