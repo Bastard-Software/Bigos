@@ -108,7 +108,6 @@ namespace BIGOS
                 VulkanQueueProperties m_queueProperties;
                 VulkanHeapProperties  m_heapProperties;
                 VulkanFactory*        m_pParent = nullptr;
-
                 // VolkDeviceTable m_deviceAPI;
             };
         } // namespace Backend

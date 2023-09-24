@@ -77,6 +77,18 @@ namespace BIGOS
                 IAdapter* pAdapter;
             };
 
+            struct DeviceLimits
+            {
+                uint64_t samplerBindingSize;                // SAMPLER
+                uint64_t sampledTextureBindingSize;         // SAMPLED_TEXTURE
+                uint64_t storedTextureBindingSize;          // STORAGE_TEXTURE
+                uint64_t constantTexelBufferBindingSize;    // CONSTANT_TEXEL_BUFFER
+                uint64_t storageTexelBufferBindingSize;     // STORAGE_TEXEL_BUFFER
+                uint64_t constantBufferBindingSize;         // CONSTANT_BUFFER
+                uint64_t readOnlyStorageBufferBindingSize;  // READ_ONLY_STORAGE_BUFFER
+                uint64_t readWriteStorageBufferBindingSize; // READ_WRITE_STORAGE_BUFFER
+            };
+
             enum class QueueTypes : uint8_t
             {
                 GRAPHICS,
@@ -948,8 +960,31 @@ namespace BIGOS
                 SHADER_VISIBILITY       visibility;
             };
 
+            enum class BindingHeapType : uint8_t
+            {
+                SHADER_RESOURCE,
+                SAMPLER,
+                _MAX_ENUM,
+            };
+            using BINDING_HEAP_TYPE = BindingHeapType;
+
             struct BindingHeapDesc
             {
+                union
+                {
+                    struct
+                    {
+                        uint32_t sampledTextureCount; // SAMPLED_TEXTURE
+                        // STORAGE_TEXTURE
+                        // CONSTANT_TEXEL_BUFFER
+                        // STORAGE_TEXEL_BUFFER
+                        // CONSTANT_BUFFER
+                        // READ_ONLY_STORAGE_BUFFER
+                        // READ_WRITE_STORAGE_BUFFER
+                    };
+                    uint32_t sapllerCount;
+                };
+                BINDING_HEAP_TYPE type;
             };
 
             struct CopyBindingDesc
