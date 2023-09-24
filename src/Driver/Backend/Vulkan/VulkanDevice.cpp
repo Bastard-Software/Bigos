@@ -31,6 +31,7 @@ namespace BIGOS
                     , m_dev12Features()
                     , m_dev13Features()
                     , m_customBorderColorFeatures()
+                    , m_descriptorBufferFeatures()
                     , m_extensions()
                     , m_pNext( nullptr )
                 {
@@ -60,14 +61,20 @@ namespace BIGOS
 
                     // Custom border color features
                     m_customBorderColorFeatures.sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
-                    m_customBorderColorFeatures.pNext                          = nullptr;
+                    m_customBorderColorFeatures.pNext                          = &m_descriptorBufferFeatures;
                     m_customBorderColorFeatures.customBorderColors             = VK_TRUE;
                     m_customBorderColorFeatures.customBorderColorWithoutFormat = VK_TRUE;
+
+                    // Descriptor buffers
+                    m_descriptorBufferFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+                    m_descriptorBufferFeatures.pNext            = nullptr;
+                    m_descriptorBufferFeatures.descriptorBuffer = VK_TRUE;
 
                     m_pNext = &m_dev11Features;
 
                     // Extensions
-                    m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME };
+                    m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+                                     VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME };
                     // TODO: Add logic
                 }
 
@@ -86,6 +93,7 @@ namespace BIGOS
                 VkPhysicalDeviceVulkan12Features             m_dev12Features;
                 VkPhysicalDeviceVulkan13Features             m_dev13Features;
                 VkPhysicalDeviceCustomBorderColorFeaturesEXT m_customBorderColorFeatures;
+                VkPhysicalDeviceDescriptorBufferFeaturesEXT  m_descriptorBufferFeatures;
 
                 HeapArray<const char*> m_extensions;
 
@@ -1083,7 +1091,7 @@ namespace BIGOS
 
                 VkDescriptorSetLayoutCreateInfo layoutInfo;
                 layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-                layoutInfo.flags        = 0;
+                layoutInfo.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
                 layoutInfo.pNext        = nullptr;
                 layoutInfo.pBindings    = layoutBindings;
                 layoutInfo.bindingCount = desc.bindingRangeCount;
@@ -1444,7 +1452,7 @@ namespace BIGOS
                 VkGraphicsPipelineCreateInfo pipelineInfo;
                 pipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                 pipelineInfo.pNext               = &dynamicInfo;
-                pipelineInfo.flags               = 0;
+                pipelineInfo.flags               = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
                 pipelineInfo.pStages             = shaderStages;
                 pipelineInfo.stageCount          = stageCnt;
                 pipelineInfo.pVertexInputState   = &viInfo;
@@ -1456,11 +1464,11 @@ namespace BIGOS
                 pipelineInfo.pDepthStencilState  = &depthStencilInfo;
                 pipelineInfo.pColorBlendState    = &blendState;
                 pipelineInfo.pDynamicState       = &dynamicState;
-                pipelineInfo.layout = gpDesc.hPipelineLayout != PipelineLayoutHandle() ? gpDesc.hPipelineLayout.GetNativeHandle() : VK_NULL_HANDLE;
-                pipelineInfo.renderPass         = VK_NULL_HANDLE; // We do support only dynamic rendering for now
-                pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-                pipelineInfo.basePipelineIndex  = 0;
-                pipelineInfo.subpass            = 0;
+                pipelineInfo.layout              = gpDesc.hPipelineLayout.GetNativeHandle();
+                pipelineInfo.renderPass          = VK_NULL_HANDLE; // We do support only dynamic rendering for now
+                pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
+                pipelineInfo.basePipelineIndex   = 0;
+                pipelineInfo.subpass             = 0;
 
                 VkDevice   nativeDevice   = m_handle.GetNativeHandle();
                 VkPipeline nativePipeline = VK_NULL_HANDLE;
