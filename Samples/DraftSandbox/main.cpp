@@ -250,11 +250,9 @@ int main()
     const BIGOS::Driver::Backend::FORMAT* pFormat        = rtFormats;
     pipelineDesc.renderTargetCount                       = 1;
     pipelineDesc.pRenderTargetFormats                    = pFormat;
-    pipelineDesc.renderTargetCount                       = 1;
     pipelineDesc.depthStencilFormat                      = BIGOS::Driver::Backend::Formats::UNKNOWN;
     // PL
     pipelineDesc.hPipelineLayout = hEmptyLayout;
-    // D3D12 crash https://github.com/microsoft/DirectXShaderCompiler/issues/2550
     if( BGS_FAILED( pAPIDevice->CreatePipeline( pipelineDesc, &hPipeline ) ) )
     {
         return -1;
@@ -394,6 +392,25 @@ int main()
         return -1;
     }
 
+    // Binding heaps
+    BIGOS::Driver::Backend::BindingHeapHandle hSamplerHeap;
+    BIGOS::Driver::Backend::BindingHeapDesc   samplerHeapDesc;
+    samplerHeapDesc.bindingCount = 4;
+    samplerHeapDesc.type         = BIGOS::Driver::Backend::BindingHeapTypes::SAMPLER;
+    if( BGS_FAILED( pAPIDevice->CreateBindingHeap( samplerHeapDesc, &hSamplerHeap ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::BindingHeapHandle hShaderResHeap;
+    BIGOS::Driver::Backend::BindingHeapDesc   shaderResHeapDesc;
+    shaderResHeapDesc.bindingCount = 16;
+    shaderResHeapDesc.type         = BIGOS::Driver::Backend::BindingHeapTypes::SHADER_RESOURCE;
+    if( BGS_FAILED( pAPIDevice->CreateBindingHeap( shaderResHeapDesc, &hShaderResHeap ) ) )
+    {
+        return -1;
+    }
+
     // Pipeline layout
     BIGOS::Driver::Backend::PushConstantRangeDesc psRange;
     psRange.baseConstantSlot = 0;
@@ -475,6 +492,8 @@ int main()
 
     pAPIDevice->DestroyPipelineLayout( &hPipelineLayout );
     pAPIDevice->DestroySampler( &hSampler );
+    pAPIDevice->DestroyBindingHeap( &hSamplerHeap );
+    pAPIDevice->DestroyBindingHeap( &hShaderResHeap );
     pAPIDevice->DestroyBindingHeapLayout( &hBindingLayout );
     pAPIDevice->DestroySwapchain( &pSwapchain );
     pAPIDevice->DestroyResource( &hVB );

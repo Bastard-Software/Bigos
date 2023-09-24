@@ -976,14 +976,44 @@ namespace BIGOS
 
             RESULT D3D12Device::CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )
             {
-                desc;
-                pHandle;
+                BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.bindingCount > 0, "Binding count (desc.bindingCount) must be more than 0." );
+                if( ( pHandle == nullptr ) || ( desc.bindingCount < 0 ) )
+                {
+                    return Results::FAIL;
+                }
+
+                ID3D12Device*         pNativeDevice = m_handle.GetNativeHandle();
+                ID3D12DescriptorHeap* pNativeHeap   = nullptr;
+
+                D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
+                heapDesc.Type           = MapBigosBindingHeapTypeToD3D12DescriptorHeapType( desc.type );
+                heapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+                heapDesc.NumDescriptors = desc.bindingCount;
+                heapDesc.NodeMask       = 0;
+
+                if( FAILED( pNativeDevice->CreateDescriptorHeap( &heapDesc, IID_PPV_ARGS( &pNativeHeap ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = BindingHeapHandle( pNativeHeap );
+
                 return Results::OK;
             }
 
             void D3D12Device::DestroyBindingHeap( BindingHeapHandle* pHandle )
             {
-                pHandle;
+                BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != BindingHeapHandle(), "Binding heap (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != BindingHeapHandle() ) )
+                {
+                    ID3D12DescriptorHeap* pNativeHeap = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeHeap );
+
+                    *pHandle = BindingHeapHandle();
+                }
             }
 
             void D3D12Device::CopyBinding( const CopyBindingDesc& desc )
@@ -1007,6 +1037,8 @@ namespace BIGOS
                 {
                     return Results::FAIL;
                 }
+
+                QueryD3D12BindingsSize();
 
                 return Results::OK;
             }
@@ -1324,6 +1356,21 @@ namespace BIGOS
                 {
                     *pProps = m_heapProperties[ BGS_ENUM_INDEX( desc.heapType ) ];
                 }
+            }
+
+            void D3D12Device::QueryD3D12BindingsSize()
+            {
+                ID3D12Device*  pNativeDevice              = m_handle.GetNativeHandle();
+                const uint64_t shaderResBindingSize       = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                const uint64_t samplerBindingSize         = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER );
+                m_limits.samplerBindingSize               = samplerBindingSize;
+                m_limits.sampledTextureBindingSize        = shaderResBindingSize;
+                m_limits.storageTextureBindingSize        = shaderResBindingSize;
+                m_limits.constantTexelBufferBindingSize   = shaderResBindingSize;
+                m_limits.storageTexelBufferBindingSize    = shaderResBindingSize;
+                m_limits.constantBufferBindingSize        = shaderResBindingSize;
+                m_limits.readOnlyStorageBufferBindingSize = shaderResBindingSize;
+                m_limits.readWriteStorageBufferBindingSize = shaderResBindingSize;
             }
 
         } // namespace Backend

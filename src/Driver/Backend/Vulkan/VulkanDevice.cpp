@@ -31,6 +31,7 @@ namespace BIGOS
                     , m_dev12Features()
                     , m_dev13Features()
                     , m_customBorderColorFeatures()
+                    , m_descriptorBufferFeatures()
                     , m_extensions()
                     , m_pNext( nullptr )
                 {
@@ -60,14 +61,20 @@ namespace BIGOS
 
                     // Custom border color features
                     m_customBorderColorFeatures.sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
-                    m_customBorderColorFeatures.pNext                          = nullptr;
+                    m_customBorderColorFeatures.pNext                          = &m_descriptorBufferFeatures;
                     m_customBorderColorFeatures.customBorderColors             = VK_TRUE;
                     m_customBorderColorFeatures.customBorderColorWithoutFormat = VK_TRUE;
+
+                    // Descriptor buffers
+                    m_descriptorBufferFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+                    m_descriptorBufferFeatures.pNext            = nullptr;
+                    m_descriptorBufferFeatures.descriptorBuffer = VK_TRUE;
 
                     m_pNext = &m_dev11Features;
 
                     // Extensions
-                    m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME };
+                    m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+                                     VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME };
                     // TODO: Add logic
                 }
 
@@ -86,6 +93,7 @@ namespace BIGOS
                 VkPhysicalDeviceVulkan12Features             m_dev12Features;
                 VkPhysicalDeviceVulkan13Features             m_dev13Features;
                 VkPhysicalDeviceCustomBorderColorFeaturesEXT m_customBorderColorFeatures;
+                VkPhysicalDeviceDescriptorBufferFeaturesEXT  m_descriptorBufferFeatures;
 
                 HeapArray<const char*> m_extensions;
 
@@ -1083,7 +1091,7 @@ namespace BIGOS
 
                 VkDescriptorSetLayoutCreateInfo layoutInfo;
                 layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-                layoutInfo.flags        = 0;
+                layoutInfo.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
                 layoutInfo.pNext        = nullptr;
                 layoutInfo.pBindings    = layoutBindings;
                 layoutInfo.bindingCount = desc.bindingRangeCount;
@@ -1115,14 +1123,52 @@ namespace BIGOS
 
             RESULT VulkanDevice::CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )
             {
-                desc;
-                pHandle;
+                BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.bindingCount > 0, "Binding count (desc.bindingCount) must be more than 0." );
+                if( ( pHandle == nullptr ) || ( desc.bindingCount < 0 ) )
+                {
+                    return Results::FAIL;
+                }
+                BGS_ASSERT( m_bindingSize );
+
+                VkDevice nativeDevice = m_handle.GetNativeHandle();
+                VkBuffer nativeHeap   = VK_NULL_HANDLE;
+
+                static const uint32_t qFamNdx[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+                VkBufferCreateInfo buffInfo;
+                buffInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                buffInfo.pNext                 = nullptr;
+                buffInfo.flags                 = 0;
+                buffInfo.size                  = desc.bindingCount * m_bindingSize;
+                buffInfo.usage                 = MapBigosBindingHeapTypeToVulkanBufferUsageFlags( desc.type );
+                buffInfo.sharingMode           = VK_SHARING_MODE_CONCURRENT;
+                buffInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
+                buffInfo.pQueueFamilyIndices   = qFamNdx;
+
+                if( vkCreateBuffer( nativeDevice, &buffInfo, nullptr, &nativeHeap ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = BindingHeapHandle( nativeHeap );
+
                 return Results::OK;
             }
 
             void VulkanDevice::DestroyBindingHeap( BindingHeapHandle* pHandle )
             {
-                pHandle;
+                BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != BindingHeapHandle(), "Binding heap (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != BindingHeapHandle() ) )
+                {
+                    VkDevice nativeDevice = m_handle.GetNativeHandle();
+                    VkBuffer nativeHeap   = pHandle->GetNativeHandle();
+
+                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+
+                    *pHandle = BindingHeapHandle();
+                }
             }
 
             void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
@@ -1228,6 +1274,8 @@ namespace BIGOS
                 m_heapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
                 m_heapProperties.pNext = nullptr;
                 vkGetPhysicalDeviceMemoryProperties2( nativeAdapter, &m_heapProperties );
+
+                QueryVkBindingsSize();
 
                 m_handle = DeviceHandle( nativeDevice );
 
@@ -1444,7 +1492,7 @@ namespace BIGOS
                 VkGraphicsPipelineCreateInfo pipelineInfo;
                 pipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                 pipelineInfo.pNext               = &dynamicInfo;
-                pipelineInfo.flags               = 0;
+                pipelineInfo.flags               = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
                 pipelineInfo.pStages             = shaderStages;
                 pipelineInfo.stageCount          = stageCnt;
                 pipelineInfo.pVertexInputState   = &viInfo;
@@ -1456,11 +1504,11 @@ namespace BIGOS
                 pipelineInfo.pDepthStencilState  = &depthStencilInfo;
                 pipelineInfo.pColorBlendState    = &blendState;
                 pipelineInfo.pDynamicState       = &dynamicState;
-                pipelineInfo.layout = gpDesc.hPipelineLayout != PipelineLayoutHandle() ? gpDesc.hPipelineLayout.GetNativeHandle() : VK_NULL_HANDLE;
-                pipelineInfo.renderPass         = VK_NULL_HANDLE; // We do support only dynamic rendering for now
-                pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-                pipelineInfo.basePipelineIndex  = 0;
-                pipelineInfo.subpass            = 0;
+                pipelineInfo.layout              = gpDesc.hPipelineLayout.GetNativeHandle();
+                pipelineInfo.renderPass          = VK_NULL_HANDLE; // We do support only dynamic rendering for now
+                pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
+                pipelineInfo.basePipelineIndex   = 0;
+                pipelineInfo.subpass             = 0;
 
                 VkDevice   nativeDevice   = m_handle.GetNativeHandle();
                 VkPipeline nativePipeline = VK_NULL_HANDLE;
@@ -1614,6 +1662,59 @@ namespace BIGOS
                         params.queueIndex = static_cast<uint32_t>( qCnt - 1 );
                         m_queueProperties[ ndx ].queueParams.push_back( params );
                     }
+                }
+            }
+
+            void VulkanDevice::QueryVkBindingsSize()
+            {
+                VkPhysicalDevice                              nativeAdapter = m_desc.pAdapter->GetHandle().GetNativeHandle();
+                VkPhysicalDeviceDescriptorBufferPropertiesEXT descBufferProps;
+                descBufferProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+                descBufferProps.pNext = nullptr;
+                VkPhysicalDeviceProperties2 nativeProps2;
+                nativeProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+                nativeProps2.pNext = &descBufferProps;
+                vkGetPhysicalDeviceProperties2( nativeAdapter, &nativeProps2 );
+                m_limits.samplerBindingSize                = descBufferProps.samplerDescriptorSize;
+                m_limits.sampledTextureBindingSize         = descBufferProps.sampledImageDescriptorSize;
+                m_limits.storageTextureBindingSize         = descBufferProps.storageImageDescriptorSize;
+                m_limits.constantTexelBufferBindingSize    = descBufferProps.uniformTexelBufferDescriptorSize;
+                m_limits.storageTexelBufferBindingSize     = descBufferProps.storageTexelBufferDescriptorSize;
+                m_limits.constantBufferBindingSize         = descBufferProps.uniformBufferDescriptorSize;
+                m_limits.readOnlyStorageBufferBindingSize  = descBufferProps.storageBufferDescriptorSize;
+                m_limits.readWriteStorageBufferBindingSize = descBufferProps.storageBufferDescriptorSize;
+
+                if( m_limits.samplerBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.samplerBindingSize;
+                }
+                if( m_limits.sampledTextureBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.sampledTextureBindingSize;
+                }
+                if( m_limits.storageTextureBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.storageTextureBindingSize;
+                }
+                if( m_limits.constantTexelBufferBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.constantTexelBufferBindingSize;
+                }
+                if( m_limits.storageTexelBufferBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.storageTexelBufferBindingSize;
+                }
+                if( m_limits.constantBufferBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.constantBufferBindingSize;
+                }
+                if( m_limits.readOnlyStorageBufferBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.readOnlyStorageBufferBindingSize;
+                }
+                if( m_limits.readWriteStorageBufferBindingSize > m_bindingSize )
+                {
+                    m_bindingSize = m_limits.readWriteStorageBufferBindingSize;
                 }
             }
 

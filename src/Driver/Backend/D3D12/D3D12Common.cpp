@@ -427,14 +427,14 @@ namespace BIGOS
             D3D12_SHADER_VISIBILITY MapBigosShaderVisibilityToD3D12ShaderVisibility( SHADER_VISIBILITY vis )
             {
                 static const D3D12_SHADER_VISIBILITY translateTable[ BGS_ENUM_COUNT( ShaderVisibilities ) ] = {
-                    D3D12_SHADER_VISIBILITY_VERTEX,        // VERTEX
-                    D3D12_SHADER_VISIBILITY_PIXEL,         // PIXEL
-                    D3D12_SHADER_VISIBILITY_GEOMETRY,      // GEOMETRYs
-                    D3D12_SHADER_VISIBILITY_HULL,          // HULL
-                    D3D12_SHADER_VISIBILITY_DOMAIN,        // DOMAIN
-                    D3D12_SHADER_VISIBILITY_ALL,           // COMPUTE
-                    D3D12_SHADER_VISIBILITY_ALL,           // ALL_GRAPHICS
-                    D3D12_SHADER_VISIBILITY_ALL,           // ALL
+                    D3D12_SHADER_VISIBILITY_VERTEX,   // VERTEX
+                    D3D12_SHADER_VISIBILITY_PIXEL,    // PIXEL
+                    D3D12_SHADER_VISIBILITY_GEOMETRY, // GEOMETRYs
+                    D3D12_SHADER_VISIBILITY_HULL,     // HULL
+                    D3D12_SHADER_VISIBILITY_DOMAIN,   // DOMAIN
+                    D3D12_SHADER_VISIBILITY_ALL,      // COMPUTE
+                    D3D12_SHADER_VISIBILITY_ALL,      // ALL_GRAPHICS
+                    D3D12_SHADER_VISIBILITY_ALL,      // ALL
                 };
 
                 return translateTable[ BGS_ENUM_INDEX( vis ) ];
@@ -451,6 +451,16 @@ namespace BIGOS
                     D3D12_DESCRIPTOR_RANGE_TYPE_CBV,     // CONSTANT_BUFFER
                     D3D12_DESCRIPTOR_RANGE_TYPE_SRV,     // READ_ONLY_STORAGE_BUFFER
                     D3D12_DESCRIPTOR_RANGE_TYPE_UAV,     // READ_WRITE_STORAGE_BUFFER
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            D3D12_DESCRIPTOR_HEAP_TYPE MapBigosBindingHeapTypeToD3D12DescriptorHeapType( BINDING_HEAP_TYPE type )
+            {
+                static const D3D12_DESCRIPTOR_HEAP_TYPE translateTable[ BGS_ENUM_COUNT( BindingHeapTypes ) ] = {
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // SHADER_RESOURCE
+                    D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,     // SAMPLER
                 };
 
                 return translateTable[ BGS_ENUM_INDEX( type ) ];

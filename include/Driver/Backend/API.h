@@ -67,8 +67,8 @@ namespace BIGOS
 
                 virtual RESULT CreatePipelineLayout( const PipelineLayoutDesc& desc, PipelineLayoutHandle* pHandle ) = 0;
                 virtual void   DestroyPipelineLayout( PipelineLayoutHandle* pHandle )                                = 0;
-                virtual RESULT CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle ) = 0;
-                virtual void   DestroyPipeline( PipelineHandle* pHandle )                          = 0;
+                virtual RESULT CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )                   = 0;
+                virtual void   DestroyPipeline( PipelineHandle* pHandle )                                            = 0;
 
                 virtual RESULT CreateFence( const FenceDesc& desc, FenceHandle* pHandle )       = 0;
                 virtual void   DestroyFence( FenceHandle* pHandle )                             = 0;
@@ -100,10 +100,12 @@ namespace BIGOS
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle )                                               = 0;
                 virtual void   CopyBinding( const CopyBindingDesc& desc )                                                     = 0;
 
-                BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
-                BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const DeviceLimits& GetLimits() const { return m_limits; }
+                BGS_FORCEINLINE const DeviceDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const DeviceHandle  GetHandle() const { return m_handle; }
 
             protected:
+                DeviceLimits m_limits;
                 DeviceDesc   m_desc;
                 DeviceHandle m_handle;
             };
@@ -116,13 +118,13 @@ namespace BIGOS
                 virtual RESULT Submit( const QueueSubmitDesc& desc ) = 0;
                 virtual RESULT Wait( const QueueWaitDesc& desc )     = 0;
 
-                BGS_FORCEINLINE const QueueDesc&   GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const QueueLimits& GetLimits() const { return m_limits; }
+                BGS_FORCEINLINE const QueueDesc&   GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const QueueHandle  GetHandle() const { return m_handle; }
 
             protected:
-                QueueDesc   m_desc;
                 QueueLimits m_limits;
+                QueueDesc   m_desc;
                 QueueHandle m_handle;
             };
 

@@ -101,14 +101,15 @@ namespace BIGOS
                 RESULT CreateVkImage( const ResourceDesc desc, VkImage* pImg );
 
                 void EnumerateNativeQueues();
+                void QueryVkBindingsSize();
 
                 RESULT CheckVkExtensionSupport( uint32_t extCount, const char* const* ppQueriedExts );
 
             private:
                 VulkanQueueProperties m_queueProperties;
                 VulkanHeapProperties  m_heapProperties;
-                VulkanFactory*        m_pParent = nullptr;
-
+                VulkanFactory*        m_pParent     = nullptr;
+                uint64_t              m_bindingSize = 0;
                 // VolkDeviceTable m_deviceAPI;
             };
         } // namespace Backend

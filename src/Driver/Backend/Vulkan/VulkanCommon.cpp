@@ -514,6 +514,16 @@ namespace BIGOS
                 return static_cast<VkShaderStageFlags>( translateTable[ BGS_ENUM_INDEX( vis ) ] );
             }
 
+            VkBufferUsageFlags MapBigosBindingHeapTypeToVulkanBufferUsageFlags( BINDING_HEAP_TYPE type )
+            {
+                static const VkBufferUsageFlags translateTable[ BGS_ENUM_COUNT( BindingHeapTypes ) ] = {
+                    VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT, // SHADER_RESOURCE
+                    VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT,  // SAMPLER
+                };
+
+                return static_cast<VkShaderStageFlags>( translateTable[ BGS_ENUM_INDEX( type ) ] );
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS
