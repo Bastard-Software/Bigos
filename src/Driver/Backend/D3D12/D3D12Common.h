@@ -36,6 +36,7 @@ namespace BIGOS
             D3D12_TEXTURE_ADDRESS_MODE  MapBigosTextureAddressModeToD3D12TextureAddressMode( TEXTURE_ADDRESS_MODE mode );
             D3D12_SHADER_VISIBILITY     MapBigosShaderVisibilityToD3D12ShaderVisibility( SHADER_VISIBILITY vis );
             D3D12_DESCRIPTOR_RANGE_TYPE MapBigosBindingTypeToD3D12DescriptorRangeType( BINDING_TYPE type );
+            D3D12_DESCRIPTOR_HEAP_TYPE  MapBigosBindingHeapTypeToD3D12DescriptorHeapType( BINDING_HEAP_TYPE type );
 
         } // namespace Backend
     }     // namespace Driver

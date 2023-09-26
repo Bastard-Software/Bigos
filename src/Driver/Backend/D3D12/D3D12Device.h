@@ -81,6 +81,8 @@ namespace BIGOS
                 RESULT CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline );
                 void   CreateD3D12MemoryHeapProperties( const AllocateMemoryDesc& desc, D3D12_HEAP_PROPERTIES* pProps );
 
+                void QueryD3D12BindingsSize();
+
             private:
                 D3D12HeapProperties m_heapProperties;
                 D3D12Factory*       m_pParent = nullptr;

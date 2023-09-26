@@ -38,6 +38,7 @@ namespace BIGOS
             VkSamplerAddressMode   MapBigosTextureAddressModeToVultakSamplerAddressMode( TEXTURE_ADDRESS_MODE mode );
             VkDescriptorType       MapBigosBindingTypeToVulkanDescriptorType( BINDING_TYPE type );
             VkShaderStageFlags     MapBigosShaderVisibilityToVulkanShaderStageFlags( SHADER_VISIBILITY vis );
+            VkBufferUsageFlags     MapBigosBindingHeapTypeToVulkanBufferUsageFlags( BINDING_HEAP_TYPE type );
 
         } // namespace Backend
     }     // namespace Driver
