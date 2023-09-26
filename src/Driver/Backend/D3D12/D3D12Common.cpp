@@ -466,6 +466,28 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
+            D3D12_QUERY_HEAP_TYPE MapBigosQueryTypeToD3D12QueryHeapType( QUERY_TYPE type )
+            {
+                static const D3D12_QUERY_HEAP_TYPE translateTable[ BGS_ENUM_COUNT( QueryTypes ) ] = {
+                    D3D12_QUERY_HEAP_TYPE_OCCLUSION,           // OCCLUSION
+                    D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS, // PIPELINE_STATISTICS
+                    D3D12_QUERY_HEAP_TYPE_TIMESTAMP,           // TIMESTAMP
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            D3D12_QUERY_TYPE MapBigosQueryTypeToD3D12QueryType( QUERY_TYPE type )
+            {
+                static const D3D12_QUERY_TYPE translateTable[ BGS_ENUM_COUNT( QueryTypes ) ] = {
+                    D3D12_QUERY_TYPE_OCCLUSION,           // OCCLUSION
+                    D3D12_QUERY_TYPE_PIPELINE_STATISTICS, // PIPELINE_STATISTICS
+                    D3D12_QUERY_TYPE_TIMESTAMP,           // TIMESTAMP
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

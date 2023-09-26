@@ -24,6 +24,9 @@ namespace BIGOS
                 void   Destroy();
 
             private:
+                RESULT QueryQueueLimits();
+
+            private:
                 D3D12Device* m_pParent = nullptr;
             };
 

@@ -36,6 +36,7 @@ BGS_DECLARE_VULKAN_HANDLE( ResourceView, BIGOS::Driver::Backend::VulkanResourceV
 BGS_DECLARE_VULKAN_HANDLE( Sampler, VkSampler )
 BGS_DECLARE_VULKAN_HANDLE( BindingHeapLayout, VkDescriptorSetLayout );
 BGS_DECLARE_VULKAN_HANDLE( BindingHeap, VkBuffer )
+BGS_DECLARE_VULKAN_HANDLE( QueryPool, VkQueryPool )
 
 #endif
 

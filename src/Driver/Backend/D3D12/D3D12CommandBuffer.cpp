@@ -5,6 +5,7 @@
 #include "BigosFramework/Config.h"
 #include "D3D12Common.h"
 #include "D3D12Device.h"
+#include "D3D12Resource.h"
 
 namespace BIGOS
 {
@@ -179,9 +180,52 @@ namespace BIGOS
                 hSamplerHeap;
             }
 
-            void D3D12CommandBuffer::SetBinding( const SetBindingDesc& desc )
+            void D3D12CommandBuffer::SetBinding( const SetBindingDesc& desc ) { desc; }
+
+            void D3D12CommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
             {
-                desc;
+                BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
+                BGS_ASSERT( type != QueryTypes::TIMESTAMP, "Query type (type) must not be QueryTypes::TIMESTAMP." );
+
+                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->BeginQuery( handle.GetNativeHandle(), MapBigosQueryTypeToD3D12QueryType( type ), queryNdx );
+            }
+
+            void D3D12CommandBuffer::EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
+            {
+                BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
+                BGS_ASSERT( type != QueryTypes::TIMESTAMP, "Query type (type) must not be QueryTypes::TIMESTAMP." );
+
+                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->EndQuery( handle.GetNativeHandle(), MapBigosQueryTypeToD3D12QueryType( type ), queryNdx );
+            }
+
+            void D3D12CommandBuffer::Timestamp( QueryPoolHandle handle, uint32_t queryNdx )
+            {
+                BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
+
+                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->EndQuery( handle.GetNativeHandle(), D3D12_QUERY_TYPE_TIMESTAMP, queryNdx );
+            }
+
+            void D3D12CommandBuffer::ResetQueryPool( QueryPoolHandle, uint32_t, uint32_t )
+            {
+                // This function does not require implementation in D3D12
+            }
+
+            void D3D12CommandBuffer::CopyQueryResults( const CopyQueryResultsDesc& desc )
+            {
+                BGS_ASSERT( desc.hQueryPool != QueryPoolHandle(), "Query pool (desc.hQueryPool) must be a valid handle." );
+                BGS_ASSERT( desc.hBuffer != ResourceHandle(), "Resource (desc.hBuffer) must be a valid handle." );
+
+                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->ResolveQueryData( desc.hQueryPool.GetNativeHandle(), MapBigosQueryTypeToD3D12QueryType( desc.type ),
+                                                      desc.firstQuery, desc.queryCount, desc.hBuffer.GetNativeHandle()->pNativeResource,
+                                                      desc.bufferOffset );
             }
 
         } // namespace Backend

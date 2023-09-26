@@ -100,9 +100,12 @@ namespace BIGOS
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle )                                               = 0;
                 virtual void   CopyBinding( const CopyBindingDesc& desc )                                                     = 0;
 
+                virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) = 0;
+                virtual void   DestroyQueryPool( QueryPoolHandle* pHandle )                           = 0;
+
                 BGS_FORCEINLINE const DeviceLimits& GetLimits() const { return m_limits; }
-                BGS_FORCEINLINE const DeviceDesc&   GetDesc() const { return m_desc; }
-                BGS_FORCEINLINE const DeviceHandle  GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
 
             protected:
                 DeviceLimits m_limits;
@@ -119,8 +122,8 @@ namespace BIGOS
                 virtual RESULT Wait( const QueueWaitDesc& desc )     = 0;
 
                 BGS_FORCEINLINE const QueueLimits& GetLimits() const { return m_limits; }
-                BGS_FORCEINLINE const QueueDesc&   GetDesc() const { return m_desc; }
-                BGS_FORCEINLINE const QueueHandle  GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const QueueDesc&  GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const QueueHandle GetHandle() const { return m_handle; }
 
             protected:
                 QueueLimits m_limits;
@@ -137,7 +140,7 @@ namespace BIGOS
                 virtual RESULT Present( const SwapchainPresentDesc& desc ) = 0;
                 virtual RESULT GetNextFrame( FrameInfo* pInfo )            = 0;
 
-                BGS_FORCEINLINE const SwapchainDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const SwapchainDesc& GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const BackBufferArray& GetBackBuffers() const { return m_backBuffers; }
                 BGS_FORCEINLINE const SwapchainHandle  GetHandle() const { return m_handle; }
 
@@ -172,6 +175,12 @@ namespace BIGOS
                 virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )                                 = 0;
                 virtual void SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap ) = 0;
                 virtual void SetBinding( const SetBindingDesc& desc )                                                 = 0;
+
+                virtual void BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )           = 0;
+                virtual void EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )             = 0;
+                virtual void Timestamp( QueryPoolHandle handle, uint32_t queryNdx )                             = 0;
+                virtual void ResetQueryPool( QueryPoolHandle handle, uint32_t firstQuery, uint32_t queryCount ) = 0;
+                virtual void CopyQueryResults( const CopyQueryResultsDesc& desc )                               = 0;
 
                 BGS_FORCEINLINE const CommandBufferDesc&  GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const CommandBufferHandle GetHandle() const { return m_handle; }

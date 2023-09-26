@@ -35,6 +35,12 @@ namespace BIGOS
                 virtual void SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap ) override;
                 virtual void SetBinding( const SetBindingDesc& desc ) override;
 
+                virtual void BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type ) override;
+                virtual void EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type ) override;
+                virtual void Timestamp( QueryPoolHandle handle, uint32_t queryNdx ) override;
+                virtual void ResetQueryPool( QueryPoolHandle handle, uint32_t firstQuery, uint32_t queryCount ) override;
+                virtual void CopyQueryResults( const CopyQueryResultsDesc& desc ) override;
+
             protected:
                 RESULT Create( const CommandBufferDesc& desc, VulkanDevice* pDevice );
                 void   Destroy();
