@@ -2,3 +2,5 @@
 cmake_build/
 bin/
 lib/
+
+!src/ThirdParty/DXCompiler/bin/
