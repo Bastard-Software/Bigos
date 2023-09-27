@@ -21,4 +21,5 @@ namespace BIGOS::Driver::Backend
     BGS_DECLARE_HANDLE( Sampler );
     BGS_DECLARE_HANDLE( BindingHeapLayout );
     BGS_DECLARE_HANDLE( BindingHeap );
+    BGS_DECLARE_HANDLE( QueryPool );
 } // namespace BIGOS::Driver::Backend

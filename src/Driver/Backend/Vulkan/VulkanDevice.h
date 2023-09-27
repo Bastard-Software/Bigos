@@ -83,6 +83,9 @@ namespace BIGOS
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle ) override;
                 virtual void   CopyBinding( const CopyBindingDesc& desc ) override;
 
+                virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) override;
+                virtual void   DestroyQueryPool( QueryPoolHandle* pHandle ) override;
+
                 // Funcions needed for Vulkan backend
             public:
                 RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );

@@ -21,7 +21,7 @@ const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
 
 int main()
 {
@@ -97,6 +97,33 @@ int main()
     }
 
     BIGOS::Driver::Backend::IDevice* pAPIDevice = pRenderDevice->GetNativeAPIDevice();
+
+    BIGOS::Driver::Backend::QueryPoolHandle hTimestampPool;
+    BIGOS::Driver::Backend::QueryPoolDesc   timestampPoolDesc;
+    timestampPoolDesc.queryCount = 4;
+    timestampPoolDesc.type       = BIGOS::Driver::Backend::QueryTypes::TIMESTAMP;
+    if( BGS_FAILED( pAPIDevice->CreateQueryPool( timestampPoolDesc, &hTimestampPool ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::QueryPoolHandle hPipelinePool;
+    BIGOS::Driver::Backend::QueryPoolDesc   pipelinePoolDesc;
+    pipelinePoolDesc.queryCount = 4;
+    pipelinePoolDesc.type       = BIGOS::Driver::Backend::QueryTypes::PIPELINE_STATISTICS;
+    if( BGS_FAILED( pAPIDevice->CreateQueryPool( pipelinePoolDesc, &hPipelinePool ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::QueryPoolHandle hOcclusionPool;
+    BIGOS::Driver::Backend::QueryPoolDesc   occlusionPoolDesc;
+    occlusionPoolDesc.queryCount = 4;
+    occlusionPoolDesc.type       = BIGOS::Driver::Backend::QueryTypes::OCCLUSION;
+    if( BGS_FAILED( pAPIDevice->CreateQueryPool( occlusionPoolDesc, &hOcclusionPool ) ) )
+    {
+        return -1;
+    }
 
     BIGOS::Driver::Backend::ResourceHandle hVB;
     BIGOS::Driver::Backend::ResourceDesc   vbDesc;
@@ -509,6 +536,9 @@ int main()
     pAPIDevice->DestroyCommandPool( &hCmdPool );
     pAPIDevice->DestroySemaphore( &hSemaphore );
     pAPIDevice->DestroyFence( &hFence );
+    pAPIDevice->DestroyQueryPool( &hPipelinePool );
+    pAPIDevice->DestroyQueryPool( &hTimestampPool );
+    pAPIDevice->DestroyQueryPool( &hOcclusionPool );
 
     blocks = pFramework->GetMemorySystem()->GetMemoryBlockInfo();
     blocks;

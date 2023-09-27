@@ -766,10 +766,7 @@ namespace BIGOS
                 return Results::OK;
             }
 
-            void D3D12Device::DestroyResourceView( ResourceViewHandle* pHandle )
-            {
-                pHandle;
-            }
+            void D3D12Device::DestroyResourceView( ResourceViewHandle* pHandle ) { pHandle; }
 
             RESULT D3D12Device::CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )
             {
@@ -786,7 +783,7 @@ namespace BIGOS
                 }
 
                 pSampler->sampler.Filter         = MapBigosFiltesToD3D12Filter( desc.minFilter, desc.magFilter, desc.mipMapFilter, desc.reductionMode,
-                                                                                desc.anisotropyEnable, desc.compareEnable );
+                                                                        desc.anisotropyEnable, desc.compareEnable );
                 pSampler->sampler.AddressU       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressU );
                 pSampler->sampler.AddressV       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressV );
                 pSampler->sampler.AddressW       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressW );
@@ -978,7 +975,7 @@ namespace BIGOS
             {
                 BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid address." );
                 BGS_ASSERT( desc.bindingCount > 0, "Binding count (desc.bindingCount) must be more than 0." );
-                if( ( pHandle == nullptr ) || ( desc.bindingCount < 0 ) )
+                if( ( pHandle == nullptr ) || ( desc.bindingCount <= 0 ) )
                 {
                     return Results::FAIL;
                 }
@@ -1016,9 +1013,47 @@ namespace BIGOS
                 }
             }
 
-            void D3D12Device::CopyBinding( const CopyBindingDesc& desc )
+            void D3D12Device::CopyBinding( const CopyBindingDesc& desc ) { desc; }
+
+            RESULT D3D12Device::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
             {
-                desc;
+                BGS_ASSERT( pHandle != nullptr, "Query pool (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.queryCount > 0, "Query count (desc.queryCount) must be more than 0." );
+                if( ( pHandle == nullptr ) || ( desc.queryCount < 0 ) )
+                {
+                    return Results::FAIL;
+                }
+
+                ID3D12Device*    pNativeDevice = m_handle.GetNativeHandle();
+                ID3D12QueryHeap* pNativeHeap   = nullptr;
+
+                D3D12_QUERY_HEAP_DESC heapDesc;
+                heapDesc.NodeMask = 0;
+                heapDesc.Type     = MapBigosQueryTypeToD3D12QueryHeapType( desc.type );
+                heapDesc.Count    = desc.queryCount;
+
+                if( FAILED( pNativeDevice->CreateQueryHeap( &heapDesc, IID_PPV_ARGS( &pNativeHeap ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = QueryPoolHandle( pNativeHeap );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyQueryPool( QueryPoolHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Query pool (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != QueryPoolHandle(), "Query pool (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != QueryPoolHandle() ) )
+                {
+                    ID3D12QueryHeap* pNativeHeap = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeHeap );
+
+                    *pHandle = QueryPoolHandle();
+                }
             }
 
             RESULT D3D12Device::Create( const DeviceDesc& desc, D3D12Factory* pFactory )

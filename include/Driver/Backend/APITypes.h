@@ -116,7 +116,7 @@ namespace BIGOS
 
             struct QueueLimits
             {
-                // TODO: Fill
+                float timestampPeriod; // Indicates the number of nanoseconds required for a timestamp query to be incremented by 1
             };
 
             struct QueueSubmitDesc
@@ -980,6 +980,31 @@ namespace BIGOS
 
             struct SetBindingDesc
             {
+            };
+
+            enum class QueryTypes : uint8_t
+            {
+                OCCLUSION,
+                PIPELINE_STATISTICS,
+                TIMESTAMP,
+                _MAX_ENUM,
+            };
+            using QUERY_TYPE = QueryTypes;
+
+            struct QueryPoolDesc
+            {
+                uint32_t   queryCount;
+                QUERY_TYPE type;
+            };
+
+            struct CopyQueryResultsDesc
+            {
+                QueryPoolHandle hQueryPool;
+                ResourceHandle  hBuffer;
+                uint64_t        bufferOffset;
+                uint32_t        firstQuery;
+                uint32_t        queryCount;
+                QUERY_TYPE      type;
             };
 
         } // namespace Backend

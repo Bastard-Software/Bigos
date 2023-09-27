@@ -53,6 +53,12 @@ namespace BIGOS
 
                 m_handle = QueueHandle( pNativeQueue );
 
+                if( BGS_FAILED( QueryQueueLimits() ) )
+                {
+                    RELEASE_COM_PTR( pNativeQueue );
+                    return Results::FAIL;
+                }
+
                 return Results::OK;
             }
 
@@ -66,6 +72,20 @@ namespace BIGOS
 
                 m_pParent = nullptr;
                 m_handle  = QueueHandle();
+            }
+
+            RESULT D3D12Queue::QueryQueueLimits()
+            {
+                ID3D12CommandQueue* pNativeQueue = m_handle.GetNativeHandle();
+                uint64_t            frequency    = 0;
+                if( FAILED( pNativeQueue->GetTimestampFrequency( &frequency ) ) )
+                {
+                    return Results::FAIL;
+                }
+                // Dividing 1 000 000 000 t get period in nanoseconds
+                m_limits.timestampPeriod = 1000000000.0f / static_cast<float>( frequency );
+
+                return Results::OK;
             }
 
         } // namespace Backend

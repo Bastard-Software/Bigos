@@ -963,10 +963,7 @@ namespace BIGOS
                 return Results::OK;
             }
 
-            void VulkanDevice::DestroyResourceView( ResourceViewHandle* pHandle )
-            {
-                pHandle;
-            }
+            void VulkanDevice::DestroyResourceView( ResourceViewHandle* pHandle ) { pHandle; }
 
             RESULT VulkanDevice::CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )
             {
@@ -1171,9 +1168,59 @@ namespace BIGOS
                 }
             }
 
-            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
+            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc ) { desc; }
+
+            RESULT VulkanDevice::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
             {
-                desc;
+                BGS_ASSERT( pHandle != nullptr, "Query pool (pHandle) must be a valid address." );
+                BGS_ASSERT( desc.queryCount > 0, "Query count (desc.queryCount) must be more than 0." );
+                if( ( pHandle == nullptr ) || ( desc.queryCount < 0 ) )
+                {
+                    return Results::FAIL;
+                }
+
+                VkDevice    nativeDevice = m_handle.GetNativeHandle();
+                VkQueryPool nativePool   = VK_NULL_HANDLE;
+
+                VkQueryPoolCreateInfo poolInfo;
+                poolInfo.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                poolInfo.pNext      = nullptr;
+                poolInfo.flags      = 0;
+                poolInfo.queryCount = desc.queryCount;
+                poolInfo.queryType  = MapBigosQueryTypeToVulkanQueryType( desc.type );
+                // Mimicing d3d12 behaviour
+                poolInfo.pipelineStatistics =
+                    VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT | VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+                    VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT | VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT |
+                    VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+                    VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT | VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+                    VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT |
+                    VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT |
+                    VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+
+                if( vkCreateQueryPool( nativeDevice, &poolInfo, nullptr, &nativePool ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pHandle = QueryPoolHandle( nativePool );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyQueryPool( QueryPoolHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Query pool (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != QueryPoolHandle(), "Query pool (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != QueryPoolHandle() ) )
+                {
+                    VkDevice    nativeDevice = m_handle.GetNativeHandle();
+                    VkQueryPool nativePool   = pHandle->GetNativeHandle();
+
+                    vkDestroyQueryPool( nativeDevice, nativePool, nullptr );
+
+                    *pHandle = QueryPoolHandle();
+                }
             }
 
             RESULT VulkanDevice::Create( const DeviceDesc& desc, VulkanFactory* pFactory )

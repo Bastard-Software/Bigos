@@ -524,6 +524,17 @@ namespace BIGOS
                 return static_cast<VkShaderStageFlags>( translateTable[ BGS_ENUM_INDEX( type ) ] );
             }
 
+            VkQueryType MapBigosQueryTypeToVulkanQueryType( QUERY_TYPE type )
+            {
+                static const VkQueryType translateTable[ BGS_ENUM_COUNT( QueryTypes ) ] = {
+                    VK_QUERY_TYPE_OCCLUSION,           // OCCLUSION
+                    VK_QUERY_TYPE_PIPELINE_STATISTICS, // PIPELINE_STATISTICS
+                    VK_QUERY_TYPE_TIMESTAMP,           // TIMESTAMP
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

@@ -68,6 +68,9 @@ namespace BIGOS
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle ) override;
                 virtual void   CopyBinding( const CopyBindingDesc& desc ) override;
 
+                virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) override;
+                virtual void   DestroyQueryPool( QueryPoolHandle* pHandle ) override;
+
                 // Function needed for D3D12 backend
             public:
                 D3D12Factory* GetParent() const { return m_pParent; }

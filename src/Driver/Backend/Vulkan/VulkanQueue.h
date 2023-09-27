@@ -29,6 +29,9 @@ namespace BIGOS
                 void   Destroy();
 
             private:
+                RESULT QueryQueueLimits();
+
+            private:
                 VulkanDevice* m_pParent = nullptr;
 
                 uint32_t m_nativeQueueFamilyIndex = MAX_UINT32; // Equivalent of INVALID_POSITION for 32 bit ints.

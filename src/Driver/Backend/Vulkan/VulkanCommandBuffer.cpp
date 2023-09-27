@@ -4,6 +4,7 @@
 
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
+#include "VulkanResource.h"
 
 namespace BIGOS
 {
@@ -184,9 +185,60 @@ namespace BIGOS
                 hSamplerHeap;
             }
 
-            void VulkanCommandBuffer::SetBinding( const SetBindingDesc& desc )
+            void VulkanCommandBuffer::SetBinding( const SetBindingDesc& desc ) { desc; }
+
+            void VulkanCommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
             {
-                desc;
+                BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
+                BGS_ASSERT( type != QueryTypes::TIMESTAMP, "Query type (type) must not be QueryTypes::TIMESTAMP." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdBeginQuery( nativeCommandBuffer, handle.GetNativeHandle(), queryNdx, 0 );
+            }
+
+            void VulkanCommandBuffer::EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
+            {
+                BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
+                BGS_ASSERT( type != QueryTypes::TIMESTAMP, "Query type (type) must not be QueryTypes::TIMESTAMP." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdEndQuery( nativeCommandBuffer, handle.GetNativeHandle(), queryNdx );
+            }
+
+            void VulkanCommandBuffer::Timestamp( QueryPoolHandle handle, uint32_t queryNdx )
+            {
+                BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                // pipelineStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT - that means that timestamp will be written when all previous commands reach
+                // bottom of the pipe stage. That is exactly the same as in D3D12.
+                vkCmdWriteTimestamp( nativeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, handle.GetNativeHandle(), queryNdx );
+            }
+
+            void VulkanCommandBuffer::ResetQueryPool( QueryPoolHandle handle, uint32_t firstQuery, uint32_t queryCount )
+            {
+                BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdResetQueryPool( nativeCommandBuffer, handle.GetNativeHandle(), firstQuery, queryCount );
+            }
+
+            void VulkanCommandBuffer::CopyQueryResults( const CopyQueryResultsDesc& desc )
+            {
+                BGS_ASSERT( desc.hQueryPool != QueryPoolHandle(), "Query pool (desc.hQueryPool) must be a valid handle." );
+                BGS_ASSERT( desc.hBuffer != ResourceHandle(), "Resource (desc.hBuffer) must be a valid handle." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                // Hardcoded params:
+                //      stride = sizeof( uint64_t )      - To mimic D3D12 behavior (we always use uint64_t as query)
+                //      flags  = VK_QUERY_RESULT_64_BIT  - To mimic D3D12 behavior (we always use uint64_t as query)
+                vkCmdCopyQueryPoolResults( nativeCommandBuffer, desc.hQueryPool.GetNativeHandle(), desc.firstQuery, desc.queryCount,
+                                           desc.hBuffer.GetNativeHandle()->buffer, desc.bufferOffset, sizeof( uint64_t ), VK_QUERY_RESULT_64_BIT );
             }
 
         } // namespace Backend

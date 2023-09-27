@@ -44,6 +44,8 @@ namespace BIGOS
                 VkDevice nativeDevice = m_pParent->GetHandle().GetNativeHandle();
                 VkQueue  nativeQueue  = VK_NULL_HANDLE;
                 vkGetDeviceQueue( nativeDevice, m_nativeQueueFamilyIndex, m_nativeQueueIndex, &nativeQueue );
+                m_handle = QueueHandle( nativeQueue );
+                QueryQueueLimits();
 
                 return Results::OK;
             }
@@ -61,6 +63,19 @@ namespace BIGOS
 
                 m_pParent = nullptr;
                 m_handle  = QueueHandle();
+            }
+
+            RESULT VulkanQueue::QueryQueueLimits()
+            {
+                // In D3D12 timestamp frequency is queried on queue level (not on physical device as in vulkan). Thats why we store this informations
+                // in queue limits structure.
+                VkPhysicalDevice           nativeAdapter = m_pParent->GetDesc().pAdapter->GetHandle().GetNativeHandle();
+                VkPhysicalDeviceProperties deviceProps;
+                vkGetPhysicalDeviceProperties( nativeAdapter, &deviceProps );
+
+                m_limits.timestampPeriod = deviceProps.limits.timestampPeriod;
+
+                return Results::OK;
             }
 
         } // namespace Backend
