@@ -2,6 +2,7 @@
 
 #include "VulkanCommandBuffer.h"
 
+#include "VulkanBindingHeap.h"
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
 #include "VulkanResource.h"
@@ -174,15 +175,32 @@ namespace BIGOS
 
             void VulkanCommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
             {
-                // TODO: Need pipelines
-                handle;
-                type;
+                BGS_ASSERT( handle != PipelineHandle(), "Pipeline (handle) must be a valid handle." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdBindPipeline( nativeCommandBuffer, MapBigosPipelineTypeToVulkanPipelineBindPoint( type ), handle.GetNativeHandle() );
             }
 
-            void VulkanCommandBuffer::SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap )
+            void VulkanCommandBuffer::SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle )
             {
-                hShaderResourceHeap;
-                hSamplerHeap;
+                BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid array." );
+                BGS_ASSERT( heapCount <= 2, "Binding heap count (heapCount) must be less or equal 2." );
+
+                VkCommandBuffer                  nativeCommandBuffer = m_handle.GetNativeHandle();
+                VkDescriptorBufferBindingInfoEXT heaps[ 2 ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( heapCount ); ++ndx )
+                {
+                    VulkanBindingHeap*                pDesc    = pHandle[ ndx ].GetNativeHandle();
+                    VkDescriptorBufferBindingInfoEXT& currBuff = heaps[ ndx ];
+
+                    currBuff.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+                    currBuff.pNext   = nullptr;
+                    currBuff.address = pDesc->address;
+                    currBuff.usage   = pDesc->flags;
+                }
+
+                vkCmdBindDescriptorBuffersEXT( nativeCommandBuffer, heapCount, heaps );
             }
 
             void VulkanCommandBuffer::SetBinding( const SetBindingDesc& desc ) { desc; }

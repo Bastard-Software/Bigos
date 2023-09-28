@@ -5,6 +5,7 @@
 
 namespace BIGOS::Driver::Backend
 {
+    struct VulkanBindingHeap;
     struct VulkanMemory;
     struct VulkanResource;
     struct VulkanResourceView;
@@ -35,7 +36,7 @@ BGS_DECLARE_VULKAN_HANDLE( Resource, BIGOS::Driver::Backend::VulkanResource* )
 BGS_DECLARE_VULKAN_HANDLE( ResourceView, BIGOS::Driver::Backend::VulkanResourceView* )
 BGS_DECLARE_VULKAN_HANDLE( Sampler, VkSampler )
 BGS_DECLARE_VULKAN_HANDLE( BindingHeapLayout, VkDescriptorSetLayout );
-BGS_DECLARE_VULKAN_HANDLE( BindingHeap, VkBuffer )
+BGS_DECLARE_VULKAN_HANDLE( BindingHeap, BIGOS::Driver::Backend::VulkanBindingHeap* );
 BGS_DECLARE_VULKAN_HANDLE( QueryPool, VkQueryPool )
 
 #endif

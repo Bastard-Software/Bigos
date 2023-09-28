@@ -550,6 +550,17 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
+            VkPipelineBindPoint MapBigosPipelineTypeToVulkanPipelineBindPoint( PIPELINE_TYPE type )
+            {
+                static const VkPipelineBindPoint translateTable[ BGS_ENUM_COUNT( TextureTypes ) ] = {
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,        // GRAPHICS
+                    VK_PIPELINE_BIND_POINT_COMPUTE,         // COMPUTE
+                    VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, // RAY_TRACING
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

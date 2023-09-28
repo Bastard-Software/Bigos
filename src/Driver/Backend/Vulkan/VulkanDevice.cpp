@@ -7,6 +7,7 @@
 #include "Core/Memory/Memory.h"
 #include "Core/Utils/String.h"
 #include "Driver/Frontend/RenderSystem.h"
+#include "VulkanBindingHeap.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanCommon.h"
 #include "VulkanFactory.h"
@@ -53,6 +54,7 @@ namespace BIGOS
                     m_dev12Features.drawIndirectCount        = VK_TRUE;
                     m_dev12Features.samplerMirrorClampToEdge = VK_TRUE;
                     m_dev12Features.timelineSemaphore        = VK_TRUE; // Crucial for synchronization
+                    m_dev12Features.bufferDeviceAddress      = VK_TRUE; // Needed for descriptor buffer ext
 
                     // Vulkan 1.3 features
                     m_dev13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -115,7 +117,8 @@ namespace BIGOS
                 return shaderStageInfo;
             }
 
-            static int32_t FindMemTypeNdx( const VkPhysicalDeviceMemoryProperties* pMemProps, uint32_t memBits, VkMemoryPropertyFlags memProps )
+            static uint32_t FindVulkanMemTypeNdx( const VkPhysicalDeviceMemoryProperties* pMemProps, uint32_t memBits,
+                                                  VkMemoryPropertyFlags memProps )
             {
 
                 for( index_t ndx = 0; ndx < static_cast<index_t>( pMemProps->memoryTypeCount ); ++ndx )
@@ -126,10 +129,10 @@ namespace BIGOS
                     const bool                  hasRequiredProps  = ( props & memProps ) == memProps;
                     if( isRequiredMemType && hasRequiredProps )
                     {
-                        return static_cast<int32_t>( ndx );
+                        return static_cast<uint32_t>( ndx );
                     }
                 }
-                return MAX_INT32;
+                return MAX_UINT32;
             }
 
             static MemoryAccessFlags MapBigosMemoryHeapTypeToMemoryAccessFlags( MEMORY_HEAP_TYPE type )
@@ -672,7 +675,7 @@ namespace BIGOS
                 VkMemoryPropertyFlags nativePropsFlags = MapBigosMemoryAccessFlagsToVulkanMemoryPropertFlags( access );
 
                 const VkPhysicalDeviceMemoryProperties& nativeProps = m_heapProperties.memoryProperties;
-                const int32_t                           ndx         = FindMemTypeNdx( &nativeProps, MAX_UINT32, nativePropsFlags );
+                const int32_t                           ndx         = FindVulkanMemTypeNdx( &nativeProps, MAX_UINT32, nativePropsFlags );
                 if( ndx < 0 )
                 {
                     return Results::NOT_FOUND;
@@ -1352,29 +1355,86 @@ namespace BIGOS
                 {
                     return Results::FAIL;
                 }
+                VulkanBindingHeap* pHeap = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
                 BGS_ASSERT( m_bindingSize );
 
-                VkDevice nativeDevice = m_handle.GetNativeHandle();
-                VkBuffer nativeHeap   = VK_NULL_HANDLE;
+                VkDevice       nativeDevice = m_handle.GetNativeHandle();
+                VkBuffer       nativeHeap   = VK_NULL_HANDLE;
+                VkDeviceMemory nativeMemory = VK_NULL_HANDLE;
 
-                static const uint32_t qFamNdx[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+                static const uint32_t           qFamNdx[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+                static const VkBufferUsageFlags baseUsage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
                 VkBufferCreateInfo buffInfo;
                 buffInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
                 buffInfo.pNext                 = nullptr;
                 buffInfo.flags                 = 0;
                 buffInfo.size                  = desc.bindingCount * m_bindingSize;
-                buffInfo.usage                 = MapBigosBindingHeapTypeToVulkanBufferUsageFlags( desc.type );
+                buffInfo.usage                 = baseUsage | MapBigosBindingHeapTypeToVulkanBufferUsageFlags( desc.type );
                 buffInfo.sharingMode           = VK_SHARING_MODE_CONCURRENT;
                 buffInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
                 buffInfo.pQueueFamilyIndices   = qFamNdx;
 
                 if( vkCreateBuffer( nativeDevice, &buffInfo, nullptr, &nativeHeap ) != VK_SUCCESS )
                 {
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
                     return Results::FAIL;
                 }
 
-                *pHandle = BindingHeapHandle( nativeHeap );
+                uint32_t memNdx = FindVulkanMemTypeNdx( &m_heapProperties.memoryProperties, MAX_UINT32, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
+                BGS_ASSERT( memNdx != MAX_UINT32 );
+                if( memNdx == MAX_UINT32 )
+                {
+                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
+                    return Results::NO_MEMORY;
+                }
+
+                VkMemoryRequirements memRequirements;
+                vkGetBufferMemoryRequirements( nativeDevice, nativeHeap, &memRequirements );
+
+                VkMemoryAllocateFlagsInfo allocFlags;
+                allocFlags.sType      = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+                allocFlags.pNext      = nullptr;
+                allocFlags.deviceMask = 0;
+                allocFlags.flags      = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+
+                VkMemoryAllocateInfo allocInfo;
+                allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                allocInfo.pNext           = &allocFlags;
+                allocInfo.memoryTypeIndex = memNdx;
+                allocInfo.allocationSize  = memRequirements.size;
+
+                if( vkAllocateMemory( nativeDevice, &allocInfo, nullptr, &nativeMemory ) != VK_SUCCESS )
+                {
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
+                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    return Results::NO_MEMORY;
+                }
+
+                if( vkBindBufferMemory( nativeDevice, nativeHeap, nativeMemory, 0 ) != VK_SUCCESS )
+                {
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
+                    vkFreeMemory( nativeDevice, nativeMemory, nullptr );
+                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    return Results::FAIL;
+                }
+
+                VkBufferDeviceAddressInfo addressInfo;
+                addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                addressInfo.pNext  = nullptr;
+                addressInfo.buffer = nativeHeap;
+
+                pHeap->buffer  = nativeHeap;
+                pHeap->memory  = nativeMemory;
+                pHeap->address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo );
+                pHeap->flags   = buffInfo.usage;
+
+                *pHandle = BindingHeapHandle( pHeap );
 
                 return Results::OK;
             }
@@ -1385,10 +1445,13 @@ namespace BIGOS
                 BGS_ASSERT( *pHandle != BindingHeapHandle(), "Binding heap (pHandle) must point to valid handle." );
                 if( ( pHandle != nullptr ) && ( *pHandle != BindingHeapHandle() ) )
                 {
-                    VkDevice nativeDevice = m_handle.GetNativeHandle();
-                    VkBuffer nativeHeap   = pHandle->GetNativeHandle();
+                    VulkanBindingHeap* pHeap        = pHandle->GetNativeHandle();
+                    VkDevice           nativeDevice = m_handle.GetNativeHandle();
 
-                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    vkDestroyBuffer( nativeDevice, pHeap->buffer, nullptr );
+                    vkFreeMemory( nativeDevice, pHeap->memory, nullptr );
+
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
 
                     *pHandle = BindingHeapHandle();
                 }
