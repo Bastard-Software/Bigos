@@ -56,4 +56,10 @@ namespace BIGOS::Driver::Backend
     };
     using VULKAN_RESOURCE_TYPE = VulkanResourceTypes;
 
+    struct VulkanDescriptorInfo
+    {
+        void*  pData;
+        size_t size;
+    };
+
 } // namespace BIGOS::Driver::Backend

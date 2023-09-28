@@ -21,7 +21,7 @@ const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
 
 int main()
 {
@@ -307,6 +307,30 @@ int main()
         return -1;
     }
 
+    const BIGOS::Driver::Backend::BackBufferArray& backBuffers = pSwapchain->GetBackBuffers();
+
+    BIGOS::Driver::Backend::ResourceViewHandle hRtvs[ 2 ];
+    BIGOS::Driver::Backend::TextureViewDesc    rtvDesc;
+    rtvDesc.usage                 = BGS_FLAG( BIGOS::Driver::Backend::ResourceViewUsageFlagBits::COLOR_RENDER_TARGET );
+    rtvDesc.format                = BIGOS::Driver::Backend::Formats::B8G8R8A8_UNORM;
+    rtvDesc.textureType           = BIGOS::Driver::Backend::TextureTypes::TEXTURE_2D;
+    rtvDesc.range.components      = BGS_FLAG( BIGOS::Driver::Backend::TextureComponentFlagBits::COLOR );
+    rtvDesc.range.mipLevel        = 0;
+    rtvDesc.range.mipLevelCount   = 1;
+    rtvDesc.range.arrayLayer      = 0;
+    rtvDesc.range.arrayLayerCount = 1;
+    rtvDesc.hResource             = backBuffers[ 0 ].hBackBuffer;
+    if( BGS_FAILED( pAPIDevice->CreateResourceView( rtvDesc, &hRtvs[ 0 ] ) ) )
+    {
+        return -1;
+    }
+
+    rtvDesc.hResource = backBuffers[ 1 ].hBackBuffer;
+    if( BGS_FAILED( pAPIDevice->CreateResourceView( rtvDesc, &hRtvs[ 1 ] ) ) )
+    {
+        return -1;
+    }
+
     BIGOS::Driver::Backend::CommandPoolHandle hCmdPool;
     BIGOS::Driver::Backend::CommandPoolDesc   cmdPoolDesc;
     cmdPoolDesc.pQueue = pGraphicsQueue;
@@ -522,6 +546,8 @@ int main()
     pAPIDevice->DestroyBindingHeap( &hSamplerHeap );
     pAPIDevice->DestroyBindingHeap( &hShaderResHeap );
     pAPIDevice->DestroyBindingHeapLayout( &hBindingLayout );
+    pAPIDevice->DestroyResourceView( &hRtvs[ 0 ] );
+    pAPIDevice->DestroyResourceView( &hRtvs[ 1 ] );
     pAPIDevice->DestroySwapchain( &pSwapchain );
     pAPIDevice->DestroyResource( &hVB );
     pAPIDevice->FreeMemory( &hBufferMem );

@@ -535,6 +535,21 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
+            VkImageViewType MapBigosTextureTypeToVulkanImageViewType( TEXTURE_TYPE type )
+            {
+                static const VkImageViewType translateTable[ BGS_ENUM_COUNT( TextureTypes ) ] = {
+                    VK_IMAGE_VIEW_TYPE_1D,         // TEXTURE_1D
+                    VK_IMAGE_VIEW_TYPE_1D_ARRAY,   // TEXTURE_1D_ARRAY
+                    VK_IMAGE_VIEW_TYPE_2D,         // TEXTURE_2D
+                    VK_IMAGE_VIEW_TYPE_2D_ARRAY,   // TEXTURE_2D_ARRAY
+                    VK_IMAGE_VIEW_TYPE_3D,         // TEXTURE_3D
+                    VK_IMAGE_VIEW_TYPE_CUBE,       // TEXURTE_CUBE
+                    VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, // TEXURTE_CUBE_ARRAY
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

@@ -11,11 +11,8 @@ namespace BIGOS
 
             struct VulkanResourceView
             {
-                union
-                {
-                    VkImageView     imageView;
-                    BufferRangeDesc bufferView;
-                };
+                VulkanDescriptorInfo descriptorData;
+                VkImageView          imageView;
                 VULKAN_RESOURCE_TYPE type;
             };
 

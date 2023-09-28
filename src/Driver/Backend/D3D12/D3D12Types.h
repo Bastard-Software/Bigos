@@ -64,6 +64,17 @@ namespace BIGOS::Driver::Backend
     };
     using D3D12_SEMAPHORE_STATE = D3D12SemaphoreStates;
 
+    enum class D3D12DescriptorTypes : uint8_t
+    {
+        RTV,
+        DSV,
+        CBV,
+        SRV,
+        UAV,
+        _MAX_ENUM,
+    };
+    using D3D12_DESCRIPTOR_TYPE = D3D12DescriptorTypes;
+
 } // namespace BIGOS::Driver::Backend
 
 #define RELEASE_COM_PTR( _x )                                                                                                                        \
@@ -74,3 +85,5 @@ namespace BIGOS::Driver::Backend
             ( _x ) = nullptr;                                                                                                                        \
         }                                                                                                                                            \
     }
+
+#include "Driver/Backend/APICommon.h"

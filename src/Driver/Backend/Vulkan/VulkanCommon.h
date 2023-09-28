@@ -40,6 +40,7 @@ namespace BIGOS
             VkShaderStageFlags     MapBigosShaderVisibilityToVulkanShaderStageFlags( SHADER_VISIBILITY vis );
             VkBufferUsageFlags     MapBigosBindingHeapTypeToVulkanBufferUsageFlags( BINDING_HEAP_TYPE type );
             VkQueryType            MapBigosQueryTypeToVulkanQueryType( QUERY_TYPE type );
+            VkImageViewType        MapBigosTextureTypeToVulkanImageViewType( TEXTURE_TYPE type );
 
         } // namespace Backend
     }     // namespace Driver

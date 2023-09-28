@@ -13,6 +13,7 @@
 #include "VulkanMemory.h"
 #include "VulkanQueue.h"
 #include "VulkanResource.h"
+#include "VulkanResourceView.h"
 #include "VulkanSwapchain.h"
 
 namespace BIGOS
@@ -958,12 +959,237 @@ namespace BIGOS
 
             RESULT VulkanDevice::CreateResourceView( const ResourceViewDesc& desc, ResourceViewHandle* pHandle )
             {
-                desc;
-                pHandle;
+                BGS_ASSERT( pHandle != nullptr, "Resource view (pHandle) must be a valid address." );
+                if( ( pHandle == nullptr ) ) // TODO: Validation
+                {
+                    return Results::FAIL;
+                }
+
+                VulkanResourceView* pResView = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pResView ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                pResView->descriptorData.pData = nullptr;
+                pResView->descriptorData.size  = 0;
+
+                VkDevice nativeDevice = m_handle.GetNativeHandle();
+                if( desc.hResource.GetNativeHandle()->type == VulkanResourceTypes::IMAGE )
+                {
+                    const TextureViewDesc& texDesc    = static_cast<const TextureViewDesc&>( desc );
+                    VkImageView            nativeView = VK_NULL_HANDLE;
+
+                    VkImageViewCreateInfo viewInfo;
+                    viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                    viewInfo.pNext                           = nullptr;
+                    viewInfo.flags                           = 0;
+                    viewInfo.image                           = texDesc.hResource.GetNativeHandle()->image;
+                    viewInfo.viewType                        = MapBigosTextureTypeToVulkanImageViewType( texDesc.textureType );
+                    viewInfo.format                          = MapBigosFormatToVulkanFormat( texDesc.format );
+                    viewInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                    viewInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                    viewInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                    viewInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                    viewInfo.subresourceRange.aspectMask     = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( texDesc.range.components );
+                    viewInfo.subresourceRange.baseMipLevel   = texDesc.range.mipLevel;
+                    viewInfo.subresourceRange.levelCount     = texDesc.range.mipLevelCount;
+                    viewInfo.subresourceRange.baseArrayLayer = texDesc.range.arrayLayer;
+                    viewInfo.subresourceRange.layerCount     = texDesc.range.arrayLayerCount;
+
+                    if( vkCreateImageView( nativeDevice, &viewInfo, nullptr, &nativeView ) != VK_SUCCESS )
+                    {
+                        Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pResView );
+                        return Results::FAIL;
+                    }
+                    pResView->imageView = nativeView;
+                    pResView->type      = VulkanResourceTypes::IMAGE;
+
+                    // Retriving descriptor data for image view based descriptor (not needed for rtv and dsv)
+                    if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::SAMPLED_TEXTURE ) )
+                    {
+                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+
+                        VkDescriptorImageInfo imageInfo;
+                        imageInfo.imageView   = nativeView;
+                        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+                        VkDescriptorGetInfoEXT getInfo;
+                        getInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                        getInfo.pNext              = nullptr;
+                        getInfo.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                        getInfo.data.pSampledImage = &imageInfo;
+
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                    }
+                    else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXTURE ) )
+                    {
+                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+
+                        VkDescriptorImageInfo imageInfo;
+                        imageInfo.imageView   = nativeView;
+                        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+                        VkDescriptorGetInfoEXT getInfo;
+                        getInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                        getInfo.pNext              = nullptr;
+                        getInfo.type               = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                        getInfo.data.pStorageImage = &imageInfo;
+
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                    }
+                }
+                else
+                {
+                    // Retriving descriptor data for buffer based descriptor
+                    if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::CONSTANT_TEXEL_BUFFER ) )
+                    {
+                        const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
+                        VulkanDescriptorInfo&      currInfo = pResView->descriptorData;
+
+                        VkBufferDeviceAddressInfo addressInfo;
+                        addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                        addressInfo.pNext  = nullptr;
+                        addressInfo.buffer = buffDesc.hResource.GetNativeHandle()->buffer;
+
+                        VkDescriptorAddressInfoEXT buffInfo;
+                        buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
+                        buffInfo.pNext   = nullptr;
+                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.range   = buffDesc.range.size;
+                        buffInfo.format  = MapBigosFormatToVulkanFormat( buffDesc.format );
+
+                        VkDescriptorGetInfoEXT getInfo;
+                        getInfo.sType                    = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                        getInfo.pNext                    = nullptr;
+                        getInfo.type                     = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+                        getInfo.data.pUniformTexelBuffer = &buffInfo;
+
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                    }
+                    else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXEL_BUFFER ) )
+                    {
+                        const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
+                        VulkanDescriptorInfo&      currInfo = pResView->descriptorData;
+
+                        VkBufferDeviceAddressInfo addressInfo;
+                        addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                        addressInfo.pNext  = nullptr;
+                        addressInfo.buffer = buffDesc.hResource.GetNativeHandle()->buffer;
+
+                        VkDescriptorAddressInfoEXT buffInfo;
+                        buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
+                        buffInfo.pNext   = nullptr;
+                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.range   = buffDesc.range.size;
+                        buffInfo.format  = MapBigosFormatToVulkanFormat( buffDesc.format );
+
+                        VkDescriptorGetInfoEXT getInfo;
+                        getInfo.sType                    = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                        getInfo.pNext                    = nullptr;
+                        getInfo.type                     = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                        getInfo.data.pStorageTexelBuffer = &buffInfo;
+
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                    }
+                    else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::CONSTANT_BUFFER ) )
+                    {
+                        const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
+                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+
+                        VkBufferDeviceAddressInfo addressInfo;
+                        addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                        addressInfo.pNext  = nullptr;
+                        addressInfo.buffer = buffDesc.hResource.GetNativeHandle()->buffer;
+
+                        VkDescriptorAddressInfoEXT buffInfo;
+                        buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
+                        buffInfo.pNext   = nullptr;
+                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.range   = buffDesc.range.size;
+
+                        VkDescriptorGetInfoEXT getInfo;
+                        getInfo.sType               = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                        getInfo.pNext               = nullptr;
+                        getInfo.type                = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        getInfo.data.pUniformBuffer = &buffInfo;
+
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                    }
+                    else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) )
+                    {
+                        const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
+                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+
+                        VkBufferDeviceAddressInfo addressInfo;
+                        addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                        addressInfo.pNext  = nullptr;
+                        addressInfo.buffer = buffDesc.hResource.GetNativeHandle()->buffer;
+
+                        VkDescriptorAddressInfoEXT buffInfo;
+                        buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
+                        buffInfo.pNext   = nullptr;
+                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.range   = buffDesc.range.size;
+
+                        VkDescriptorGetInfoEXT getInfo;
+                        getInfo.sType               = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                        getInfo.pNext               = nullptr;
+                        getInfo.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                        getInfo.data.pStorageBuffer = &buffInfo;
+
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                    }
+                    else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
+                    {
+                        const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
+                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+
+                        VkBufferDeviceAddressInfo addressInfo;
+                        addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                        addressInfo.pNext  = nullptr;
+                        addressInfo.buffer = buffDesc.hResource.GetNativeHandle()->buffer;
+
+                        VkDescriptorAddressInfoEXT buffInfo;
+                        buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
+                        buffInfo.pNext   = nullptr;
+                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.range   = buffDesc.range.size;
+
+                        VkDescriptorGetInfoEXT getInfo;
+                        getInfo.sType               = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                        getInfo.pNext               = nullptr;
+                        getInfo.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                        getInfo.data.pStorageBuffer = &buffInfo;
+
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                    }
+                }
+
+                *pHandle = ResourceViewHandle( pResView );
+
                 return Results::OK;
             }
 
-            void VulkanDevice::DestroyResourceView( ResourceViewHandle* pHandle ) { pHandle; }
+            void VulkanDevice::DestroyResourceView( ResourceViewHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Resource view (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != ResourceViewHandle(), "Resource view (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != ResourceViewHandle() ) )
+                {
+                    VulkanResourceView* pNativeView = pHandle->GetNativeHandle();
+                    if( pNativeView->type == VulkanResourceTypes::IMAGE )
+                    {
+                        VkDevice    nativeDevice = m_handle.GetNativeHandle();
+                        VkImageView nativeView   = pNativeView->imageView;
+
+                        vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                    }
+
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeView );
+
+                    *pHandle = ResourceViewHandle();
+                }
+            }
 
             RESULT VulkanDevice::CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )
             {
@@ -1042,9 +1268,9 @@ namespace BIGOS
             RESULT VulkanDevice::CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
-                BGS_ASSERT( desc.bindingRangeCount <= Config::Driver::Binding::MAX_BINDING_RANGE_COUNT,
-                            "Binding count (desc.bindingCount) must be less than %d", Config::Driver::Binding::MAX_BINDING_RANGE_COUNT );
-                if( ( pHandle == nullptr ) || ( desc.bindingRangeCount > Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ) )
+                BGS_ASSERT( desc.bindingRangeCount <= Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT,
+                            "Binding count (desc.bindingCount) must be less than %d", Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT );
+                if( ( pHandle == nullptr ) || ( desc.bindingRangeCount > Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ) )
                 {
                     return Results::FAIL;
                 }
@@ -1052,9 +1278,9 @@ namespace BIGOS
                 uint32_t                     immutableSamplerCnt = 0;
                 VkDevice                     nativeDevice        = m_handle.GetNativeHandle();
                 VkDescriptorSetLayout        nativeLayout        = VK_NULL_HANDLE;
-                VkDescriptorSetLayoutBinding layoutBindings[ Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ];
-                VkSampler                    immutableSamplerRanges[ Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ]
-                                                [ Config::Driver::Binding::MAX_IMMUTABLE_SAMPLER_COUNT ];
+                VkDescriptorSetLayoutBinding layoutBindings[ Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ];
+                VkSampler                    immutableSamplerRanges[ Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ]
+                                                [ Config::Driver::Pipeline::MAX_IMMUTABLE_SAMPLER_COUNT ];
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
                     const BindingRangeDesc&       currDesc    = desc.pBindingRanges[ ndx ];
@@ -1074,7 +1300,7 @@ namespace BIGOS
                         currBinding.pImmutableSamplers = immutableSamplerRanges[ ndx ];
                         currBinding.stageFlags         = MapBigosShaderVisibilityToVulkanShaderStageFlags( currDesc.immutableSampler.visibility );
                         immutableSamplerCnt += currDesc.bindingCount;
-                        if( immutableSamplerCnt > Config::Driver::Binding::MAX_IMMUTABLE_SAMPLER_COUNT )
+                        if( immutableSamplerCnt > Config::Driver::Pipeline::MAX_IMMUTABLE_SAMPLER_COUNT )
                         {
                             return Results::FAIL;
                         }
