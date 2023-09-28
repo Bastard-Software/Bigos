@@ -14,6 +14,7 @@
 #include "D3D12Pipeline.h"
 #include "D3D12Queue.h"
 #include "D3D12Resource.h"
+#include "D3D12ResourceView.h"
 #include "D3D12Sampler.h"
 #include "D3D12Shader.h"
 #include "D3D12Swapchain.h"
@@ -761,12 +762,111 @@ namespace BIGOS
 
             RESULT D3D12Device::CreateResourceView( const ResourceViewDesc& desc, ResourceViewHandle* pHandle )
             {
-                desc;
-                pHandle;
+                BGS_ASSERT( pHandle != nullptr, "Resource view (pHandle) must be a valid address." );
+                if( ( pHandle == nullptr ) ) // TODO: Validation
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12ResourceView* pResView = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pResView ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::COLOR_RENDER_TARGET ) )
+                {
+                    const TextureViewDesc& texDesc = static_cast<const TextureViewDesc&>( desc );
+                    pResView->rtvNdx               = CreateD3D12RTV( texDesc );
+                    pResView->type                 = D3D12DescriptorTypes::RTV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::DEPTH_STENCIL_TARGET ) )
+                {
+                    const TextureViewDesc& texDesc = static_cast<const TextureViewDesc&>( desc );
+                    pResView->dsvNdx               = CreateD3D12DSV( texDesc );
+                    pResView->type                 = D3D12DescriptorTypes::DSV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::CONSTANT_BUFFER ) )
+                {
+                    const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
+                    pResView->cbvNdx               = CreateD3D12CBV( buffDesc );
+                    pResView->type                 = D3D12DescriptorTypes::CBV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::SAMPLED_TEXTURE ) )
+                {
+                    const TextureViewDesc& texDesc = static_cast<const TextureViewDesc&>( desc );
+                    pResView->srvNdx               = CreateD3D12SRV( texDesc );
+                    pResView->type                 = D3D12DescriptorTypes::SRV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXTURE ) )
+                {
+                    const TextureViewDesc& texDesc = static_cast<const TextureViewDesc&>( desc );
+                    pResView->uavNdx               = CreateD3D12UAV( texDesc );
+                    pResView->type                 = D3D12DescriptorTypes::UAV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::CONSTANT_TEXEL_BUFFER ) )
+                {
+                    const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
+                    pResView->srvNdx                    = CreateD3D12SRV( buffDesc );
+                    pResView->type                      = D3D12DescriptorTypes::SRV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXEL_BUFFER ) )
+                {
+                    const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
+                    pResView->uavNdx                    = CreateD3D12UAV( buffDesc );
+                    pResView->type                      = D3D12DescriptorTypes::UAV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) )
+                {
+                    const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
+                    pResView->srvNdx               = CreateD3D12SRV( buffDesc );
+                    pResView->type                 = D3D12DescriptorTypes::SRV;
+                }
+                else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
+                {
+                    const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
+                    pResView->uavNdx               = CreateD3D12UAV( buffDesc );
+                    pResView->type                 = D3D12DescriptorTypes::UAV;
+                }
+
+                *pHandle = ResourceViewHandle( pResView );
+
                 return Results::OK;
             }
 
-            void D3D12Device::DestroyResourceView( ResourceViewHandle* pHandle ) { pHandle; }
+            void D3D12Device::DestroyResourceView( ResourceViewHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Resource view (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != ResourceViewHandle(), "Resource view (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != ResourceViewHandle() ) )
+                {
+                    D3D12ResourceView* pNativeView = pHandle->GetNativeHandle();
+                    if( pNativeView->type == D3D12DescriptorTypes::CBV )
+                    {
+                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Free( pNativeView->cbvNdx );
+                    }
+                    else if( pNativeView->type == D3D12DescriptorTypes::SRV )
+                    {
+                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Free( pNativeView->srvNdx );
+                    }
+                    else if( pNativeView->type == D3D12DescriptorTypes::UAV )
+                    {
+                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Free( pNativeView->uavNdx );
+                    }
+                    else if( pNativeView->type == D3D12DescriptorTypes::RTV )
+                    {
+                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) ].allocator.Free( pNativeView->rtvNdx );
+                    }
+                    else if( pNativeView->type == D3D12DescriptorTypes::DSV )
+                    {
+                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_DSV ) ].allocator.Free( pNativeView->dsvNdx );
+                    }
+
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeView );
+
+                    *pHandle = ResourceViewHandle();
+                }
+            }
 
             RESULT D3D12Device::CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )
             {
@@ -825,9 +925,9 @@ namespace BIGOS
             RESULT D3D12Device::CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
-                BGS_ASSERT( desc.bindingRangeCount <= Config::Driver::Binding::MAX_BINDING_RANGE_COUNT,
-                            "Binding count (desc.bindingCount) must be less than %d", Config::Driver::Binding::MAX_BINDING_RANGE_COUNT );
-                if( ( pHandle == nullptr ) || ( desc.bindingRangeCount > Config::Driver::Binding::MAX_BINDING_RANGE_COUNT ) )
+                BGS_ASSERT( desc.bindingRangeCount <= Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT,
+                            "Binding count (desc.bindingCount) must be less than %d", Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT );
+                if( ( pHandle == nullptr ) || ( desc.bindingRangeCount > Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ) )
                 {
                     return Results::FAIL;
                 }
@@ -861,7 +961,7 @@ namespace BIGOS
                     }
                 }
                 // Crash if we have to much immutable samplers
-                if( immutableSamplerCnt > Config::Driver::Binding::MAX_IMMUTABLE_SAMPLER_COUNT )
+                if( immutableSamplerCnt > Config::Driver::Pipeline::MAX_IMMUTABLE_SAMPLER_COUNT )
                 {
                     return Results::FAIL;
                 }
@@ -1073,6 +1173,13 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
+                if( BGS_FAILED( CreateD3D12GlobalDescriptorHeaps() ) )
+                {
+                    ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
+                    RELEASE_COM_PTR( pNativeDevice );
+                    return Results::FAIL;
+                }
+
                 QueryD3D12BindingsSize();
 
                 return Results::OK;
@@ -1086,6 +1193,12 @@ namespace BIGOS
                 {
                     ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
                     RELEASE_COM_PTR( pNativeDevice );
+
+                    for( index_t ndx = 0; ndx < 4; ++ndx )
+                    {
+                        RELEASE_COM_PTR( m_descHeaps[ ndx ].pHeap );
+                        m_descHeaps[ ndx ].allocator.Destroy();
+                    }
                 }
 
                 m_handle  = DeviceHandle();
@@ -1391,6 +1504,449 @@ namespace BIGOS
                 {
                     *pProps = m_heapProperties[ BGS_ENUM_INDEX( desc.heapType ) ];
                 }
+            }
+
+            RESULT D3D12Device::CreateD3D12GlobalDescriptorHeaps()
+            {
+
+                RESULT        res           = Results::OK;
+                ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
+
+                Core::Memory::Set( m_descHeaps, 0, sizeof( m_descHeaps ) );
+
+                D3D12_DESCRIPTOR_HEAP_DESC desc;
+                desc.NodeMask       = 0;
+                desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+                desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+                desc.NumDescriptors = Config::Driver::Binding::MAX_SHADER_RESOURCE_COUNT;
+                m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].allocator.Create( desc.NumDescriptors );
+                if( FAILED( pNativeDevice->CreateDescriptorHeap( &desc, IID_PPV_ARGS( &m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].pHeap ) ) ) )
+                {
+                    res = Results::FAIL;
+                }
+
+                desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+                desc.NumDescriptors = Config::Driver::Binding::MAX_SAMPLER_COUNT;
+                m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].allocator.Create( desc.NumDescriptors );
+                if( FAILED( pNativeDevice->CreateDescriptorHeap( &desc, IID_PPV_ARGS( &m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].pHeap ) ) ) )
+                {
+                    res = Results::FAIL;
+                }
+
+                desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+                desc.NumDescriptors = Config::Driver::Binding::MAX_RENDER_TARGET_VIEW_COUNT;
+                m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].allocator.Create( desc.NumDescriptors );
+                if( FAILED( pNativeDevice->CreateDescriptorHeap( &desc, IID_PPV_ARGS( &m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].pHeap ) ) ) )
+                {
+                    res = Results::FAIL;
+                }
+
+                desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+                desc.NumDescriptors = Config::Driver::Binding::MAX_DEPTH_STENCIL_TARGET_VIEW_COUNT;
+                m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].allocator.Create( desc.NumDescriptors );
+                if( FAILED( pNativeDevice->CreateDescriptorHeap( &desc, IID_PPV_ARGS( &m_descHeaps[ static_cast<uint32_t>( desc.Type ) ].pHeap ) ) ) )
+                {
+                    res = Results::FAIL;
+                }
+
+                if( res != Results::OK )
+                {
+                    for( index_t ndx = 0; ndx < 4; ++ndx )
+                    {
+                        RELEASE_COM_PTR( m_descHeaps[ ndx ].pHeap );
+                        m_descHeaps[ ndx ].allocator.Destroy();
+                    }
+                }
+
+                return res;
+            }
+
+            uint32_t D3D12Device::CreateD3D12RTV( const TextureViewDesc& desc )
+            {
+                D3D12_RENDER_TARGET_VIEW_DESC viewDesc;
+                viewDesc.Format = MapBigosFormatToD3D12Format( desc.format );
+
+                switch( desc.textureType )
+                {
+                    // TODO: Does vulkan support buffer render target?
+                    case TextureTypes::TEXTURE_1D:
+                    {
+                        viewDesc.ViewDimension      = D3D12_RTV_DIMENSION_TEXTURE1D;
+                        viewDesc.Texture1D.MipSlice = desc.range.mipLevel;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_1D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+                        viewDesc.Texture1DArray.MipSlice        = desc.range.mipLevel;
+                        viewDesc.Texture1DArray.FirstArraySlice = desc.range.arrayLayer;
+                        viewDesc.Texture1DArray.ArraySize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D:
+                    {
+                        viewDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
+                        viewDesc.Texture2D.MipSlice   = desc.range.mipLevel;
+                        viewDesc.Texture2D.PlaneSlice = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                        viewDesc.Texture2DArray.MipSlice        = desc.range.mipLevel;
+                        viewDesc.Texture2DArray.PlaneSlice      = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        viewDesc.Texture2DArray.FirstArraySlice = desc.range.arrayLayer;
+                        viewDesc.Texture2DArray.ArraySize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_3D:
+                    {
+                        viewDesc.ViewDimension         = D3D12_RTV_DIMENSION_TEXTURE3D;
+                        viewDesc.Texture3D.MipSlice    = desc.range.mipLevel;
+                        viewDesc.Texture3D.FirstWSlice = desc.range.arrayLayer;
+                        viewDesc.Texture3D.WSize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    default:
+                    {
+                        BGS_ASSERT( 0 );
+                        return MAX_UINT32;
+                    }
+                }
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
+                pNativeDevice->CreateRenderTargetView( desc.hResource.GetNativeHandle()->pNativeResource, &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12DSV( const TextureViewDesc& desc )
+            {
+                D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc;
+                viewDesc.Format = MapBigosFormatToD3D12Format( desc.format );
+
+                switch( desc.textureType )
+                {
+                    // TODO: Does vulkan support buffer render target?
+                    case TextureTypes::TEXTURE_1D:
+                    {
+                        viewDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE1D;
+                        viewDesc.Texture1D.MipSlice = desc.range.mipLevel;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_1D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+                        viewDesc.Texture1DArray.MipSlice        = desc.range.mipLevel;
+                        viewDesc.Texture1DArray.FirstArraySlice = desc.range.arrayLayer;
+                        viewDesc.Texture1DArray.ArraySize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D:
+                    {
+                        viewDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+                        viewDesc.Texture2D.MipSlice = desc.range.mipLevel;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                        viewDesc.Texture2DArray.MipSlice        = desc.range.mipLevel;
+                        viewDesc.Texture2DArray.FirstArraySlice = desc.range.arrayLayer;
+                        viewDesc.Texture2DArray.ArraySize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    default:
+                    {
+                        BGS_ASSERT( 0 );
+                        return MAX_UINT32;
+                    }
+                }
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_DSV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_DSV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
+                pNativeDevice->CreateDepthStencilView( desc.hResource.GetNativeHandle()->pNativeResource, &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12CBV( const BufferViewDesc& desc )
+            {
+                D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc;
+                viewDesc.BufferLocation = desc.hResource.GetNativeHandle()->pNativeResource->GetGPUVirtualAddress() + desc.range.offset;
+                viewDesc.SizeInBytes    = static_cast<uint32_t>( desc.range.size );
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                pNativeDevice->CreateConstantBufferView( &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12SRV( const TextureViewDesc& desc )
+            {
+                D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc;
+                viewDesc.Format                  = MapBigosFormatToD3D12Format( desc.format );
+                viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+                switch( desc.textureType )
+                {
+                    // TODO: Does vulkan support buffer render target?
+                    case TextureTypes::TEXTURE_1D:
+                    {
+                        viewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE1D;
+                        viewDesc.Texture1D.MostDetailedMip     = desc.range.mipLevel;
+                        viewDesc.Texture1D.MipLevels           = desc.range.mipLevelCount;
+                        viewDesc.Texture1D.ResourceMinLODClamp = 0.0f;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_1D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+                        viewDesc.Texture1DArray.MostDetailedMip     = desc.range.mipLevel;
+                        viewDesc.Texture1DArray.MipLevels           = desc.range.mipLevelCount;
+                        viewDesc.Texture1DArray.FirstArraySlice     = desc.range.arrayLayer;
+                        viewDesc.Texture1DArray.ArraySize           = desc.range.arrayLayerCount;
+                        viewDesc.Texture1DArray.ResourceMinLODClamp = 0.0f;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D:
+                    {
+                        viewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+                        viewDesc.Texture2D.MostDetailedMip     = desc.range.mipLevel;
+                        viewDesc.Texture2D.MipLevels           = desc.range.mipLevelCount;
+                        viewDesc.Texture2D.PlaneSlice          = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        viewDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                        viewDesc.Texture2DArray.MostDetailedMip     = desc.range.mipLevel;
+                        viewDesc.Texture2DArray.MipLevels           = desc.range.mipLevelCount;
+                        viewDesc.Texture2DArray.PlaneSlice          = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        viewDesc.Texture2DArray.FirstArraySlice     = desc.range.arrayLayer;
+                        viewDesc.Texture2DArray.ArraySize           = desc.range.arrayLayerCount;
+                        viewDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_3D:
+                    {
+                        viewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE3D;
+                        viewDesc.Texture3D.MostDetailedMip     = desc.range.mipLevel;
+                        viewDesc.Texture3D.MipLevels           = desc.range.mipLevelCount;
+                        viewDesc.Texture3D.ResourceMinLODClamp = 0.0f;
+                        break;
+                    }
+                    case TextureTypes::TEXURTE_CUBE:
+                    {
+                        viewDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURECUBE;
+                        viewDesc.TextureCube.MostDetailedMip     = desc.range.mipLevel;
+                        viewDesc.TextureCube.MipLevels           = desc.range.mipLevelCount;
+                        viewDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+                        break;
+                    }
+                    case TextureTypes::TEXURTE_CUBE_ARRAY:
+                    {
+                        viewDesc.ViewDimension                        = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+                        viewDesc.TextureCubeArray.MostDetailedMip     = desc.range.mipLevel;
+                        viewDesc.TextureCubeArray.MipLevels           = desc.range.mipLevelCount;
+                        viewDesc.TextureCubeArray.First2DArrayFace    = desc.range.arrayLayer;
+                        viewDesc.TextureCubeArray.NumCubes            = desc.range.arrayLayerCount;
+                        viewDesc.TextureCubeArray.ResourceMinLODClamp = 0.0f;
+                        break;
+                    }
+                    default:
+                    {
+                        BGS_ASSERT( 0 );
+                        return MAX_UINT32;
+                    }
+                }
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                pNativeDevice->CreateShaderResourceView( desc.hResource.GetNativeHandle()->pNativeResource, &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12SRV( const TexelBufferViewDesc& desc )
+            {
+                D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc;
+                viewDesc.Format                     = MapBigosFormatToD3D12Format( desc.format );
+                viewDesc.Shader4ComponentMapping    = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                viewDesc.ViewDimension              = D3D12_SRV_DIMENSION_BUFFER;
+                viewDesc.Buffer.Flags               = D3D12_BUFFER_SRV_FLAG_NONE;
+                viewDesc.Buffer.StructureByteStride = 0;
+                viewDesc.Buffer.FirstElement        = desc.range.offset / GetBigosFormatSize( desc.format );
+                viewDesc.Buffer.NumElements         = static_cast<uint32_t>( desc.range.size / GetBigosFormatSize( desc.format ) );
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                pNativeDevice->CreateShaderResourceView( desc.hResource.GetNativeHandle()->pNativeResource, &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12SRV( const BufferViewDesc& desc )
+            {
+                D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc;
+                viewDesc.Format                     = DXGI_FORMAT_R32_TYPELESS;
+                viewDesc.Shader4ComponentMapping    = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                viewDesc.ViewDimension              = D3D12_SRV_DIMENSION_BUFFER;
+                viewDesc.Buffer.Flags               = D3D12_BUFFER_SRV_FLAG_RAW;
+                viewDesc.Buffer.StructureByteStride = 0;
+                // 4 is size in bytes of DXGI_FORMAT_R32_TYPELESS
+                viewDesc.Buffer.FirstElement = desc.range.offset / 4;
+                viewDesc.Buffer.NumElements  = static_cast<uint32_t>( desc.range.size / 4 );
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                pNativeDevice->CreateShaderResourceView( desc.hResource.GetNativeHandle()->pNativeResource, &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12UAV( const TextureViewDesc& desc )
+            {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc;
+                viewDesc.Format = MapBigosFormatToD3D12Format( desc.format );
+
+                switch( desc.textureType )
+                {
+                    // TODO: Does vulkan support buffer render target?
+                    case TextureTypes::TEXTURE_1D:
+                    {
+                        viewDesc.ViewDimension      = D3D12_UAV_DIMENSION_TEXTURE1D;
+                        viewDesc.Texture1D.MipSlice = desc.range.mipLevel;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_1D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                  = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+                        viewDesc.Texture1DArray.MipSlice        = desc.range.mipLevel;
+                        viewDesc.Texture1DArray.FirstArraySlice = desc.range.arrayLayer;
+                        viewDesc.Texture1DArray.ArraySize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D:
+                    {
+                        viewDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
+                        viewDesc.Texture2D.MipSlice   = desc.range.mipLevel;
+                        viewDesc.Texture2D.PlaneSlice = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_2D_ARRAY:
+                    {
+                        viewDesc.ViewDimension                  = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                        viewDesc.Texture2DArray.MipSlice        = desc.range.mipLevel;
+                        viewDesc.Texture2DArray.PlaneSlice      = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        viewDesc.Texture2DArray.FirstArraySlice = desc.range.arrayLayer;
+                        viewDesc.Texture2DArray.ArraySize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    case TextureTypes::TEXTURE_3D:
+                    {
+                        viewDesc.ViewDimension         = D3D12_UAV_DIMENSION_TEXTURE3D;
+                        viewDesc.Texture3D.MipSlice    = desc.range.mipLevel;
+                        viewDesc.Texture3D.FirstWSlice = desc.range.arrayLayer;
+                        viewDesc.Texture3D.WSize       = desc.range.arrayLayerCount;
+                        break;
+                    }
+                    default:
+                    {
+                        BGS_ASSERT( 0 );
+                        return MAX_UINT32;
+                    }
+                }
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                pNativeDevice->CreateUnorderedAccessView( desc.hResource.GetNativeHandle()->pNativeResource, nullptr, &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12UAV( const TexelBufferViewDesc& desc )
+            {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc;
+                viewDesc.Format                      = MapBigosFormatToD3D12Format( desc.format );
+                viewDesc.ViewDimension               = D3D12_UAV_DIMENSION_BUFFER;
+                viewDesc.Buffer.Flags                = D3D12_BUFFER_UAV_FLAG_RAW;
+                viewDesc.Buffer.CounterOffsetInBytes = 0;
+                viewDesc.Buffer.StructureByteStride  = 0;
+                viewDesc.Buffer.FirstElement         = desc.range.offset / GetBigosFormatSize( desc.format );
+                viewDesc.Buffer.NumElements          = static_cast<uint32_t>( desc.range.size / GetBigosFormatSize( desc.format ) );
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                pNativeDevice->CreateUnorderedAccessView( desc.hResource.GetNativeHandle()->pNativeResource, nullptr, &viewDesc, handle );
+
+                return ndx;
+            }
+
+            uint32_t D3D12Device::CreateD3D12UAV( const BufferViewDesc& desc )
+            {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc;
+                viewDesc.Format                     = DXGI_FORMAT_R32_TYPELESS;
+                viewDesc.ViewDimension              = D3D12_UAV_DIMENSION_BUFFER;
+                viewDesc.Buffer.Flags               = D3D12_BUFFER_UAV_FLAG_RAW;
+                viewDesc.Buffer.StructureByteStride = 0;
+                // 4 is size in bytes of DXGI_FORMAT_R32_TYPELESS
+                viewDesc.Buffer.FirstElement = desc.range.offset / 4;
+                viewDesc.Buffer.NumElements  = static_cast<uint32_t>( desc.range.size / 4 );
+
+                uint32_t ndx = MAX_UINT32;
+                RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Allocate( &ndx );
+                BGS_ASSERT( res == Results::OK );
+                ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                    m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                pNativeDevice->CreateUnorderedAccessView( desc.hResource.GetNativeHandle()->pNativeResource, nullptr, &viewDesc, handle );
+
+                return ndx;
             }
 
             void D3D12Device::QueryD3D12BindingsSize()

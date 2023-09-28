@@ -1,6 +1,7 @@
 #pragma once
 #include "D3D12Types.h"
 
+#include "D3D12BindingAllocators.h"
 #include "Driver/Backend/API.h"
 
 namespace BIGOS
@@ -14,7 +15,14 @@ namespace BIGOS
             {
                 friend class D3D12Factory;
 
-                using D3D12HeapProperties = D3D12_HEAP_PROPERTIES[ BGS_ENUM_COUNT( MemoryHeapTypes ) ];
+                struct D3D12DescriptorSystem
+                {
+                    ID3D12DescriptorHeap* pHeap;
+                    PoolAllocator         allocator;
+                };
+
+                using D3D12HeapProperties        = D3D12_HEAP_PROPERTIES[ BGS_ENUM_COUNT( MemoryHeapTypes ) ];
+                using D3D12GlobalDescriptorHeaps = D3D12DescriptorSystem[ 4 ];
 
             public:
                 virtual RESULT CreateQueue( const QueueDesc& desc, IQueue** ppQueue ) override;
@@ -80,15 +88,25 @@ namespace BIGOS
                 void   Destroy();
 
             private:
-                RESULT CreateD3D12Device();
-                RESULT CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline );
-                void   CreateD3D12MemoryHeapProperties( const AllocateMemoryDesc& desc, D3D12_HEAP_PROPERTIES* pProps );
-
-                void QueryD3D12BindingsSize();
+                RESULT   CreateD3D12Device();
+                RESULT   CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline );
+                RESULT   CreateD3D12GlobalDescriptorHeaps();
+                uint32_t CreateD3D12RTV( const TextureViewDesc& desc );
+                uint32_t CreateD3D12DSV( const TextureViewDesc& desc );
+                uint32_t CreateD3D12CBV( const BufferViewDesc& desc );
+                uint32_t CreateD3D12SRV( const TextureViewDesc& desc );
+                uint32_t CreateD3D12SRV( const TexelBufferViewDesc& desc );
+                uint32_t CreateD3D12SRV( const BufferViewDesc& desc );
+                uint32_t CreateD3D12UAV( const TextureViewDesc& desc );
+                uint32_t CreateD3D12UAV( const TexelBufferViewDesc& desc );
+                uint32_t CreateD3D12UAV( const BufferViewDesc& desc );
+                void     CreateD3D12MemoryHeapProperties( const AllocateMemoryDesc& desc, D3D12_HEAP_PROPERTIES* pProps );
+                void     QueryD3D12BindingsSize();
 
             private:
-                D3D12HeapProperties m_heapProperties;
-                D3D12Factory*       m_pParent = nullptr;
+                D3D12HeapProperties        m_heapProperties;
+                D3D12GlobalDescriptorHeaps m_descHeaps;
+                D3D12Factory*              m_pParent = nullptr;
             };
 
         } // namespace Backend

@@ -745,9 +745,6 @@ namespace BIGOS
             };
             using ResourceUsageFlags = uint32_t;
 
-            using ResourceViewUsageFlagBits = ResourceUsageFlagBits;
-            using ResourceViewUsageFlags    = uint32_t;
-
             enum class ResourceSharingModes : uint8_t
             {
                 EXCLUSIVE_ACCESS,
@@ -815,6 +812,20 @@ namespace BIGOS
                 ResourceHandle hResource;
             };
 
+            enum class ResourceViewUsageFlagBits : uint32_t
+            {
+                CONSTANT_TEXEL_BUFFER     = 0x00000001,
+                STORAGE_TEXEL_BUFFER      = 0x00000002,
+                CONSTANT_BUFFER           = 0x00000004,
+                READ_ONLY_STORAGE_BUFFER  = 0x00000008,
+                READ_WRITE_STORAGE_BUFFER = 0x00000010,
+                STORAGE_TEXTURE           = 0x00000020,
+                SAMPLED_TEXTURE           = 0x00000040,
+                COLOR_RENDER_TARGET       = 0x00000080,
+                DEPTH_STENCIL_TARGET      = 0x00000100,
+            };
+            using ResourceViewUsageFlags = uint32_t;
+
             struct ResourceViewDesc
             {
                 ResourceHandle         hResource;
@@ -824,6 +835,12 @@ namespace BIGOS
             struct BufferViewDesc : public ResourceViewDesc
             {
                 BufferRangeDesc range;
+            };
+
+            struct TexelBufferViewDesc : public ResourceViewDesc
+            {
+                BufferRangeDesc range;
+                FORMAT          format;
             };
 
             enum class TextureTypes : uint8_t
@@ -843,7 +860,7 @@ namespace BIGOS
             {
                 TextureRangeDesc range;
                 FORMAT           format;
-                TEXTURE_TYPE     type;
+                TEXTURE_TYPE     textureType;
             };
 
             enum class SamplerTypes : uint8_t

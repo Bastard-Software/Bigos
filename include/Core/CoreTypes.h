@@ -61,6 +61,8 @@
 #define BGS_ENUM_INDEX( enumVal )   static_cast<uint32_t>( ( enumVal ) )
 #define BGS_BOOL_INDEX( boolVal )   !!( boolVal )
 
+#define BGS_FLAG( bits ) static_cast<uint32_t>( ( bits ) )
+
 namespace BIGOS
 {
     class BigosFramework;
