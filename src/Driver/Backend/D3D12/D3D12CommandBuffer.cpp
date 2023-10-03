@@ -5,6 +5,7 @@
 #include "BigosFramework/Config.h"
 #include "D3D12Common.h"
 #include "D3D12Device.h"
+#include "D3D12Pipeline.h"
 #include "D3D12Resource.h"
 
 namespace BIGOS
@@ -13,6 +14,19 @@ namespace BIGOS
     {
         namespace Backend
         {
+            static void SetGraphicsPipelineLayout( ID3D12GraphicsCommandList* pList, ID3D12RootSignature* pSig )
+            {
+                pList->SetGraphicsRootSignature( pSig );
+            }
+            static void SetComputePipelineLayout( ID3D12GraphicsCommandList* pList, ID3D12RootSignature* pSig )
+            {
+                pList->SetComputeRootSignature( pSig );
+            }
+
+            void ( *pBindPipelineLayoutFn[] )( ID3D12GraphicsCommandList*, ID3D12RootSignature* ) = { SetGraphicsPipelineLayout,
+                                                                                                      SetComputePipelineLayout,
+                                                                                                      SetComputePipelineLayout };
+
             RESULT D3D12CommandBuffer::Create( const CommandBufferDesc& desc, D3D12Device* pDevice )
             {
                 BGS_ASSERT( pDevice != nullptr, "Device (pDevice) must be a valid pointer." );
@@ -169,15 +183,28 @@ namespace BIGOS
 
             void D3D12CommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
             {
-                // TODO: After pipelines
-                handle;
-                type;
+                BGS_ASSERT( handle != PipelineHandle(), "Pipeline (handle) must be a valid handle." );
+
+                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                D3D12Pipeline*              pPipeline          = handle.GetNativeHandle();
+
+                pNativeCommandList->SetPipelineState( pPipeline->pPipeline );
+                pBindPipelineLayoutFn[ BGS_ENUM_INDEX( type ) ]( pNativeCommandList, pPipeline->pRootSignature );
             }
 
-            void D3D12CommandBuffer::SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap )
+            void D3D12CommandBuffer::SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle )
             {
-                hShaderResourceHeap;
-                hSamplerHeap;
+                BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid array." );
+                BGS_ASSERT( heapCount <= 2, "Binding heap count (heapCount) must be less or equal 2." );
+
+                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12DescriptorHeap*       pHeaps[ 2 ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( heapCount ); ++ndx )
+                {
+                    pHeaps[ ndx ] = pHandle[ ndx ].GetNativeHandle();
+                }
+
+                pNativeCommandList->SetDescriptorHeaps( heapCount, pHeaps );
             }
 
             void D3D12CommandBuffer::SetBinding( const SetBindingDesc& desc ) { desc; }

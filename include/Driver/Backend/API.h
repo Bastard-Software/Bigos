@@ -172,9 +172,9 @@ namespace BIGOS
 
                 virtual void Barrier( uint32_t barrierCount, const BarierDesc* pBarriers ) = 0;
 
-                virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )                                 = 0;
-                virtual void SetBindingHeaps( BindingHeapHandle hShaderResourceHeap, BindingHeapHandle hSamplerHeap ) = 0;
-                virtual void SetBinding( const SetBindingDesc& desc )                                                 = 0;
+                virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )                = 0;
+                virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) = 0;
+                virtual void SetBinding( const SetBindingDesc& desc )                                = 0;
 
                 virtual void BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )           = 0;
                 virtual void EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )             = 0;

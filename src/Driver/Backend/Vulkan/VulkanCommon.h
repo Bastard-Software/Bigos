@@ -41,6 +41,7 @@ namespace BIGOS
             VkBufferUsageFlags     MapBigosBindingHeapTypeToVulkanBufferUsageFlags( BINDING_HEAP_TYPE type );
             VkQueryType            MapBigosQueryTypeToVulkanQueryType( QUERY_TYPE type );
             VkImageViewType        MapBigosTextureTypeToVulkanImageViewType( TEXTURE_TYPE type );
+            VkPipelineBindPoint    MapBigosPipelineTypeToVulkanPipelineBindPoint( PIPELINE_TYPE type );
 
         } // namespace Backend
     }     // namespace Driver
