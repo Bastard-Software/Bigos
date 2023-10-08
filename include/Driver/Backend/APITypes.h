@@ -632,9 +632,125 @@ namespace BIGOS
                 uint32_t firstInstance;
             };
 
+            enum class TextureComponentFlagBits : uint32_t
+            {
+                COLOR   = 0x00000001,
+                DEPTH   = 0x00000002,
+                STENCIL = 0x00000004,
+            };
+            using TextureComponentFlags = uint32_t;
+
+            struct TextureRangeDesc
+            {
+                TextureComponentFlags components;
+                uint32_t              mipLevel;
+                uint32_t              mipLevelCount;
+                uint32_t              arrayLayer;
+                uint32_t              arrayLayerCount;
+            };
+
+            struct BufferRangeDesc
+            {
+                uint64_t size;
+                uint64_t offset;
+            };
+
+            enum class PipelineStageFlagBits
+            {
+                NONE             = 0x00000000,
+                INPUT_ASSEMBLER  = 0x00000001,
+                VERTEX_SHADING   = 0x00000002,
+                PIXEL_SHADING    = 0x00000004,
+                COMPUTE_SHADING  = 0x00000008,
+                TRANSFER         = 0x00000010,
+                RESOLVE          = 0x00000020,
+                EXECUTE_INDIRECT = 0x00000040,
+                RENDER_TARGET    = 0x00000080,
+                DEPTH_STENCIL    = 0x00000100,
+                // TODO: Video, raytracing, shading rate
+                // TODO: Sum of the flags
+            };
+            using PipelineStageFlags = uint32_t;
+
+            enum class AccessFlagBits : uint32_t
+            {
+                NONE                = 0x00000000,
+                GENERAL             = 0x00000001,
+                VERTEX_BUFFER       = 0x00000002,
+                INDEX_BUFFER        = 0x00000004,
+                CONSTANT_BUFFER     = 0x00000008,
+                INDIRECT_BUFFER     = 0x00000010,
+                RENDER_TARGET       = 0x00000020,
+                SHADER_READ_ONLY    = 0x00000040,
+                SHADER_READ_WRITE   = 0x00000080,
+                DEPTH_STENCIL_READ  = 0x00000100,
+                DEPTH_STENCIL_WRITE = 0x00000200,
+                TRANSFER_SRC        = 0x00000400,
+                TRANSFER_DST        = 0x00000800,
+                RESOLVE_SRC         = 0x00001000,
+                RESOLVE_DST         = 0x00002000,
+                // TODO: Video, raytracing, shading rate
+                // TODO: Sum of the flags
+            };
+            using AccessFlags = uint32_t;
+
+            enum class TextureLayouts : uint8_t
+            {
+                UNDEFINED,
+                GENERAL,
+                PRESENT,
+                RENDER_TARGET,
+                DEPTH_STENCIL_READ,
+                DEPTH_STENCIL_WRITE,
+                SHADER_READ_ONLY,
+                SHADER_READ_WRITE,
+                TRANSFER_SRC,
+                TRANSFER_DST,
+                RESOLVE_SRC,
+                RESOLVE_DST,
+                // TODO: Video, raytracing, shading rate
+                _MAX_ENUM,
+            };
+            using TEXTURE_LAYOUT = TextureLayouts;
+
+            struct GlobalBarrierDesc
+            {
+                PipelineStageFlags srcStage;
+                AccessFlags        srcAccess;
+                PipelineStageFlags dstStage;
+                AccessFlags        dstAccess;
+            };
+
+            struct BufferBarrierDesc
+            {
+                BufferRangeDesc    bufferRange;
+                ResourceHandle     hResouce;
+                PipelineStageFlags srcStage;
+                AccessFlags        srcAccess;
+                PipelineStageFlags dstStage;
+                AccessFlags        dstAccess;
+            };
+
+            struct TextureBarrierDesc
+            {
+                TextureRangeDesc   textureRange;
+                ResourceHandle     hResouce;
+                PipelineStageFlags srcStage;
+                AccessFlags        srcAccess;
+                TEXTURE_LAYOUT     srcLayout;
+                PipelineStageFlags dstStage;
+                AccessFlags        dstAccess;
+                TEXTURE_LAYOUT     dstLayout;
+            };
+
             struct BarierDesc
             {
-                // TODO: Fill
+                const TextureBarrierDesc* pTextureBarriers;
+                const BufferBarrierDesc*  pBufferBarriers;
+                const GlobalBarrierDesc*  pGlobalBarriers;
+                uint32_t                  textureBarrierCount;
+                uint32_t                  bufferBarrierCount;
+                uint32_t                  globalBarrierCount;
             };
 
             struct FenceDesc
@@ -777,29 +893,6 @@ namespace BIGOS
             {
                 uint64_t size;
                 uint64_t alignment;
-            };
-
-            enum class TextureComponentFlagBits : uint32_t
-            {
-                COLOR   = 0x00000001,
-                DEPTH   = 0x00000002,
-                STENCIL = 0x00000004,
-            };
-            using TextureComponentFlags = uint32_t;
-
-            struct TextureRangeDesc
-            {
-                TextureComponentFlags components;
-                uint32_t              mipLevel;
-                uint32_t              mipLevelCount;
-                uint32_t              arrayLayer;
-                uint32_t              arrayLayerCount;
-            };
-
-            struct BufferRangeDesc
-            {
-                uint64_t size;
-                uint64_t offset;
             };
 
             struct MapResourceDesc

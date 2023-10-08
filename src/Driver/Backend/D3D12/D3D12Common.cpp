@@ -488,6 +488,138 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
+            D3D12_BARRIER_SYNC MapBigosPipelineStageFlagsToD3D12BarrierSync( PipelineStageFlags flags )
+            {
+                uint32_t nativeFlags = 0;
+
+                if( flags & BGS_FLAG( PipelineStageFlagBits::INPUT_ASSEMBLER ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::VERTEX_SHADING ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_VERTEX_SHADING;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::PIXEL_SHADING ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_PIXEL_SHADING;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::COMPUTE_SHADING ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::TRANSFER ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_COPY;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::RESOLVE ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_RESOLVE;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::EXECUTE_INDIRECT ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::RENDER_TARGET ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_RENDER_TARGET;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::DEPTH_STENCIL ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_SYNC_DEPTH_STENCIL;
+                }
+
+                return static_cast<D3D12_BARRIER_SYNC>( nativeFlags );
+            }
+
+            D3D12_BARRIER_ACCESS MapBigosAccessFlagsToD3D12BarrierAccess( AccessFlags flags )
+            {
+                uint32_t nativeFlags = 0;
+
+                if( flags & BGS_FLAG( AccessFlagBits::NONE ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_NO_ACCESS;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::GENERAL ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_COMMON;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::VERTEX_BUFFER ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::INDEX_BUFFER ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_INDEX_BUFFER;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::CONSTANT_BUFFER ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::INDIRECT_BUFFER ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::RENDER_TARGET ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::SHADER_READ_ONLY ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::SHADER_READ_WRITE ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::DEPTH_STENCIL_READ ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::DEPTH_STENCIL_WRITE ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::TRANSFER_SRC ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_COPY_SOURCE;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::TRANSFER_DST ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_COPY_DEST;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::RESOLVE_SRC ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::RESOLVE_DST ) )
+                {
+                    nativeFlags |= D3D12_BARRIER_ACCESS_RESOLVE_DEST;
+                }
+
+                return static_cast<D3D12_BARRIER_ACCESS>( nativeFlags );
+            }
+
+            D3D12_BARRIER_LAYOUT MapBigosTextureLayoutToD3D12BarierrLayout( TEXTURE_LAYOUT layout )
+            {
+                static const D3D12_BARRIER_LAYOUT translateTable[ BGS_ENUM_COUNT( TextureLayouts ) ] = {
+                    D3D12_BARRIER_LAYOUT_UNDEFINED,           // UNDEFINED
+                    D3D12_BARRIER_LAYOUT_COMMON,              // GENERAL
+                    D3D12_BARRIER_LAYOUT_PRESENT,             // PRESENT
+                    D3D12_BARRIER_LAYOUT_RENDER_TARGET,       // RENDER_TARGET
+                    D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ,  // DEPTH_STENCIL_READ
+                    D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, // DEPTH_STENCIL_WRITE
+                    D3D12_BARRIER_LAYOUT_SHADER_RESOURCE,     // SHADER_READ_ONLY
+                    D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS,    // SHADER_READ_WRITE
+                    D3D12_BARRIER_LAYOUT_COPY_SOURCE,         // TRANSFER_SRC
+                    D3D12_BARRIER_LAYOUT_COPY_DEST,           // TRANSFER_DST
+                    D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE,      // RESOLVE_SRC
+                    D3D12_BARRIER_LAYOUT_RESOLVE_DEST,        // RESOLVE_DST
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( layout ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

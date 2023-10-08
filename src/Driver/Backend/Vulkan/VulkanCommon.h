@@ -42,6 +42,9 @@ namespace BIGOS
             VkQueryType            MapBigosQueryTypeToVulkanQueryType( QUERY_TYPE type );
             VkImageViewType        MapBigosTextureTypeToVulkanImageViewType( TEXTURE_TYPE type );
             VkPipelineBindPoint    MapBigosPipelineTypeToVulkanPipelineBindPoint( PIPELINE_TYPE type );
+            VkPipelineStageFlags2  MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( PipelineStageFlags flags );
+            VkAccessFlags2         MapBigosAccessFlagsToVulkanAccessFlags( AccessFlags flags );
+            VkImageLayout          MapBigosTextureLayoutToVulkanImageLayout( TEXTURE_LAYOUT layout );
 
         } // namespace Backend
     }     // namespace Driver

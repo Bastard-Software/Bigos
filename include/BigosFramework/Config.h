@@ -22,6 +22,9 @@ namespace BIGOS
             {
                 constexpr uint32_t MAX_SEMAPHORES_TO_WAIT_COUNT = 8U;
                 constexpr uint32_t MAX_FENCES_TO_WAIT_COUNT     = 8U;
+                constexpr uint32_t MAX_GLOBAL_BARRIER_COUNT     = 16U;
+                constexpr uint32_t MAX_BUFFER_BARRIER_COUNT     = 16U;
+                constexpr uint32_t MAX_TEXTURE_BARRIER_COUNT    = 16U;
             } // namespace Synchronization
 
             namespace Shader

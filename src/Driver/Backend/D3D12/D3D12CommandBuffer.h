@@ -29,7 +29,7 @@ namespace BIGOS
                 virtual void Draw( const DrawDesc& desc ) override;
                 virtual void DrawIndexed( const DrawDesc& desc ) override;
 
-                virtual void Barrier( uint32_t barrierCount, const BarierDesc* pBarriers ) override;
+                virtual void Barrier( const BarierDesc& desc ) override;
 
                 virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type ) override;
                 virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) override;
