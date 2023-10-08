@@ -20,8 +20,8 @@ namespace BIGOS
             VkCommandBufferLevel MapBigosCommandBufferLevelToVulkanCommandBufferLevel( COMMAND_BUFFER_LEVEL lvl )
             {
                 static const VkCommandBufferLevel translateTable[ BGS_ENUM_COUNT( CommandBufferLevels ) ] = {
-                    VK_COMMAND_BUFFER_LEVEL_PRIMARY,  // PRIMARY
-                    VK_COMMAND_BUFFER_LEVEL_SECONDARY // SECONDARY
+                    VK_COMMAND_BUFFER_LEVEL_PRIMARY,   // PRIMARY
+                    VK_COMMAND_BUFFER_LEVEL_SECONDARY, // SECONDARY
                 };
 
                 return translateTable[ BGS_ENUM_INDEX( lvl ) ];
@@ -559,6 +559,135 @@ namespace BIGOS
                 };
 
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
+            VkPipelineStageFlags2 MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( PipelineStageFlags flags )
+            {
+                VkPipelineStageFlags2 nativeFlags = 0;
+
+                if( flags & BGS_FLAG( PipelineStageFlagBits::INPUT_ASSEMBLER ) )
+                {
+                    nativeFlags |=
+                        VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::VERTEX_SHADING ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::PIXEL_SHADING ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::COMPUTE_SHADING ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::TRANSFER ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_COPY_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::RESOLVE ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::EXECUTE_INDIRECT ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::RENDER_TARGET ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                }
+                if( flags & BGS_FLAG( PipelineStageFlagBits::DEPTH_STENCIL ) )
+                {
+                    nativeFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                }
+
+                return nativeFlags;
+            }
+
+            VkAccessFlags2 MapBigosAccessFlagsToVulkanAccessFlags( AccessFlags flags )
+            {
+                VkAccessFlags2 nativeFlags = 0;
+
+                if( flags & BGS_FLAG( AccessFlagBits::GENERAL ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::VERTEX_BUFFER ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::INDEX_BUFFER ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_INDEX_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::CONSTANT_BUFFER ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_UNIFORM_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::INDIRECT_BUFFER ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::RENDER_TARGET ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::SHADER_READ_ONLY ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::SHADER_READ_WRITE ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::DEPTH_STENCIL_READ ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::DEPTH_STENCIL_WRITE ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::TRANSFER_SRC ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_TRANSFER_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::TRANSFER_DST ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::RESOLVE_SRC ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_TRANSFER_READ_BIT;
+                }
+                if( flags & BGS_FLAG( AccessFlagBits::RESOLVE_DST ) )
+                {
+                    nativeFlags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                }
+
+                return nativeFlags;
+            }
+
+            VkImageLayout MapBigosTextureLayoutToVulkanImageLayout( TEXTURE_LAYOUT layout )
+            {
+                static const VkImageLayout translateTable[ BGS_ENUM_COUNT( TextureLayouts ) ] = {
+                    VK_IMAGE_LAYOUT_UNDEFINED,                        // UNDEFINED
+                    VK_IMAGE_LAYOUT_GENERAL,                          // GENERAL
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,                  // PRESENT
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,         // RENDER_TARGET
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,  // DEPTH_STENCIL_READ
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // DEPTH_STENCIL_WRITE
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,         // SHADER_READ_ONLY
+                    VK_IMAGE_LAYOUT_GENERAL,                          // SHADER_READ_WRITE
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,             // TRANSFER_SRC
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,             // TRANSFER_DST
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,             // RESOLVE_SRC
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,             // RESOLVE_DST
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( layout ) ];
             }
 
         } // namespace Backend

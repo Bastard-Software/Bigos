@@ -174,11 +174,83 @@ namespace BIGOS
                                                           desc.firstInstance );
             }
 
-            void D3D12CommandBuffer::Barrier( uint32_t barrierCount, const BarierDesc* pBarriers )
+            void D3D12CommandBuffer::Barrier( const BarierDesc& desc )
             {
-                // TODO: not trivial
-                barrierCount;
-                pBarriers;
+                BGS_ASSERT( desc.globalBarrierCount <= Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT,
+                            "Global barrier count (desc.globalBarrierCount) must be less than %d.",
+                            Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT );
+                BGS_ASSERT( desc.bufferBarrierCount <= Config::Driver::Synchronization::MAX_BUFFER_BARRIER_COUNT,
+                            "Buffer barrier count (desc.bufferBarrierCount) must be less than %d.",
+                            Config::Driver::Synchronization::MAX_BUFFER_BARRIER_COUNT );
+                BGS_ASSERT( desc.textureBarrierCount <= Config::Driver::Synchronization::MAX_TEXTURE_BARRIER_COUNT,
+                            "Texture barrier count (desc.textureBarrierCount) must be less than %d.",
+                            Config::Driver::Synchronization::MAX_TEXTURE_BARRIER_COUNT );
+                BGS_ASSERT( ( desc.bufferBarrierCount != 0 ) || ( desc.textureBarrierCount != 0 ) || ( desc.globalBarrierCount != 0 ),
+                            "No valid barriers." );
+                BGS_ASSERT( ( desc.pBufferBarriers != nullptr ) || ( desc.pTextureBarriers != nullptr ) || ( desc.pGlobalBarriers != nullptr ),
+                            "No valid barriers." );
+
+                D3D12_GLOBAL_BARRIER  globalBarriers[ Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT ];
+                D3D12_BUFFER_BARRIER  bufferBarriers[ Config::Driver::Synchronization::MAX_BUFFER_BARRIER_COUNT ];
+                D3D12_TEXTURE_BARRIER textureBarriers[ Config::Driver::Synchronization::MAX_TEXTURE_BARRIER_COUNT ];
+
+                D3D12_BARRIER_GROUP barriers[ 3 ];
+                barriers[ 0 ].Type             = D3D12_BARRIER_TYPE_GLOBAL;
+                barriers[ 0 ].NumBarriers      = desc.globalBarrierCount;
+                barriers[ 0 ].pGlobalBarriers  = globalBarriers;
+                barriers[ 1 ].Type             = D3D12_BARRIER_TYPE_BUFFER;
+                barriers[ 1 ].NumBarriers      = desc.bufferBarrierCount;
+                barriers[ 1 ].pBufferBarriers  = bufferBarriers;
+                barriers[ 2 ].Type             = D3D12_BARRIER_TYPE_TEXTURE;
+                barriers[ 2 ].NumBarriers      = desc.textureBarrierCount;
+                barriers[ 2 ].pTextureBarriers = textureBarriers;
+
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.globalBarrierCount ); ++ndx )
+                {
+                    const GlobalBarrierDesc& currDesc = desc.pGlobalBarriers[ ndx ];
+                    D3D12_GLOBAL_BARRIER&    barrier  = globalBarriers[ ndx ];
+
+                    barrier.AccessBefore = MapBigosAccessFlagsToD3D12BarrierAccess( currDesc.srcAccess );
+                    barrier.SyncBefore   = MapBigosPipelineStageFlagsToD3D12BarrierSync( currDesc.srcStage );
+                    barrier.AccessAfter  = MapBigosAccessFlagsToD3D12BarrierAccess( currDesc.dstAccess );
+                    barrier.SyncAfter    = MapBigosPipelineStageFlagsToD3D12BarrierSync( currDesc.dstStage );
+                }
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.bufferBarrierCount ); ++ndx )
+                {
+                    const BufferBarrierDesc& currDesc = desc.pBufferBarriers[ ndx ];
+                    D3D12_BUFFER_BARRIER&    barrier  = bufferBarriers[ ndx ];
+
+                    barrier.AccessBefore = MapBigosAccessFlagsToD3D12BarrierAccess( currDesc.srcAccess );
+                    barrier.SyncBefore   = MapBigosPipelineStageFlagsToD3D12BarrierSync( currDesc.srcStage );
+                    barrier.AccessAfter  = MapBigosAccessFlagsToD3D12BarrierAccess( currDesc.dstAccess );
+                    barrier.SyncAfter    = MapBigosPipelineStageFlagsToD3D12BarrierSync( currDesc.dstStage );
+                    barrier.pResource    = currDesc.hResouce.GetNativeHandle()->pNativeResource;
+                    barrier.Offset       = currDesc.bufferRange.offset;
+                    barrier.Size         = currDesc.bufferRange.size;
+                }
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.textureBarrierCount ); ++ndx )
+                {
+                    const TextureBarrierDesc& currDesc = desc.pTextureBarriers[ ndx ];
+                    D3D12_TEXTURE_BARRIER&    barrier  = textureBarriers[ ndx ];
+
+                    barrier.AccessBefore                      = MapBigosAccessFlagsToD3D12BarrierAccess( currDesc.srcAccess );
+                    barrier.SyncBefore                        = MapBigosPipelineStageFlagsToD3D12BarrierSync( currDesc.srcStage );
+                    barrier.LayoutBefore                      = MapBigosTextureLayoutToD3D12BarierrLayout( currDesc.srcLayout );
+                    barrier.AccessAfter                       = MapBigosAccessFlagsToD3D12BarrierAccess( currDesc.dstAccess );
+                    barrier.SyncAfter                         = MapBigosPipelineStageFlagsToD3D12BarrierSync( currDesc.dstStage );
+                    barrier.LayoutAfter                       = MapBigosTextureLayoutToD3D12BarierrLayout( currDesc.dstLayout );
+                    barrier.Subresources.FirstPlane           = MapBigosTextureComponentFlagsToD3D12PlaneSlice( currDesc.textureRange.components );
+                    barrier.Subresources.NumPlanes            = 1;
+                    barrier.Subresources.IndexOrFirstMipLevel = currDesc.textureRange.mipLevel;
+                    barrier.Subresources.NumMipLevels         = currDesc.textureRange.mipLevelCount;
+                    barrier.Subresources.FirstArraySlice      = currDesc.textureRange.arrayLayer;
+                    barrier.Subresources.NumArraySlices       = currDesc.textureRange.arrayLayerCount;
+                    barrier.Flags                             = D3D12_TEXTURE_BARRIER_FLAG_NONE; // TODO: Handle! Very important!
+                }
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->Barrier( 3, barriers );
             }
 
             void D3D12CommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
@@ -207,7 +279,10 @@ namespace BIGOS
                 pNativeCommandList->SetDescriptorHeaps( heapCount, pHeaps );
             }
 
-            void D3D12CommandBuffer::SetBinding( const SetBindingDesc& desc ) { desc; }
+            void D3D12CommandBuffer::SetBinding( const SetBindingDesc& desc )
+            {
+                desc;
+            }
 
             void D3D12CommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
             {

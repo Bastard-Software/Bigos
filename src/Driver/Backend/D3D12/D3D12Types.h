@@ -32,7 +32,7 @@ BGS_DECLARE_D3D12_HANDLE( Device, ID3D12Device* );
 BGS_DECLARE_D3D12_HANDLE( Queue, ID3D12CommandQueue* );
 BGS_DECLARE_D3D12_HANDLE( Swapchain, IDXGISwapChain3* );
 BGS_DECLARE_D3D12_HANDLE( CommandPool, ID3D12CommandAllocator* );
-BGS_DECLARE_D3D12_HANDLE( CommandBuffer, ID3D12GraphicsCommandList4* );
+BGS_DECLARE_D3D12_HANDLE( CommandBuffer, ID3D12GraphicsCommandList7* );
 BGS_DECLARE_D3D12_HANDLE( Shader, BIGOS::Driver::Backend::D3D12ShaderModule* );
 BGS_DECLARE_D3D12_HANDLE( PipelineLayout, ID3D12RootSignature* );
 BGS_DECLARE_D3D12_HANDLE( Pipeline, BIGOS::Driver::Backend::D3D12Pipeline* );

@@ -166,11 +166,91 @@ namespace BIGOS
                 vkCmdDrawIndexed( nativeCommandBuffer, desc.indexCount, desc.instanceCount, desc.firstIndex, desc.vertexOffset, desc.firstInstance );
             }
 
-            void VulkanCommandBuffer::Barrier( uint32_t barrierCount, const BarierDesc* pBarriers )
+            void VulkanCommandBuffer::Barrier( const BarierDesc& desc )
             {
-                // TODO: Not trivial
-                barrierCount;
-                pBarriers;
+                BGS_ASSERT( desc.globalBarrierCount <= Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT,
+                            "Global barrier count (desc.globalBarrierCount) must be less than %d.",
+                            Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT );
+                BGS_ASSERT( desc.bufferBarrierCount <= Config::Driver::Synchronization::MAX_BUFFER_BARRIER_COUNT,
+                            "Buffer barrier count (desc.bufferBarrierCount) must be less than %d.",
+                            Config::Driver::Synchronization::MAX_BUFFER_BARRIER_COUNT );
+                BGS_ASSERT( desc.textureBarrierCount <= Config::Driver::Synchronization::MAX_TEXTURE_BARRIER_COUNT,
+                            "Texture barrier count (desc.textureBarrierCount) must be less than %d.",
+                            Config::Driver::Synchronization::MAX_TEXTURE_BARRIER_COUNT );
+                BGS_ASSERT( ( desc.bufferBarrierCount != 0 ) || ( desc.textureBarrierCount != 0 ) || ( desc.globalBarrierCount != 0 ),
+                            "No valid barriers." );
+                BGS_ASSERT( ( desc.pBufferBarriers != nullptr ) || ( desc.pTextureBarriers != nullptr ) || ( desc.pGlobalBarriers != nullptr ),
+                            "No valid barriers." );
+
+                VkMemoryBarrier2       memBarriers[ Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT ];
+                VkBufferMemoryBarrier2 bufferBarriers[ Config::Driver::Synchronization::MAX_BUFFER_BARRIER_COUNT ];
+                VkImageMemoryBarrier2  textureBarriers[ Config::Driver::Synchronization::MAX_TEXTURE_BARRIER_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.globalBarrierCount ); ++ndx )
+                {
+                    const GlobalBarrierDesc& currDesc = desc.pGlobalBarriers[ ndx ];
+                    VkMemoryBarrier2&        barrier  = memBarriers[ ndx ];
+
+                    barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+                    barrier.pNext         = nullptr;
+                    barrier.srcStageMask  = MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( currDesc.srcStage );
+                    barrier.srcAccessMask = MapBigosAccessFlagsToVulkanAccessFlags( currDesc.srcAccess );
+                    barrier.dstStageMask  = MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( currDesc.dstStage );
+                    barrier.dstAccessMask = MapBigosAccessFlagsToVulkanAccessFlags( currDesc.dstAccess );
+                }
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.bufferBarrierCount ); ++ndx )
+                {
+                    const BufferBarrierDesc& currDesc = desc.pBufferBarriers[ ndx ];
+                    VkBufferMemoryBarrier2&  barrier  = bufferBarriers[ ndx ];
+
+                    barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+                    barrier.pNext               = nullptr;
+                    barrier.srcStageMask        = MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( currDesc.srcStage );
+                    barrier.srcAccessMask       = MapBigosAccessFlagsToVulkanAccessFlags( currDesc.srcAccess );
+                    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.dstStageMask        = MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( currDesc.dstStage );
+                    barrier.dstAccessMask       = MapBigosAccessFlagsToVulkanAccessFlags( currDesc.dstAccess );
+                    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.buffer              = currDesc.hResouce.GetNativeHandle()->buffer;
+                    barrier.offset              = currDesc.bufferRange.offset;
+                    barrier.size                = currDesc.bufferRange.size;
+                }
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.textureBarrierCount ); ++ndx )
+                {
+                    const TextureBarrierDesc& currDesc = desc.pTextureBarriers[ ndx ];
+                    VkImageMemoryBarrier2&    barrier  = textureBarriers[ ndx ];
+
+                    barrier.sType                         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+                    barrier.pNext                         = nullptr;
+                    barrier.srcStageMask                  = MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( currDesc.srcStage );
+                    barrier.srcAccessMask                 = MapBigosAccessFlagsToVulkanAccessFlags( currDesc.srcAccess );
+                    barrier.oldLayout                     = MapBigosTextureLayoutToVulkanImageLayout( currDesc.srcLayout );
+                    barrier.srcQueueFamilyIndex           = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.dstStageMask                  = MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( currDesc.dstStage );
+                    barrier.dstAccessMask                 = MapBigosAccessFlagsToVulkanAccessFlags( currDesc.dstAccess );
+                    barrier.newLayout                     = MapBigosTextureLayoutToVulkanImageLayout( currDesc.dstLayout );
+                    barrier.dstQueueFamilyIndex           = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.image                         = currDesc.hResouce.GetNativeHandle()->image;
+                    barrier.subresourceRange.aspectMask   = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( currDesc.textureRange.components );
+                    barrier.subresourceRange.baseMipLevel = currDesc.textureRange.mipLevel;
+                    barrier.subresourceRange.levelCount   = currDesc.textureRange.mipLevelCount;
+                    barrier.subresourceRange.baseArrayLayer = currDesc.textureRange.arrayLayer;
+                    barrier.subresourceRange.layerCount     = currDesc.textureRange.arrayLayerCount;
+                }
+
+                VkDependencyInfo info;
+                info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                info.pNext                    = nullptr;
+                info.dependencyFlags          = 0;
+                info.memoryBarrierCount       = desc.globalBarrierCount;
+                info.pMemoryBarriers          = memBarriers;
+                info.bufferMemoryBarrierCount = desc.bufferBarrierCount;
+                info.pBufferMemoryBarriers    = bufferBarriers;
+                info.imageMemoryBarrierCount  = desc.textureBarrierCount;
+                info.pImageMemoryBarriers     = textureBarriers;
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdPipelineBarrier2( nativeCommandBuffer, &info );
             }
 
             void VulkanCommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
@@ -203,7 +283,10 @@ namespace BIGOS
                 vkCmdBindDescriptorBuffersEXT( nativeCommandBuffer, heapCount, heaps );
             }
 
-            void VulkanCommandBuffer::SetBinding( const SetBindingDesc& desc ) { desc; }
+            void VulkanCommandBuffer::SetBinding( const SetBindingDesc& desc )
+            {
+                desc;
+            }
 
             void VulkanCommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
             {

@@ -170,7 +170,7 @@ namespace BIGOS
                 virtual void Draw( const DrawDesc& desc )        = 0;
                 virtual void DrawIndexed( const DrawDesc& desc ) = 0;
 
-                virtual void Barrier( uint32_t barrierCount, const BarierDesc* pBarriers ) = 0;
+                virtual void Barrier( const BarierDesc& desc ) = 0;
 
                 virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )                = 0;
                 virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) = 0;

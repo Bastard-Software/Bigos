@@ -39,6 +39,9 @@ namespace BIGOS
             D3D12_DESCRIPTOR_HEAP_TYPE  MapBigosBindingHeapTypeToD3D12DescriptorHeapType( BINDING_HEAP_TYPE type );
             D3D12_QUERY_HEAP_TYPE       MapBigosQueryTypeToD3D12QueryHeapType( QUERY_TYPE type );
             D3D12_QUERY_TYPE            MapBigosQueryTypeToD3D12QueryType( QUERY_TYPE type );
+            D3D12_BARRIER_SYNC          MapBigosPipelineStageFlagsToD3D12BarrierSync( PipelineStageFlags flags );
+            D3D12_BARRIER_ACCESS        MapBigosAccessFlagsToD3D12BarrierAccess( AccessFlags flags );
+            D3D12_BARRIER_LAYOUT        MapBigosTextureLayoutToD3D12BarierrLayout( TEXTURE_LAYOUT layout );
 
         } // namespace Backend
     }     // namespace Driver
