@@ -35,6 +35,16 @@ COMMAND ${CMAKE_COMMAND} -E copy
     ${THIRD_PARTY_DIR}/DXCompiler/bin/dxil.dll
     ${OUTPUT_DIR}/dxil.dll)
 
+add_custom_command (TARGET ${PROJECT_NAME} POST_BUILD
+COMMAND ${CMAKE_COMMAND} -E copy
+    ${THIRD_PARTY_DIR}/D3D12/build/native/bin/x64/D3D12Core.dll
+    ${OUTPUT_DIR}/D3D12/D3D12Core.dll)
+
+add_custom_command (TARGET ${PROJECT_NAME} POST_BUILD
+COMMAND ${CMAKE_COMMAND} -E copy
+    ${THIRD_PARTY_DIR}/D3D12/build/native/bin/x64/d3d12SDKLayers.dll
+    ${OUTPUT_DIR}/D3D12/d3d12SDKLayers.dll)
+
 target_include_directories(Driver PRIVATE 
     ${THIRD_PARTY_DIR}/vulkan/include
     ${THIRD_PARTY_DIR}/volk

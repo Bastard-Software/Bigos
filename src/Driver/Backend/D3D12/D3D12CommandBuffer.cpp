@@ -51,16 +51,16 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                ID3D12GraphicsCommandList4* pNativeCommandList4 = nullptr;
-                if( FAILED( pNativeCommandList->QueryInterface( &pNativeCommandList4 ) ) )
+                ID3D12GraphicsCommandList7* pNativeCommandList7 = nullptr;
+                if( FAILED( pNativeCommandList->QueryInterface( &pNativeCommandList7 ) ) )
                 {
                     pNativeCommandList->Release();
                     return Results::FAIL;
                 }
                 pNativeCommandList->Release();
-                pNativeCommandList4->Close(); // To mimic vulkan behaviour (vulkan command buffers are closed on creation)
+                pNativeCommandList7->Close(); // To mimic vulkan behaviour (vulkan command buffers are closed on creation)
 
-                m_handle = CommandBufferHandle( pNativeCommandList4 );
+                m_handle = CommandBufferHandle( pNativeCommandList7 );
 
                 return Results::OK;
             }
@@ -71,7 +71,7 @@ namespace BIGOS
 
                 if( ( m_handle != CommandBufferHandle() ) )
                 {
-                    ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                    ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
                     RELEASE_COM_PTR( pNativeCommandList );
                 }
 
@@ -82,7 +82,7 @@ namespace BIGOS
             void D3D12CommandBuffer::Begin( const BeginCommandBufferDesc& desc )
             {
                 ID3D12CommandAllocator*     pNativeAllocator   = m_desc.hCommandPool.GetNativeHandle();
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
                 desc;
 
                 pNativeCommandList->Reset( pNativeAllocator, nullptr );
@@ -90,7 +90,7 @@ namespace BIGOS
 
             void D3D12CommandBuffer::End()
             {
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->Close();
             }
@@ -98,7 +98,7 @@ namespace BIGOS
             void D3D12CommandBuffer::Reset()
             {
                 ID3D12CommandAllocator*     pNativeAllocator   = m_desc.hCommandPool.GetNativeHandle();
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->Reset( pNativeAllocator, nullptr );
             }
@@ -123,7 +123,7 @@ namespace BIGOS
                             Config::Driver::Pipeline::MAX_VIEWPORT_COUNT );
                 BGS_ASSERT( pViewports != nullptr, "Viewport desc array (pViewport) must be a valid pointer" );
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->RSSetViewports( viewportCount, reinterpret_cast<const D3D12_VIEWPORT*>( pViewports ) );
             }
@@ -147,28 +147,28 @@ namespace BIGOS
                     currScissor.bottom = static_cast<LONG>( currDesc.upperLeftY + currDesc.height );
                 }
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->RSSetScissorRects( scissorCount, scissors );
             }
 
             void D3D12CommandBuffer::SetPrimitiveTopology( PRIMITIVE_TOPOLOGY topology )
             {
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->IASetPrimitiveTopology( MapBigosPrimitiveTopologyToD3D12PrimitiveTopology( topology ) );
             }
 
             void D3D12CommandBuffer::Draw( const DrawDesc& desc )
             {
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->DrawInstanced( desc.vertexCount, desc.instanceCount, desc.firstVertex, desc.firstInstance );
             }
 
             void D3D12CommandBuffer::DrawIndexed( const DrawDesc& desc )
             {
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->DrawIndexedInstanced( desc.indexCount, desc.instanceCount, desc.firstIndex, desc.vertexOffset,
                                                           desc.firstInstance );
@@ -257,7 +257,7 @@ namespace BIGOS
             {
                 BGS_ASSERT( handle != PipelineHandle(), "Pipeline (handle) must be a valid handle." );
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
                 D3D12Pipeline*              pPipeline          = handle.GetNativeHandle();
 
                 pNativeCommandList->SetPipelineState( pPipeline->pPipeline );
@@ -269,7 +269,7 @@ namespace BIGOS
                 BGS_ASSERT( pHandle != nullptr, "Binding heap (pHandle) must be a valid array." );
                 BGS_ASSERT( heapCount <= 2, "Binding heap count (heapCount) must be less or equal 2." );
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
                 ID3D12DescriptorHeap*       pHeaps[ 2 ];
                 for( index_t ndx = 0; ndx < static_cast<index_t>( heapCount ); ++ndx )
                 {
@@ -289,7 +289,7 @@ namespace BIGOS
                 BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
                 BGS_ASSERT( type != QueryTypes::TIMESTAMP, "Query type (type) must not be QueryTypes::TIMESTAMP." );
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->BeginQuery( handle.GetNativeHandle(), MapBigosQueryTypeToD3D12QueryType( type ), queryNdx );
             }
@@ -299,7 +299,7 @@ namespace BIGOS
                 BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
                 BGS_ASSERT( type != QueryTypes::TIMESTAMP, "Query type (type) must not be QueryTypes::TIMESTAMP." );
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->EndQuery( handle.GetNativeHandle(), MapBigosQueryTypeToD3D12QueryType( type ), queryNdx );
             }
@@ -308,7 +308,7 @@ namespace BIGOS
             {
                 BGS_ASSERT( handle != QueryPoolHandle(), "Query pool (handle) must be a valid handle." );
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->EndQuery( handle.GetNativeHandle(), D3D12_QUERY_TYPE_TIMESTAMP, queryNdx );
             }
@@ -323,7 +323,7 @@ namespace BIGOS
                 BGS_ASSERT( desc.hQueryPool != QueryPoolHandle(), "Query pool (desc.hQueryPool) must be a valid handle." );
                 BGS_ASSERT( desc.hBuffer != ResourceHandle(), "Resource (desc.hBuffer) must be a valid handle." );
 
-                ID3D12GraphicsCommandList4* pNativeCommandList = m_handle.GetNativeHandle();
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->ResolveQueryData( desc.hQueryPool.GetNativeHandle(), MapBigosQueryTypeToD3D12QueryType( desc.type ),
                                                       desc.firstQuery, desc.queryCount, desc.hBuffer.GetNativeHandle()->pNativeResource,

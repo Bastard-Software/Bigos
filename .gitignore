@@ -4,3 +4,4 @@ bin/
 lib/
 
 !src/ThirdParty/DXCompiler/bin/
+!src/ThirdParty/D3D12/build/native/bin/
