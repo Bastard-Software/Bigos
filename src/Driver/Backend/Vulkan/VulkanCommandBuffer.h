@@ -20,6 +20,10 @@ namespace BIGOS
 
                 virtual void BeginRendering( const BeginRenderingDesc& desc ) override;
                 virtual void EndRendering() override;
+                virtual void ClearBoundColorRenderTarget( uint32_t index, const ColorValue& clearValue, uint32_t rectCount,
+                                                          const Rect2D* pClearRects ) override;
+                virtual void ClearBoundDepthStencilTarget( const DepthStencilValue& clearValue, TextureComponentFlags components, uint32_t rectCount,
+                                                           const Rect2D* pClearRects ) override;
 
                 virtual void SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports ) override;
                 virtual void SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors ) override;

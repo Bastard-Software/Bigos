@@ -3,10 +3,12 @@
 #include "D3D12CommandBuffer.h"
 
 #include "BigosFramework/Config.h"
+#include "Core/Memory/Memory.h"
 #include "D3D12Common.h"
 #include "D3D12Device.h"
 #include "D3D12Pipeline.h"
 #include "D3D12Resource.h"
+#include "D3D12ResourceView.h"
 
 namespace BIGOS
 {
@@ -18,14 +20,17 @@ namespace BIGOS
             {
                 pList->SetGraphicsRootSignature( pSig );
             }
+
             static void SetComputePipelineLayout( ID3D12GraphicsCommandList* pList, ID3D12RootSignature* pSig )
             {
                 pList->SetComputeRootSignature( pSig );
             }
 
-            void ( *pBindPipelineLayoutFn[] )( ID3D12GraphicsCommandList*, ID3D12RootSignature* ) = { SetGraphicsPipelineLayout,
-                                                                                                      SetComputePipelineLayout,
-                                                                                                      SetComputePipelineLayout };
+            void ( *pBindPipelineLayoutFn[] )( ID3D12GraphicsCommandList*, ID3D12RootSignature* ) = {
+                SetGraphicsPipelineLayout,
+                SetComputePipelineLayout,
+                SetComputePipelineLayout,
+            };
 
             RESULT D3D12CommandBuffer::Create( const CommandBufferDesc& desc, D3D12Device* pDevice )
             {
@@ -50,6 +55,15 @@ namespace BIGOS
                 {
                     return Results::FAIL;
                 }
+
+                m_rtvDescSize            = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
+                m_dsvDescSize            = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
+                m_colorRenderTargetCount = 0;
+                for( index_t ndx = 0; ndx < static_cast<index_t>( m_colorRenderTargetCount ); ++ndx )
+                {
+                    m_boundColorRenderTargets[ ndx ] = D3D12_CPU_DESCRIPTOR_HANDLE();
+                }
+                m_boundDepthStencilTarget = D3D12_CPU_DESCRIPTOR_HANDLE();
 
                 ID3D12GraphicsCommandList7* pNativeCommandList7 = nullptr;
                 if( FAILED( pNativeCommandList->QueryInterface( &pNativeCommandList7 ) ) )
@@ -105,16 +119,89 @@ namespace BIGOS
 
             void D3D12CommandBuffer::BeginRendering( const BeginRenderingDesc& desc )
             {
-                /* TODO: Handle
-                    - set render targets
-                    - clear render targets
-                */
-                desc;
+                BGS_ASSERT( desc.colorRenderTargetCount <= Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT,
+                            "Render target count (desc.colorRenderTarget) must be less than %d", Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT );
+
+                ID3D12DescriptorHeap* pRTVHeap = m_pParent->GetDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
+                ID3D12DescriptorHeap* pDSVHeap = m_pParent->GetDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
+
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.colorRenderTargetCount ); ++ndx )
+                {
+                    m_boundColorRenderTargets[ ndx ].ptr = pRTVHeap->GetCPUDescriptorHandleForHeapStart().ptr +
+                                                           desc.pHColorRenderTargetViews[ ndx ].GetNativeHandle()->rtvNdx * m_rtvDescSize;
+                }
+                m_colorRenderTargetCount = desc.colorRenderTargetCount;
+                m_boundDepthStencilTarget.ptr =
+                    pDSVHeap->GetCPUDescriptorHandleForHeapStart().ptr + desc.hDepthStencilTargetView.GetNativeHandle()->dsvNdx * m_dsvDescSize;
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                // TODO: Avoid branching on runtime
+                const D3D12_CPU_DESCRIPTOR_HANDLE* pDSV = desc.hDepthStencilTargetView == ResourceViewHandle() ? nullptr : &m_boundDepthStencilTarget;
+
+                pNativeCommandList->OMSetRenderTargets( m_colorRenderTargetCount, m_boundColorRenderTargets, FALSE, pDSV );
             }
 
             void D3D12CommandBuffer::EndRendering()
             {
-                // TODO: Nop?
+                for( index_t ndx = 0; ndx < static_cast<index_t>( m_colorRenderTargetCount ); ++ndx )
+                {
+                    m_boundColorRenderTargets[ ndx ] = D3D12_CPU_DESCRIPTOR_HANDLE();
+                }
+                m_boundDepthStencilTarget = D3D12_CPU_DESCRIPTOR_HANDLE();
+                m_colorRenderTargetCount  = 0;
+            }
+
+            void D3D12CommandBuffer::ClearBoundColorRenderTarget( uint32_t index, const ColorValue& clearValue, uint32_t rectCount,
+                                                                  const Rect2D* pClearRects )
+            {
+                BGS_ASSERT( rectCount <= Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT, "Rect count (rectCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT );
+                BGS_ASSERT( m_boundColorRenderTargets[ index ].ptr != D3D12_CPU_DESCRIPTOR_HANDLE().ptr, "No target bound." );
+
+                D3D12_RECT rects[ Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( rectCount ); ++ndx )
+                {
+                    const Rect2D& currDesc = pClearRects[ ndx ];
+                    D3D12_RECT&   rect     = rects[ ndx ];
+
+                    rect.left   = static_cast<LONG>( currDesc.offset.x );
+                    rect.top    = static_cast<LONG>( currDesc.offset.y + currDesc.size.height );
+                    rect.right  = static_cast<LONG>( currDesc.offset.x + currDesc.size.width );
+                    rect.bottom = static_cast<LONG>( currDesc.offset.y );
+                }
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                const float color[] = { clearValue.r, clearValue.g, clearValue.b, clearValue.a };
+
+                pNativeCommandList->ClearRenderTargetView( m_boundColorRenderTargets[ index ], color, rectCount, rects );
+            }
+
+            void D3D12CommandBuffer::ClearBoundDepthStencilTarget( const DepthStencilValue& clearValue, TextureComponentFlags components,
+                                                                   uint32_t rectCount, const Rect2D* pClearRects )
+            {
+                BGS_ASSERT( rectCount <= Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT, "Rect count (rectCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT );
+                BGS_ASSERT( !( components & BGS_FLAG( TextureComponentFlagBits::COLOR ) ), "Invalid component flag." );
+                BGS_ASSERT( m_boundDepthStencilTarget.ptr != D3D12_CPU_DESCRIPTOR_HANDLE().ptr, "No target bound." );
+
+                D3D12_RECT rects[ Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( rectCount ); ++ndx )
+                {
+                    const Rect2D& currDesc = pClearRects[ ndx ];
+                    D3D12_RECT&   rect     = rects[ ndx ];
+
+                    rect.left   = static_cast<LONG>( currDesc.offset.x );
+                    rect.top    = static_cast<LONG>( currDesc.offset.y + currDesc.size.height );
+                    rect.right  = static_cast<LONG>( currDesc.offset.x + currDesc.size.width );
+                    rect.bottom = static_cast<LONG>( currDesc.offset.y );
+                }
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->ClearDepthStencilView( m_boundDepthStencilTarget, static_cast<D3D12_CLEAR_FLAGS>( components ), clearValue.depth,
+                                                           clearValue.stencil, rectCount, rects );
             }
 
             void D3D12CommandBuffer::SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports )

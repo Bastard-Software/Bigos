@@ -11,17 +11,17 @@
 const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5f, 0.0f, 1.0f ), float4( 0.5f, -0.5f, 0.0f, 1.0f ), float4( 0.0f, "
                      "0.5f, 0.0f, 1.0f ) };\n"
 
-                     "float4 VSMain(uint vertexID : SV_VertexID) : SV_Position\n"
+                     "float4 VSMain( uint vertexID : SV_VertexID ) : SV_Position\n"
                      "{\n"
                      "  return positions[ vertexID ];\n"
                      "}\n\n"
 
-                     "float4 PSMain(float4 position : SV_Position ) : SV_Target\n"
+                     "float4 PSMain( float4 position : SV_Position ) : SV_Target\n"
                      "{\n"
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
 
 // Temporary solution
 extern "C"
