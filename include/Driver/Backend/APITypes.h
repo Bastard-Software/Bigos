@@ -121,12 +121,18 @@ namespace BIGOS
 
             struct QueueSubmitDesc
             {
-                // TODO: Fill
-            };
-
-            struct QueueWaitDesc
-            {
-                // TODO: Fill
+                const SemaphoreHandle*       phWaitSemaphores;
+                const FenceHandle*           phWaitFences;
+                const uint64_t*              pWaitValues;
+                const SemaphoreHandle*       phSignalSemaphores;
+                const FenceHandle*           phSignalFences;
+                const uint64_t*              pSignalValues;
+                const ICommandBuffer* const* ppCommandBuffers;
+                uint32_t                     waitSemaphoreCount;
+                uint32_t                     signalSemaphoreCount;
+                uint32_t                     waitFenceCount;
+                uint32_t                     signalFenceCount;
+                uint32_t                     commandBufferCount;
             };
 
             enum class ShaderVisibilities : uint8_t

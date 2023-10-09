@@ -119,7 +119,6 @@ namespace BIGOS
                 virtual ~IQueue() = default;
 
                 virtual RESULT Submit( const QueueSubmitDesc& desc ) = 0;
-                virtual RESULT Wait( const QueueWaitDesc& desc )     = 0;
 
                 BGS_FORCEINLINE const QueueLimits& GetLimits() const { return m_limits; }
                 BGS_FORCEINLINE const QueueDesc&   GetDesc() const { return m_desc; }
