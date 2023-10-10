@@ -104,8 +104,8 @@ namespace BIGOS
                 virtual void   DestroyQueryPool( QueryPoolHandle* pHandle )                           = 0;
 
                 BGS_FORCEINLINE const DeviceLimits& GetLimits() const { return m_limits; }
-                BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
-                BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const DeviceDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const DeviceHandle  GetHandle() const { return m_handle; }
 
             protected:
                 DeviceLimits m_limits;
@@ -122,8 +122,8 @@ namespace BIGOS
                 virtual RESULT Wait( const QueueWaitDesc& desc )     = 0;
 
                 BGS_FORCEINLINE const QueueLimits& GetLimits() const { return m_limits; }
-                BGS_FORCEINLINE const QueueDesc&  GetDesc() const { return m_desc; }
-                BGS_FORCEINLINE const QueueHandle GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const QueueDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const QueueHandle  GetHandle() const { return m_handle; }
 
             protected:
                 QueueLimits m_limits;
@@ -140,7 +140,7 @@ namespace BIGOS
                 virtual RESULT Present( const SwapchainPresentDesc& desc ) = 0;
                 virtual RESULT GetNextFrame( FrameInfo* pInfo )            = 0;
 
-                BGS_FORCEINLINE const SwapchainDesc& GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const SwapchainDesc&   GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const BackBufferArray& GetBackBuffers() const { return m_backBuffers; }
                 BGS_FORCEINLINE const SwapchainHandle  GetHandle() const { return m_handle; }
 
@@ -159,8 +159,12 @@ namespace BIGOS
                 virtual void End()                                       = 0;
                 virtual void Reset()                                     = 0;
 
-                virtual void BeginRendering( const BeginRenderingDesc& desc ) = 0;
-                virtual void EndRendering()                                   = 0;
+                virtual void BeginRendering( const BeginRenderingDesc& desc )          = 0;
+                virtual void EndRendering()                                            = 0;
+                virtual void ClearBoundColorRenderTarget( uint32_t index, const ColorValue& clearValue, uint32_t rectCount,
+                                                          const Rect2D* pClearRects )  = 0;
+                virtual void ClearBoundDepthStencilTarget( const DepthStencilValue& clearValue, TextureComponentFlags components, uint32_t rectCount,
+                                                           const Rect2D* pClearRects ) = 0;
 
                 virtual void SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports ) = 0;
                 virtual void SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )     = 0;

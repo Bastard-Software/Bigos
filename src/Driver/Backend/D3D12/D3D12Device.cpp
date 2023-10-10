@@ -883,7 +883,7 @@ namespace BIGOS
                 }
 
                 pSampler->sampler.Filter         = MapBigosFiltesToD3D12Filter( desc.minFilter, desc.magFilter, desc.mipMapFilter, desc.reductionMode,
-                                                                        desc.anisotropyEnable, desc.compareEnable );
+                                                                                desc.anisotropyEnable, desc.compareEnable );
                 pSampler->sampler.AddressU       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressU );
                 pSampler->sampler.AddressV       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressV );
                 pSampler->sampler.AddressW       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressW );
@@ -1113,7 +1113,10 @@ namespace BIGOS
                 }
             }
 
-            void D3D12Device::CopyBinding( const CopyBindingDesc& desc ) { desc; }
+            void D3D12Device::CopyBinding( const CopyBindingDesc& desc )
+            {
+                desc;
+            }
 
             RESULT D3D12Device::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
             {

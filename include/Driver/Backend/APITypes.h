@@ -612,7 +612,24 @@ namespace BIGOS
 
             struct BeginRenderingDesc
             {
-                // TODO: Fill
+                Rect2D                    renderArea;
+                const ResourceViewHandle* pHColorRenderTargetViews;
+                ResourceViewHandle        hDepthStencilTargetView;
+                uint32_t                  colorRenderTargetCount;
+            };
+
+            struct ColorValue
+            {
+                float r;
+                float g;
+                float b;
+                float a;
+            };
+
+            struct DepthStencilValue
+            {
+                float   depth;
+                uint8_t stencil;
             };
 
             struct DrawDesc
@@ -634,9 +651,9 @@ namespace BIGOS
 
             enum class TextureComponentFlagBits : uint32_t
             {
-                COLOR   = 0x00000001,
-                DEPTH   = 0x00000002,
-                STENCIL = 0x00000004,
+                DEPTH   = 0x00000001,
+                STENCIL = 0x00000002,
+                COLOR   = 0x00000004,
             };
             using TextureComponentFlags = uint32_t;
 
@@ -964,14 +981,6 @@ namespace BIGOS
             };
             using SAMPLER_TYPE = SamplerTypes;
 
-            struct Color
-            {
-                float r;
-                float g;
-                float b;
-                float a;
-            };
-
             enum class BorderColors : uint8_t
             {
                 TRANSPARENT_BLACK,
@@ -1013,7 +1022,7 @@ namespace BIGOS
             {
                 union
                 {
-                    Color        customBorderColor;
+                    ColorValue   customBorderColor;
                     BORDER_COLOR enumBorderColor;
                 };
                 float                  mipLodBias;

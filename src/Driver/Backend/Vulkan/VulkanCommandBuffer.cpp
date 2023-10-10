@@ -6,6 +6,7 @@
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
 #include "VulkanResource.h"
+#include "VulkanResourceView.h"
 
 namespace BIGOS
 {
@@ -92,10 +93,55 @@ namespace BIGOS
 
             void VulkanCommandBuffer::BeginRendering( const BeginRenderingDesc& desc )
             {
+                BGS_ASSERT( desc.colorRenderTargetCount <= Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT,
+                            "Render target count (desc.colorRenderTarget) must be less than %d", Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT );
+
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
-                // TODO: Handle
+
+                VkRenderingAttachmentInfo renderTargets[ Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT ];
+
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.colorRenderTargetCount ); ++ndx )
+                {
+                    VkRenderingAttachmentInfo& currTarget = renderTargets[ ndx ];
+
+                    currTarget.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                    currTarget.pNext              = nullptr;
+                    currTarget.imageView          = desc.pHColorRenderTargetViews[ ndx ].GetNativeHandle()->imageView;
+                    currTarget.imageLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    currTarget.resolveMode        = VK_RESOLVE_MODE_NONE;
+                    currTarget.resolveImageView   = VK_NULL_HANDLE;
+                    currTarget.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    currTarget.loadOp             = VK_ATTACHMENT_LOAD_OP_LOAD;
+                    currTarget.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+                    currTarget.clearValue         = {}; // Ignored
+                }
+
+                VkRenderingAttachmentInfo depthStencilTarget;
+                depthStencilTarget.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                depthStencilTarget.pNext              = nullptr;
+                depthStencilTarget.imageView          = desc.hDepthStencilTargetView.GetNativeHandle()->imageView;
+                depthStencilTarget.imageLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                depthStencilTarget.resolveMode        = VK_RESOLVE_MODE_NONE;
+                depthStencilTarget.resolveImageView   = VK_NULL_HANDLE;
+                depthStencilTarget.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                depthStencilTarget.loadOp             = VK_ATTACHMENT_LOAD_OP_LOAD;
+                depthStencilTarget.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+                depthStencilTarget.clearValue         = {}; // Ignored
+
                 VkRenderingInfo renderingInfo;
-                desc;
+                renderingInfo.sType                    = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                renderingInfo.pNext                    = nullptr;
+                renderingInfo.flags                    = 0;
+                renderingInfo.renderArea.offset.x      = static_cast<int32_t>( desc.renderArea.offset.x );
+                renderingInfo.renderArea.offset.y      = static_cast<int32_t>( desc.renderArea.offset.y );
+                renderingInfo.renderArea.extent.width  = desc.renderArea.size.width;
+                renderingInfo.renderArea.extent.height = desc.renderArea.size.height;
+                renderingInfo.layerCount               = 1;
+                renderingInfo.viewMask                 = 0;
+                renderingInfo.colorAttachmentCount     = desc.colorRenderTargetCount;
+                renderingInfo.pColorAttachments        = renderTargets;
+                renderingInfo.pDepthAttachment         = &depthStencilTarget;
+                renderingInfo.pStencilAttachment       = &depthStencilTarget;
 
                 vkCmdBeginRendering( nativeCommandBuffer, &renderingInfo );
             }
@@ -107,6 +153,71 @@ namespace BIGOS
                 vkCmdEndRendering( nativeCommandBuffer );
             }
 
+            void VulkanCommandBuffer::ClearBoundColorRenderTarget( uint32_t index, const ColorValue& clearValue, uint32_t rectCount,
+                                                                   const Rect2D* pClearRects )
+            {
+                BGS_ASSERT( rectCount <= Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT, "Rect count (rectCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT );
+
+                VkClearRect rects[ Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( rectCount ); ++ndx )
+                {
+                    const Rect2D& currDesc = pClearRects[ ndx ];
+                    VkClearRect&  rect     = rects[ ndx ];
+
+                    rect.rect.offset.x      = static_cast<int32_t>( currDesc.offset.x );
+                    rect.rect.offset.y      = static_cast<int32_t>( currDesc.offset.y );
+                    rect.rect.extent.width  = currDesc.size.width;
+                    rect.rect.extent.height = currDesc.size.height;
+                    rect.baseArrayLayer     = 0;
+                    rect.layerCount         = 1;
+                }
+
+                VkClearAttachment target;
+                target.aspectMask                    = VK_IMAGE_ASPECT_COLOR_BIT;
+                target.clearValue.color.float32[ 0 ] = clearValue.r;
+                target.clearValue.color.float32[ 1 ] = clearValue.g;
+                target.clearValue.color.float32[ 2 ] = clearValue.b;
+                target.clearValue.color.float32[ 3 ] = clearValue.a;
+                target.colorAttachment               = index;
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdClearAttachments( nativeCommandBuffer, 1, &target, rectCount, rects );
+            }
+
+            void VulkanCommandBuffer::ClearBoundDepthStencilTarget( const DepthStencilValue& clearValue, TextureComponentFlags components,
+                                                                    uint32_t rectCount, const Rect2D* pClearRects )
+            {
+                BGS_ASSERT( rectCount <= Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT, "Rect count (rectCount) must be less than %d",
+                            Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT );
+                BGS_ASSERT( !( components & BGS_FLAG( TextureComponentFlagBits::COLOR ) ), "Invalid component flag." )
+
+                VkClearRect rects[ Config::Driver::Pipeline::MAX_CLEAR_RECT_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( rectCount ); ++ndx )
+                {
+                    const Rect2D& currDesc = pClearRects[ ndx ];
+                    VkClearRect&  rect     = rects[ ndx ];
+
+                    rect.rect.offset.x      = static_cast<int32_t>( currDesc.offset.x );
+                    rect.rect.offset.y      = static_cast<int32_t>( currDesc.offset.y );
+                    rect.rect.extent.width  = currDesc.size.width;
+                    rect.rect.extent.height = currDesc.size.height;
+                    rect.baseArrayLayer     = 0;
+                    rect.layerCount         = 1;
+                }
+
+                VkClearAttachment target;
+                target.aspectMask                      = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( components );
+                target.clearValue.depthStencil.depth   = clearValue.depth;
+                target.clearValue.depthStencil.stencil = clearValue.stencil;
+                target.colorAttachment                 = 0; // Ignored
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdClearAttachments( nativeCommandBuffer, 1, &target, rectCount, rects );
+            }
+
             void VulkanCommandBuffer::SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports )
             {
                 BGS_ASSERT( viewportCount < Config::Driver::Pipeline::MAX_VIEWPORT_COUNT, "Viewport count (viewportCount) must be less than %d",
@@ -115,7 +226,7 @@ namespace BIGOS
 
                 VkViewport viewports[ Config::Driver::Pipeline::MAX_VIEWPORT_COUNT ];
 
-                for( index_t ndx = 0; ndx < static_cast<uint32_t>( viewportCount ); ++ndx )
+                for( index_t ndx = 0; ndx < static_cast<index_t>( viewportCount ); ++ndx )
                 {
                     const ViewportDesc& currDesc = pViewports[ ndx ];
                     VkViewport&         currVP   = viewports[ ndx ];

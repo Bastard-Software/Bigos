@@ -48,6 +48,7 @@ namespace BIGOS
                 constexpr uint32_t MAX_INPUT_ELEMENT_COUNT     = 16U;
                 constexpr uint32_t MAX_BLEND_STATE_COUNT       = 8U;
                 constexpr uint32_t MAX_RENDER_TARGET_COUNT     = 8U;
+                constexpr uint32_t MAX_CLEAR_RECT_COUNT        = 8U;
                 constexpr uint32_t MAX_SCISSOR_COUNT           = 16U;
                 constexpr uint32_t MAX_VIEWPORT_COUNT          = 16U;
                 constexpr uint32_t MAX_BINDING_RANGE_COUNT     = 64U;

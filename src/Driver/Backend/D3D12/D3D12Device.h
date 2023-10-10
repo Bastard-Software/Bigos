@@ -81,7 +81,11 @@ namespace BIGOS
 
                 // Function needed for D3D12 backend
             public:
-                D3D12Factory* GetParent() const { return m_pParent; }
+                D3D12Factory*         GetParent() const { return m_pParent; }
+                ID3D12DescriptorHeap* GetDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE type )
+                {
+                    return m_descHeaps[ BGS_ENUM_INDEX( type ) ].pHeap;
+                }
 
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );

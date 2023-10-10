@@ -26,7 +26,7 @@ extern "C"
     BGS_API BIGOS::RESULT CreateBigosFramework( const BIGOS::BigosFrameworkDesc& desc, BIGOS::BigosFramework** ppFramework );
 
     BGS_API void DestroyBigosFramework( BIGOS::BigosFramework** ppFramework );
-}
+};
 
 namespace BIGOS
 {

@@ -20,6 +20,10 @@ namespace BIGOS
 
                 virtual void BeginRendering( const BeginRenderingDesc& desc ) override;
                 virtual void EndRendering() override;
+                virtual void ClearBoundColorRenderTarget( uint32_t index, const ColorValue& clearValue, uint32_t rectCount,
+                                                          const Rect2D* pClearRects ) override;
+                virtual void ClearBoundDepthStencilTarget( const DepthStencilValue& clearValue, TextureComponentFlags components, uint32_t rectCount,
+                                                           const Rect2D* pClearRects ) override;
 
                 virtual void SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports ) override;
                 virtual void SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors ) override;
@@ -46,6 +50,12 @@ namespace BIGOS
                 void   Destroy();
 
             private:
+                D3D12_CPU_DESCRIPTOR_HANDLE m_boundColorRenderTargets[ Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT ];
+                D3D12_CPU_DESCRIPTOR_HANDLE m_boundDepthStencilTarget;
+                uint32_t                    m_colorRenderTargetCount;
+                uint32_t                    m_rtvDescSize;
+                uint32_t                    m_dsvDescSize;
+
                 D3D12Device* m_pParent;
             };
         } // namespace Backend
