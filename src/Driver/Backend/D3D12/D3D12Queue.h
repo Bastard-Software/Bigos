@@ -17,7 +17,6 @@ namespace BIGOS
 
             public:
                 virtual RESULT Submit( const QueueSubmitDesc& desc ) override;
-                virtual RESULT Wait( const QueueWaitDesc& desc ) override;
 
             protected:
                 RESULT Create( const QueueDesc& desc, D3D12Device* pDevice );

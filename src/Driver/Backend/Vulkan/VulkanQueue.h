@@ -17,7 +17,6 @@ namespace BIGOS
 
             public:
                 virtual RESULT Submit( const QueueSubmitDesc& desc ) override;
-                virtual RESULT Wait( const QueueWaitDesc& desc ) override;
 
                 // Funcions needed for Vulkan backend
             public:

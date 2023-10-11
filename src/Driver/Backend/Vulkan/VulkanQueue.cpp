@@ -13,14 +13,91 @@ namespace BIGOS
 
             RESULT VulkanQueue::Submit( const QueueSubmitDesc& desc )
             {
-                desc;
+                BGS_ASSERT( desc.waitFenceCount <= Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT,
+                            "Wait fence count (desc.waitFenceCount) must be less or equal %d.",
+                            Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT );
+                BGS_ASSERT( desc.waitSemaphoreCount <= Config::Driver::Synchronization::MAX_SEMAPHORES_TO_WAIT_COUNT,
+                            "Wait semaphore count (desc.waitSemaphoreCount) must be less or equal %d.",
+                            Config::Driver::Synchronization::MAX_SEMAPHORES_TO_WAIT_COUNT );
+                BGS_ASSERT( desc.signalFenceCount <= Config::Driver::Synchronization::MAX_FENCES_TO_SIGNAL_COUNT,
+                            "Signal fence count (desc.signalFenceCount) must be less or equal %d.",
+                            Config::Driver::Synchronization::MAX_FENCES_TO_SIGNAL_COUNT );
+                BGS_ASSERT( desc.signalSemaphoreCount <= Config::Driver::Synchronization::MAX_SEMAPHORES_TO_SIGNAL_COUNT,
+                            "Signal semaphore count (desc.signalSemaphoreCount) must be less or equal %d.",
+                            Config::Driver::Synchronization::MAX_SEMAPHORES_TO_SIGNAL_COUNT );
+                BGS_ASSERT( desc.commandBufferCount <= Config::Driver::Queue::MAX_COMMAND_BUFFER_TO_EXECUTE_COUNT,
+                            "Command buffer count must be less or equal %d.", Config::Driver::Queue::MAX_COMMAND_BUFFER_TO_EXECUTE_COUNT );
+                BGS_ASSERT( ( desc.ppCommandBuffers != nullptr ) && ( desc.commandBufferCount > 0 ), "You specified no command buffer to execute." );
 
-                return Results::OK;
-            }
+                static const VkPipelineStageFlags waitStages[ Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT +
+                                                              Config::Driver::Synchronization::MAX_SEMAPHORES_TO_WAIT_COUNT ] = {
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                };
 
-            RESULT VulkanQueue::Wait( const QueueWaitDesc& desc )
-            {
-                desc;
+                // Note that our fence is vulkan timeline semaphore. We pass them before binary semaphores.
+                VkSemaphore     nativeWaitSemaphores[ Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT +
+                                                  Config::Driver::Synchronization::MAX_SEMAPHORES_TO_WAIT_COUNT ];
+                VkSemaphore     nativeSignalSemaphores[ Config::Driver::Synchronization::MAX_FENCES_TO_SIGNAL_COUNT +
+                                                    Config::Driver::Synchronization::MAX_SEMAPHORES_TO_SIGNAL_COUNT ];
+                VkCommandBuffer nativeCommandBuffers[ Config::Driver::Queue::MAX_COMMAND_BUFFER_TO_EXECUTE_COUNT ];
+
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.waitFenceCount ); ++ndx )
+                {
+                    nativeWaitSemaphores[ ndx ] = desc.phWaitFences[ ndx ].GetNativeHandle();
+                }
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.waitSemaphoreCount ); ++ndx )
+                {
+                    nativeWaitSemaphores[ ndx + static_cast<index_t>( desc.waitFenceCount ) ] = desc.phWaitSemaphores[ ndx ].GetNativeHandle();
+                }
+
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.signalFenceCount ); ++ndx )
+                {
+                    nativeSignalSemaphores[ ndx ] = desc.phSignalFences[ ndx ].GetNativeHandle();
+                }
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.signalSemaphoreCount ); ++ndx )
+                {
+                    nativeSignalSemaphores[ ndx + static_cast<index_t>( desc.signalFenceCount ) ] = desc.phSignalSemaphores[ ndx ].GetNativeHandle();
+                }
+
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.commandBufferCount ); ++ndx )
+                {
+                    nativeCommandBuffers[ ndx ] = desc.ppCommandBuffers[ ndx ]->GetHandle().GetNativeHandle();
+                }
+
+                // Passing wait/signal values using timeline semaphore submit info
+                VkTimelineSemaphoreSubmitInfo timelineInfo;
+                timelineInfo.sType                     = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+                timelineInfo.pNext                     = nullptr;
+                timelineInfo.pWaitSemaphoreValues      = desc.pWaitValues;
+                timelineInfo.waitSemaphoreValueCount   = desc.waitFenceCount;
+                timelineInfo.pSignalSemaphoreValues    = desc.pSignalValues;
+                timelineInfo.signalSemaphoreValueCount = desc.signalFenceCount;
+
+                VkSubmitInfo submitInfo;
+                submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                submitInfo.pNext                = &timelineInfo;
+                submitInfo.pCommandBuffers      = nativeCommandBuffers;
+                submitInfo.commandBufferCount   = desc.commandBufferCount;
+                submitInfo.pWaitDstStageMask    = waitStages;
+                submitInfo.pWaitSemaphores      = nativeWaitSemaphores;
+                submitInfo.waitSemaphoreCount   = desc.waitFenceCount + desc.waitSemaphoreCount;
+                submitInfo.pSignalSemaphores    = nativeSignalSemaphores;
+                submitInfo.signalSemaphoreCount = desc.signalFenceCount + desc.signalSemaphoreCount;
+
+                if( vkQueueSubmit( m_handle.GetNativeHandle(), 1, &submitInfo, VK_NULL_HANDLE ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
 
                 return Results::OK;
             }

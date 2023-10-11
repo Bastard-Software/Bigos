@@ -18,13 +18,20 @@ namespace BIGOS
                 constexpr uint32_t MAX_BACK_BUFFER_COUNT = 16U;
             } // namespace Swapchain
 
+            namespace Queue
+            {
+                constexpr uint32_t MAX_COMMAND_BUFFER_TO_EXECUTE_COUNT = 8U;
+            } // namespace Queue
+
             namespace Synchronization
             {
-                constexpr uint32_t MAX_SEMAPHORES_TO_WAIT_COUNT = 8U;
-                constexpr uint32_t MAX_FENCES_TO_WAIT_COUNT     = 8U;
-                constexpr uint32_t MAX_GLOBAL_BARRIER_COUNT     = 16U;
-                constexpr uint32_t MAX_BUFFER_BARRIER_COUNT     = 16U;
-                constexpr uint32_t MAX_TEXTURE_BARRIER_COUNT    = 16U;
+                constexpr uint32_t MAX_SEMAPHORES_TO_WAIT_COUNT   = 16U;
+                constexpr uint32_t MAX_SEMAPHORES_TO_SIGNAL_COUNT = 16U;
+                constexpr uint32_t MAX_FENCES_TO_WAIT_COUNT       = 16U;
+                constexpr uint32_t MAX_FENCES_TO_SIGNAL_COUNT     = 16U;
+                constexpr uint32_t MAX_GLOBAL_BARRIER_COUNT       = 16U;
+                constexpr uint32_t MAX_BUFFER_BARRIER_COUNT       = 16U;
+                constexpr uint32_t MAX_TEXTURE_BARRIER_COUNT      = 16U;
             } // namespace Synchronization
 
             namespace Shader
