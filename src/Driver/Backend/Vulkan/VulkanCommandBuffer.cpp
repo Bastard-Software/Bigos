@@ -263,6 +263,42 @@ namespace BIGOS
                 vkCmdSetPrimitiveTopology( nativeCommandBuffer, MapBigosPrimitiveTopologyToVulkanPrimitiveTopology( topology ) );
             }
 
+            void VulkanCommandBuffer::SetVertexBuffers( uint32_t startBinding, uint32_t bufferCount, const VertexBufferDesc* pVertexBuffers )
+            {
+                BGS_ASSERT( ( bufferCount != 0 ) && ( pVertexBuffers != nullptr ), "You specified no valid vertex buffers." );
+                BGS_ASSERT( bufferCount <= Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT,
+                            "Buffer count (bufferCount) must be less than or equal %d. ", Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT );
+                BGS_ASSERT( startBinding + bufferCount <= Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT,
+                            "Specified binding range (startBinding + bufferCount) exceeds device capabilities of %d.",
+                            Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT );
+
+                VkBuffer     buffers[ Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT ];
+                VkDeviceSize sizes[ Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT ];
+                VkDeviceSize offsets[ Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT ];
+                VkDeviceSize strides[ Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( bufferCount ); ++ndx )
+                {
+                    const VertexBufferDesc& currDesc = pVertexBuffers[ ndx ];
+
+                    buffers[ ndx ] = currDesc.hVertexBuffer.GetNativeHandle()->buffer;
+                    offsets[ ndx ] = currDesc.offset;
+                    sizes[ ndx ]   = currDesc.size;
+                    strides[ ndx ] = currDesc.elementStride;
+                }
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdBindVertexBuffers2( nativeCommandBuffer, startBinding, bufferCount, buffers, offsets, sizes, strides );
+            }
+
+            void VulkanCommandBuffer::SetIndexBuffer( const IndexBufferDesc& desc )
+            {
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdBindIndexBuffer( nativeCommandBuffer, desc.hIndexBuffer.GetNativeHandle()->buffer, desc.offset,
+                                      MapBigosIndexTypeToVulkanIndexType( desc.indexType ) );
+            }
+
             void VulkanCommandBuffer::Draw( const DrawDesc& desc )
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();

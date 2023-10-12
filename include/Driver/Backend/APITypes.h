@@ -638,6 +638,30 @@ namespace BIGOS
                 uint8_t stencil;
             };
 
+            struct VertexBufferDesc
+            {
+                ResourceHandle hVertexBuffer;
+                uint64_t       offset;
+                uint32_t       size;
+                uint32_t       elementStride;
+            };
+
+            enum class IndexTypes : uint8_t
+            {
+                UINT8,
+                UINT16,
+                UINT32,
+                _MAX_ENUM,
+            };
+            using INDEX_TYPE = IndexTypes;
+
+            struct IndexBufferDesc
+            {
+                ResourceHandle hIndexBuffer;
+                uint32_t       offset;
+                INDEX_TYPE     indexType;
+            };
+
             struct DrawDesc
             {
                 union

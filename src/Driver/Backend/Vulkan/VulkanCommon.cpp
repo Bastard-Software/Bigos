@@ -690,6 +690,17 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( layout ) ];
             }
 
+            VkIndexType MapBigosIndexTypeToVulkanIndexType( INDEX_TYPE type )
+            {
+                static const VkIndexType translateTable[ BGS_ENUM_COUNT( IndexTypes ) ] = {
+                    VK_INDEX_TYPE_UINT8_EXT, // UINT8
+                    VK_INDEX_TYPE_UINT16,    // UINT16
+                    VK_INDEX_TYPE_UINT32,    // UINT32
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

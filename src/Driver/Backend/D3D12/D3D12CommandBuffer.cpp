@@ -246,6 +246,48 @@ namespace BIGOS
                 pNativeCommandList->IASetPrimitiveTopology( MapBigosPrimitiveTopologyToD3D12PrimitiveTopology( topology ) );
             }
 
+            void D3D12CommandBuffer::SetVertexBuffers( uint32_t startBinding, uint32_t bufferCount, const VertexBufferDesc* pVertexBuffers )
+            {
+                BGS_ASSERT( ( bufferCount != 0 ) && ( pVertexBuffers != nullptr ), "You specified no valid vertex buffers." );
+                BGS_ASSERT( bufferCount <= Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT,
+                            "Buffer count (bufferCount) must be less than or equal %d. ", Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT );
+                BGS_ASSERT( startBinding + bufferCount <= Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT,
+                            "Specified binding range (startBinding + bufferCount) exceeds device capabilities of %d.",
+                            Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT );
+
+                D3D12_VERTEX_BUFFER_VIEW buffers[ Config::Driver::Pipeline::MAX_INPUT_BINDING_COUNT ];
+                for( index_t ndx = 0; ndx < static_cast<index_t>( bufferCount ); ++ndx )
+                {
+                    const VertexBufferDesc&   currDesc = pVertexBuffers[ ndx ];
+                    D3D12_VERTEX_BUFFER_VIEW& currBuff = buffers[ ndx ];
+
+                    currBuff.BufferLocation = currDesc.hVertexBuffer.GetNativeHandle()->pNativeResource->GetGPUVirtualAddress() + currDesc.offset;
+                    currBuff.SizeInBytes    = currDesc.size;
+                    currBuff.StrideInBytes  = currDesc.elementStride;
+                }
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->IASetVertexBuffers( startBinding, bufferCount, buffers );
+            }
+
+            void D3D12CommandBuffer::SetIndexBuffer( const IndexBufferDesc& desc )
+            {
+                BGS_ASSERT( desc.hIndexBuffer != ResourceHandle(), "Index buffer (desc.hIndexBuffer) must be a valid resource." );
+
+                const uint64_t address = desc.hIndexBuffer.GetNativeHandle()->pNativeResource->GetGPUVirtualAddress() + desc.offset;
+                const uint32_t size    = static_cast<uint32_t>( desc.hIndexBuffer.GetNativeHandle()->pNativeResource->GetDesc().Width - desc.offset );
+                const D3D12_INDEX_BUFFER_VIEW buffer = {
+                    address,                                          // D3D12_GPU_VIRTUAL_ADDRESS    BufferLocation;
+                    size,                                             // UINT                         SizeInBytes;
+                    MapBigosIndexTypeToD3D12Format( desc.indexType ), // DXGI_FORMAT                  Format;
+                };
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->IASetIndexBuffer( &buffer );
+            }
+
             void D3D12CommandBuffer::Draw( const DrawDesc& desc )
             {
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
