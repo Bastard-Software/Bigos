@@ -1399,7 +1399,7 @@ namespace BIGOS
                     currTarget.SrcBlendAlpha         = MapBigosBlendFactorToD3D12Blend( currDesc.srcAlphaBlendFactor );
                     currTarget.DestBlendAlpha        = MapBigosBlendFactorToD3D12Blend( currDesc.dstAlphaBlendFactor );
                     currTarget.BlendOpAlpha          = MapBigosBlendOperationTypeToD3D12BlendOp( currDesc.alphaBlendOp );
-                    currTarget.RenderTargetWriteMask = currDesc.blendEnable ? static_cast<UINT8>( currDesc.writeFlag ) : 0;
+                    currTarget.RenderTargetWriteMask = static_cast<UINT8>( currDesc.writeFlag );
                     currTarget.BlendEnable           = currDesc.blendEnable;
                     currTarget.LogicOpEnable         = gpDesc.blendState.enableLogicOperations;
                     currTarget.LogicOp               = MapBigosLogicOperationTypeToD3D12LogicOp( gpDesc.blendState.logicOperation );

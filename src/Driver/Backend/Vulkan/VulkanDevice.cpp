@@ -1801,16 +1801,25 @@ namespace BIGOS
                 // Blend constants are ignored because of dynamic states
 
                 // Dynamic states - set to mimic D3D12 behaviour
-                VkDynamicState dynamicStates[] = {
-                    VK_DYNAMIC_STATE_VIEWPORT,     VK_DYNAMIC_STATE_SCISSOR,           VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE,
-                    VK_DYNAMIC_STATE_DEPTH_BOUNDS, VK_DYNAMIC_STATE_STENCIL_REFERENCE, VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-                };
+                uint32_t       statesCnt = 0;
+                VkDynamicState dynamicStates[ 8 ];
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_VIEWPORT;
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_SCISSOR;
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY; 
+                if( gpDesc.inputState.inputBindingCount != 0 )
+                {
+                    dynamicStates[ statesCnt++ ] =
+                        VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE; // This state cannot by dynamic for vertexless pipeline.
+                }
 
                 VkPipelineDynamicStateCreateInfo dynamicState;
                 dynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
                 dynamicState.pNext             = nullptr;
                 dynamicState.flags             = 0;
-                dynamicState.dynamicStateCount = __crt_countof( dynamicStates );
+                dynamicState.dynamicStateCount = statesCnt;
                 dynamicState.pDynamicStates    = dynamicStates;
 
                 // Render target formats

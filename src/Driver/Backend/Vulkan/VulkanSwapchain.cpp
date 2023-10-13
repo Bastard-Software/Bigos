@@ -52,14 +52,14 @@ namespace BIGOS
                 }
 
                 VkPresentInfoKHR presInfo;
-                presInfo.sType           = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-                presInfo.pNext           = nullptr;
-                presInfo.swapchainCount  = desc.waitSemaphoreCount;
-                presInfo.pWaitSemaphores = semaphores;
-                presInfo.swapchainCount  = 1;
-                presInfo.pSwapchains     = &nativeSwapchain;
-                presInfo.pImageIndices   = &m_bufferToPresent;
-                presInfo.pResults        = nullptr;
+                presInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+                presInfo.pNext              = nullptr;
+                presInfo.waitSemaphoreCount = desc.waitSemaphoreCount;
+                presInfo.pWaitSemaphores    = semaphores;
+                presInfo.swapchainCount     = 1;
+                presInfo.pSwapchains        = &nativeSwapchain;
+                presInfo.pImageIndices      = &m_bufferToPresent;
+                presInfo.pResults           = nullptr;
                 if( vkQueuePresentKHR( nativeQueue, &presInfo ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
@@ -78,7 +78,12 @@ namespace BIGOS
                 VkSemaphore    nativeSemaphore = m_backBuffers[ m_semaphoreNdx ].hBackBufferAvailableSemaphore.GetNativeHandle();
                 uint32_t       bufferNdx;
                 // Timeout 0 ns mimics D3D12 behaviour, additionaly we do not support vulkan fences here.
-                VkResult res = vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, 0, nativeSemaphore, VK_NULL_HANDLE, &bufferNdx );
+                // TODO: Timeout 0 doesn't work.
+                VkResult res = vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, UINT64_MAX, nativeSemaphore, VK_NULL_HANDLE, &bufferNdx );
+
+                pInfo->hBackBufferAvailableSemaphore = m_backBuffers[ m_semaphoreNdx ].hBackBufferAvailableSemaphore;
+                pInfo->swapChainBackBufferIndex      = m_semaphoreNdx;
+
                 BGS_ASSERT( res != VK_TIMEOUT );        // Temporary for debug
                 BGS_ASSERT( res != VK_SUBOPTIMAL_KHR ); // Temporary for debug
                 if( res == VK_SUCCESS )
@@ -88,7 +93,7 @@ namespace BIGOS
 
                     return Results::OK;
                 }
-                else if (res == VK_NOT_READY)
+                else if( res == VK_NOT_READY )
                 {
                     // Adjusting semaphore index after succesfull acquireing
                     m_semaphoreNdx = ( bufferNdx + 1 ) % m_desc.backBufferCount;
@@ -249,8 +254,8 @@ namespace BIGOS
                         for( index_t ndy = 0; ndy < ndx; ++ndy )
                         {
                             m_pParent->DestroySemaphore( &m_backBuffers[ ndy ].hBackBufferAvailableSemaphore );
-                            Core::Memory::FreeAligned( m_pParent->GetParent()->GetParent()->GetDefaultAllocator(), &pResArr );
                         }
+                        Core::Memory::FreeAligned( m_pParent->GetParent()->GetParent()->GetDefaultAllocator(), &pResArr );
                     }
                 }
 

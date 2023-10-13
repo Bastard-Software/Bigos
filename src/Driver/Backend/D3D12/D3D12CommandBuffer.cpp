@@ -128,16 +128,20 @@ namespace BIGOS
                 for( index_t ndx = 0; ndx < static_cast<index_t>( desc.colorRenderTargetCount ); ++ndx )
                 {
                     m_boundColorRenderTargets[ ndx ].ptr = pRTVHeap->GetCPUDescriptorHandleForHeapStart().ptr +
-                                                           desc.pHColorRenderTargetViews[ ndx ].GetNativeHandle()->rtvNdx * m_rtvDescSize;
+                                                           desc.phColorRenderTargetViews[ ndx ].GetNativeHandle()->rtvNdx * m_rtvDescSize;
                 }
                 m_colorRenderTargetCount = desc.colorRenderTargetCount;
-                m_boundDepthStencilTarget.ptr =
-                    pDSVHeap->GetCPUDescriptorHandleForHeapStart().ptr + desc.hDepthStencilTargetView.GetNativeHandle()->dsvNdx * m_dsvDescSize;
+
+                D3D12_CPU_DESCRIPTOR_HANDLE* pDSV = nullptr;
+                // TODO: Avoid branching
+                if (desc.hDepthStencilTargetView != ResourceViewHandle())
+                {
+                    m_boundDepthStencilTarget.ptr =
+                        pDSVHeap->GetCPUDescriptorHandleForHeapStart().ptr + desc.hDepthStencilTargetView.GetNativeHandle()->dsvNdx * m_dsvDescSize;
+                    pDSV = &m_boundDepthStencilTarget;
+                }
 
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
-
-                // TODO: Avoid branching on runtime
-                const D3D12_CPU_DESCRIPTOR_HANDLE* pDSV = desc.hDepthStencilTargetView == ResourceViewHandle() ? nullptr : &m_boundDepthStencilTarget;
 
                 pNativeCommandList->OMSetRenderTargets( m_colorRenderTargetCount, m_boundColorRenderTargets, FALSE, pDSV );
             }
@@ -166,9 +170,9 @@ namespace BIGOS
                     D3D12_RECT&   rect     = rects[ ndx ];
 
                     rect.left   = static_cast<LONG>( currDesc.offset.x );
-                    rect.top    = static_cast<LONG>( currDesc.offset.y + currDesc.size.height );
+                    rect.top    = static_cast<LONG>( currDesc.offset.y );
                     rect.right  = static_cast<LONG>( currDesc.offset.x + currDesc.size.width );
-                    rect.bottom = static_cast<LONG>( currDesc.offset.y );
+                    rect.bottom = static_cast<LONG>( currDesc.offset.y + currDesc.size.height );
                 }
 
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
@@ -369,6 +373,7 @@ namespace BIGOS
                     barrier.SyncAfter                         = MapBigosPipelineStageFlagsToD3D12BarrierSync( currDesc.dstStage );
                     barrier.LayoutAfter                       = MapBigosTextureLayoutToD3D12BarierrLayout( currDesc.dstLayout );
                     barrier.Subresources.FirstPlane           = MapBigosTextureComponentFlagsToD3D12PlaneSlice( currDesc.textureRange.components );
+                    barrier.pResource                         = currDesc.hResouce.GetNativeHandle()->pNativeResource;
                     barrier.Subresources.NumPlanes            = 1;
                     barrier.Subresources.IndexOrFirstMipLevel = currDesc.textureRange.mipLevel;
                     barrier.Subresources.NumMipLevels         = currDesc.textureRange.mipLevelCount;

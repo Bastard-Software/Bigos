@@ -619,7 +619,7 @@ namespace BIGOS
             struct BeginRenderingDesc
             {
                 Rect2D                    renderArea;
-                const ResourceViewHandle* pHColorRenderTargetViews;
+                const ResourceViewHandle* phColorRenderTargetViews;
                 ResourceViewHandle        hDepthStencilTargetView;
                 uint32_t                  colorRenderTargetCount;
             };
