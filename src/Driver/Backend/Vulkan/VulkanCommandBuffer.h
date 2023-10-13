@@ -30,6 +30,9 @@ namespace BIGOS
 
                 virtual void SetPrimitiveTopology( PRIMITIVE_TOPOLOGY topology ) override;
 
+                virtual void SetVertexBuffers( uint32_t startBinding, uint32_t bufferCount, const VertexBufferDesc* pVertexBuffers ) override;
+                virtual void SetIndexBuffer( const IndexBufferDesc& desc ) override;
+
                 virtual void Draw( const DrawDesc& desc ) override;
                 virtual void DrawIndexed( const DrawDesc& desc ) override;
 

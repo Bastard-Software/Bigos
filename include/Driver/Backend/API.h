@@ -165,19 +165,22 @@ namespace BIGOS
                 virtual void ClearBoundDepthStencilTarget( const DepthStencilValue& clearValue, TextureComponentFlags components, uint32_t rectCount,
                                                            const Rect2D* pClearRects ) = 0;
 
+                virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )                = 0;
+                virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) = 0;
+                virtual void SetBinding( const SetBindingDesc& desc )                                = 0;
+
                 virtual void SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports ) = 0;
                 virtual void SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )     = 0;
 
                 virtual void SetPrimitiveTopology( PRIMITIVE_TOPOLOGY topology ) = 0;
 
+                virtual void SetVertexBuffers( uint32_t startBinding, uint32_t bufferCount, const VertexBufferDesc* pVertexBuffers ) = 0;
+                virtual void SetIndexBuffer( const IndexBufferDesc& desc )                                                           = 0;
+
                 virtual void Draw( const DrawDesc& desc )        = 0;
                 virtual void DrawIndexed( const DrawDesc& desc ) = 0;
 
                 virtual void Barrier( const BarierDesc& desc ) = 0;
-
-                virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )                = 0;
-                virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) = 0;
-                virtual void SetBinding( const SetBindingDesc& desc )                                = 0;
 
                 virtual void BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )           = 0;
                 virtual void EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )             = 0;

@@ -45,6 +45,7 @@ namespace BIGOS
             VkPipelineStageFlags2  MapBigosPipelineStageFlagsToVulkanPipelineStageFlags( PipelineStageFlags flags );
             VkAccessFlags2         MapBigosAccessFlagsToVulkanAccessFlags( AccessFlags flags );
             VkImageLayout          MapBigosTextureLayoutToVulkanImageLayout( TEXTURE_LAYOUT layout );
+            VkIndexType            MapBigosIndexTypeToVulkanIndexType( INDEX_TYPE type );
 
         } // namespace Backend
     }     // namespace Driver

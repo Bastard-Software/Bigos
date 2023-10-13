@@ -620,6 +620,17 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( layout ) ];
             }
 
+            DXGI_FORMAT MapBigosIndexTypeToD3D12Format( INDEX_TYPE type )
+            {
+                static const DXGI_FORMAT translateTable[ BGS_ENUM_COUNT( IndexTypes ) ] = {
+                    DXGI_FORMAT_R8_UINT,  // UINT8
+                    DXGI_FORMAT_R16_UINT, // UINT16
+                    DXGI_FORMAT_R32_UINT, // UINT32
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

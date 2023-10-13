@@ -42,6 +42,7 @@ namespace BIGOS
             D3D12_BARRIER_SYNC          MapBigosPipelineStageFlagsToD3D12BarrierSync( PipelineStageFlags flags );
             D3D12_BARRIER_ACCESS        MapBigosAccessFlagsToD3D12BarrierAccess( AccessFlags flags );
             D3D12_BARRIER_LAYOUT        MapBigosTextureLayoutToD3D12BarierrLayout( TEXTURE_LAYOUT layout );
+            DXGI_FORMAT                 MapBigosIndexTypeToD3D12Format( INDEX_TYPE type );
 
         } // namespace Backend
     }     // namespace Driver

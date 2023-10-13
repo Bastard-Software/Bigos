@@ -34,6 +34,7 @@ namespace BIGOS
                     , m_dev13Features()
                     , m_customBorderColorFeatures()
                     , m_descriptorBufferFeatures()
+                    , m_uint8Indices()
                     , m_extensions()
                     , m_pNext( nullptr )
                 {
@@ -70,14 +71,19 @@ namespace BIGOS
 
                     // Descriptor buffers
                     m_descriptorBufferFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
-                    m_descriptorBufferFeatures.pNext            = nullptr;
+                    m_descriptorBufferFeatures.pNext            = &m_uint8Indices;
                     m_descriptorBufferFeatures.descriptorBuffer = VK_TRUE;
+
+                    // Uint8 indices
+                    m_uint8Indices.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
+                    m_uint8Indices.pNext          = nullptr;
+                    m_uint8Indices.indexTypeUint8 = VK_TRUE;
 
                     m_pNext = &m_dev11Features;
 
                     // Extensions
                     m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
-                                     VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME };
+                                     VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME, VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME, };
                     // TODO: Add logic
                 }
 
@@ -97,6 +103,7 @@ namespace BIGOS
                 VkPhysicalDeviceVulkan13Features             m_dev13Features;
                 VkPhysicalDeviceCustomBorderColorFeaturesEXT m_customBorderColorFeatures;
                 VkPhysicalDeviceDescriptorBufferFeaturesEXT  m_descriptorBufferFeatures;
+                VkPhysicalDeviceIndexTypeUint8FeaturesEXT    m_uint8Indices;
 
                 HeapArray<const char*> m_extensions;
 
@@ -1457,7 +1464,10 @@ namespace BIGOS
                 }
             }
 
-            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc ) { desc; }
+            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
+            {
+                desc;
+            }
 
             RESULT VulkanDevice::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
             {
