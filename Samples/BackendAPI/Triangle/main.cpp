@@ -9,17 +9,30 @@
 #include <chrono>
 #include <stdio.h>
 
-const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5f, 0.0f, 1.0f ), float4( 0.5f, -0.5f, 0.1f, 1.0f ), float4( 0.0f, "
-                     "0.5f, 0.0f, 1.0f ) };\n"
-
-                     "float4 VSMain( uint vertexID : SV_VertexID ) : SV_Position\n"
+const char* SHADER = "struct VSInput\n"
                      "{\n"
-                     "  return positions[ vertexID ];\n"
+                     "    float4 position : POSITION;\n"
+                     "    float4 color : COLOR;\n"
+                     "};\n"
+
+                     "struct PSInput\n"
+                     "{\n"
+                     "    float4 position : SV_POSITION;\n"
+                     "    float4 color : COLOR;\n"
+                     "};\n"
+
+                     "PSInput VSMain( VSInput input )\n"
+                     "{\n"
+                     "    PSInput output;\n"
+                     "    output.position = input.position;\n"
+                     "    output.color = input.color;\n"
+
+                     "    return output;\n"
                      "}\n\n"
 
-                     "float4 PSMain( float4 position : SV_Position ) : SV_Target\n"
+                     "float4 PSMain( PSInput input ) : SV_Target\n"
                      "{\n"
-                     "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
+                     "  return input.color;\n"
                      "}\n";
 
 const BIGOS::Driver::Backend::API_TYPE API_TYPE               = BIGOS::Driver::Backend::APITypes::VULKAN;
@@ -329,10 +342,24 @@ int main()
     pipelineDesc.domainShader.hShader     = BIGOS::Driver::Backend::ShaderHandle();
     pipelineDesc.geometryShader.hShader   = BIGOS::Driver::Backend::ShaderHandle();
     // VI
-    pipelineDesc.inputState.inputBindingCount = 0;
-    pipelineDesc.inputState.inputElementCount = 0;
-    pipelineDesc.inputState.pInputBindings    = nullptr;
-    pipelineDesc.inputState.pInputElements    = nullptr;
+    BIGOS::Driver::Backend::InputBindingDesc inputBinding;
+    inputBinding.binding   = 0;
+    inputBinding.inputRate = BIGOS::Driver::Backend::InputStepRates::PER_VERTEX;
+    BIGOS::Driver::Backend::InputElementDesc inputElements[ 2 ];
+    inputElements[ 0 ].binding                = 0;
+    inputElements[ 0 ].format                 = BIGOS::Driver::Backend::Formats::R32G32B32A32_FLOAT;
+    inputElements[ 0 ].pSemanticName          = "POSITION";
+    inputElements[ 0 ].location               = 0;
+    inputElements[ 0 ].offset                 = 0 * sizeof( float );
+    inputElements[ 1 ].binding                = 0;
+    inputElements[ 1 ].format                 = BIGOS::Driver::Backend::Formats::R32G32B32A32_FLOAT;
+    inputElements[ 1 ].pSemanticName          = "COLOR";
+    inputElements[ 1 ].location               = 1;
+    inputElements[ 1 ].offset                 = 4 * sizeof( float );
+    pipelineDesc.inputState.inputBindingCount = 1;
+    pipelineDesc.inputState.inputElementCount = 2;
+    pipelineDesc.inputState.pInputBindings    = &inputBinding;
+    pipelineDesc.inputState.pInputElements    = inputElements;
     // IA
     pipelineDesc.inputAssemblerState.indexRestartValue = BIGOS::Driver::Backend::IndexRestartValues::DISABLED;
     pipelineDesc.inputAssemblerState.topology          = BIGOS::Driver::Backend::PrimitiveTopologies::TRIANGLE_LIST;
@@ -366,6 +393,71 @@ int main()
     // PL
     pipelineDesc.hPipelineLayout = hEmptyLayout;
     if( BGS_FAILED( pAPIDevice->CreatePipeline( pipelineDesc, &hPipeline ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::ResourceHandle hVertexBuffer;
+    BIGOS::Driver::Backend::ResourceDesc   vbDesc;
+    vbDesc.arrayLayerCount = 1;
+    vbDesc.format          = BIGOS::Driver::Backend::Formats::UNKNOWN;
+    vbDesc.mipLevelCount   = 1;
+    vbDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::LINEAR;
+    vbDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::BUFFER;
+    vbDesc.resourceUsage   = static_cast<uint32_t>( BIGOS::Driver::Backend::ResourceUsageFlagBits::VERTEX_BUFFER );
+    vbDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
+    vbDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
+    vbDesc.size.width      = 3 /* triangle */ * 8 /* position (4) + color (4) */ * sizeof( float );
+    vbDesc.size.height     = 1;
+    vbDesc.size.depth      = 1;
+    if( BGS_FAILED( pAPIDevice->CreateResource( vbDesc, &hVertexBuffer ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::ResourceAllocationInfo vbAllocInfo;
+    pAPIDevice->GetResourceAllocationInfo( hVertexBuffer, &vbAllocInfo );
+
+    BIGOS::Driver::Backend::MemoryHandle       hBufferMem;
+    BIGOS::Driver::Backend::AllocateMemoryDesc allocDesc;
+    allocDesc.size      = vbAllocInfo.size;
+    allocDesc.alignment = vbAllocInfo.alignment;
+    allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::UPLOAD;
+    allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::BUFFERS;
+    if( BGS_FAILED( pAPIDevice->AllocateMemory( allocDesc, &hBufferMem ) ) )
+    {
+        return -1;
+    }
+
+    BIGOS::Driver::Backend::BindResourceMemoryDesc bindMemDesc;
+    bindMemDesc.hMemory      = hBufferMem;
+    bindMemDesc.hResource    = hVertexBuffer;
+    bindMemDesc.memoryOffset = 0;
+    if( BGS_FAILED( pAPIDevice->BindResourceMemory( bindMemDesc ) ) )
+    {
+        return -1;
+    }
+
+    void*                                   pHostAccess = nullptr;
+    BIGOS::Driver::Backend::MapResourceDesc mapVertex;
+    mapVertex.hResource          = hVertexBuffer;
+    mapVertex.bufferRange.size   = 3 * 8 * sizeof( float );
+    mapVertex.bufferRange.offset = 0;
+
+    if( BGS_FAILED( pAPIDevice->MapResource( mapVertex, &pHostAccess ) ) )
+    {
+        return -1;
+    }
+
+    float vertexData[] = {
+        -0.5f, -0.5f, 0.0f, 1.0f /* POSITION */, 1.0f, 0.0f, 0.0f, 1.0f, /* COLOR */
+        0.5f,  -0.5f, 0.0f, 1.0f /* POSITION */, 0.0f, 1.0f, 0.0f, 1.0f, /* COLOR */
+        0.0f,  0.5f,  0.0f, 1.0f /* POSITION */, 0.0f, 0.0f, 1.0f, 1.0f, /* COLOR */
+    };
+
+    BIGOS::Memory::Copy( vertexData, sizeof( vertexData ), pHostAccess, sizeof( vertexData ) );
+
+    if( BGS_FAILED( pAPIDevice->UnmapResource( mapVertex ) ) )
     {
         return -1;
     }
@@ -450,13 +542,20 @@ int main()
         BIGOS::Driver::Backend::ColorValue clrColor;
         clrColor.r = 0.0f;
         clrColor.g = 0.0f;
-        clrColor.b = 1.0f;
+        clrColor.b = 0.0f;
         clrColor.a = 0.0f;
 
         BIGOS::Core::Rect2D clrRect;
         clrRect.offset = { 0, 0 };
         clrRect.size   = { pWnd->GetDesc().width, pWnd->GetDesc().height };
         pCmdBuffers[ bufferNdx ]->ClearBoundColorRenderTarget( 0, clrColor, 1, &clrRect );
+
+        BIGOS::Driver::Backend::VertexBufferDesc vbBindDesc;
+        vbBindDesc.hVertexBuffer = hVertexBuffer;
+        vbBindDesc.offset        = 0;
+        vbBindDesc.size          = 3 * 8 * sizeof( float );
+        vbBindDesc.elementStride = 8 * sizeof( float );
+        pCmdBuffers[ bufferNdx ]->SetVertexBuffers( 0, 1, &vbBindDesc );
 
         BIGOS::Driver::Backend::DrawDesc drawDesc;
         drawDesc.vertexCount   = 3;
@@ -531,6 +630,9 @@ int main()
     {
         return -1;
     }
+
+    pAPIDevice->DestroyResource( &hVertexBuffer );
+    pAPIDevice->FreeMemory( &hBufferMem );
 
     pAPIDevice->DestroyShader( &hPS );
     pAPIDevice->DestroyShader( &hVS );

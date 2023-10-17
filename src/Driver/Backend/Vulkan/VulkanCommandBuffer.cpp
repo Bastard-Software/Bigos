@@ -253,7 +253,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdSetViewport( nativeCommandBuffer, 0, viewportCount, viewports );
+                vkCmdSetViewportWithCount( nativeCommandBuffer, viewportCount, viewports );
             }
 
             void VulkanCommandBuffer::SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )
@@ -264,7 +264,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdSetScissor( nativeCommandBuffer, 0, scissorCount, reinterpret_cast<const VkRect2D*>( pScissors ) );
+                vkCmdSetScissorWithCount( nativeCommandBuffer, scissorCount, reinterpret_cast<const VkRect2D*>( pScissors ) );
             }
 
             void VulkanCommandBuffer::SetPrimitiveTopology( PRIMITIVE_TOPOLOGY topology )

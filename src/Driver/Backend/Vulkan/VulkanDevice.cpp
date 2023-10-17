@@ -32,6 +32,7 @@ namespace BIGOS
                     , m_dev11Features()
                     , m_dev12Features()
                     , m_dev13Features()
+                    , m_extendedDynamicStates()
                     , m_customBorderColorFeatures()
                     , m_descriptorBufferFeatures()
                     , m_uint8Indices()
@@ -59,9 +60,14 @@ namespace BIGOS
 
                     // Vulkan 1.3 features
                     m_dev13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-                    m_dev13Features.pNext            = &m_customBorderColorFeatures;
+                    m_dev13Features.pNext            = &m_extendedDynamicStates;
                     m_dev13Features.synchronization2 = VK_TRUE; // Crucial for synchronization
                     m_dev13Features.dynamicRendering = VK_TRUE; // Crucial for rendering
+
+                    // Extended dynamic states
+                    m_extendedDynamicStates.sType                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+                    m_extendedDynamicStates.pNext                = &m_customBorderColorFeatures;
+                    m_extendedDynamicStates.extendedDynamicState = VK_TRUE;
 
                     // Custom border color features
                     m_customBorderColorFeatures.sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
@@ -82,8 +88,12 @@ namespace BIGOS
                     m_pNext = &m_dev11Features;
 
                     // Extensions
-                    m_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
-                                     VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME, VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME, };
+                    m_extensions = {
+                        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                        VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+                        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+                        VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
+                    };
                     // TODO: Add logic
                 }
 
@@ -97,13 +107,14 @@ namespace BIGOS
             private:
                 DeviceDesc m_devDesc;
 
-                VkPhysicalDeviceFeatures                     m_devCoreFeatures;
-                VkPhysicalDeviceVulkan11Features             m_dev11Features;
-                VkPhysicalDeviceVulkan12Features             m_dev12Features;
-                VkPhysicalDeviceVulkan13Features             m_dev13Features;
-                VkPhysicalDeviceCustomBorderColorFeaturesEXT m_customBorderColorFeatures;
-                VkPhysicalDeviceDescriptorBufferFeaturesEXT  m_descriptorBufferFeatures;
-                VkPhysicalDeviceIndexTypeUint8FeaturesEXT    m_uint8Indices;
+                VkPhysicalDeviceFeatures                        m_devCoreFeatures;
+                VkPhysicalDeviceVulkan11Features                m_dev11Features;
+                VkPhysicalDeviceVulkan12Features                m_dev12Features;
+                VkPhysicalDeviceVulkan13Features                m_dev13Features;
+                VkPhysicalDeviceExtendedDynamicStateFeaturesEXT m_extendedDynamicStates;
+                VkPhysicalDeviceCustomBorderColorFeaturesEXT    m_customBorderColorFeatures;
+                VkPhysicalDeviceDescriptorBufferFeaturesEXT     m_descriptorBufferFeatures;
+                VkPhysicalDeviceIndexTypeUint8FeaturesEXT       m_uint8Indices;
 
                 HeapArray<const char*> m_extensions;
 
@@ -1673,7 +1684,7 @@ namespace BIGOS
                     const InputBindingDesc&          currDesc = gpDesc.inputState.pInputBindings[ ndx ];
                     VkVertexInputBindingDescription& currBind = bindings[ ndx ];
                     currBind.binding                          = currDesc.binding;
-                    currBind.stride                           = MAX_UINT32; // Will be ignored because of dynamic state flag
+                    currBind.stride                           = 0; // Will be ignored because of dynamic state flag
                     currBind.inputRate                        = MapBigosInputStepRateToVulkanVertexInputStepRate( currDesc.inputRate );
                 }
 
@@ -1711,6 +1722,16 @@ namespace BIGOS
                     gpDesc.inputAssemblerState.topology ); // Will be ignored because of dynamic state flag
                 inputAssembly.primitiveRestartEnable = MapBigosIndexRestartValueToVulkanBool( gpDesc.inputAssemblerState.indexRestartValue );
 
+                // Viewport state
+                VkPipelineViewportStateCreateInfo viewportState;
+                viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+                viewportState.pNext         = nullptr;
+                viewportState.flags         = 0;
+                viewportState.viewportCount = 0;
+                viewportState.pViewports    = nullptr;
+                viewportState.scissorCount  = 0;
+                viewportState.pScissors     = nullptr;
+
                 // TODO: Handle tesselation state
 
                 // Rasterizer state
@@ -1718,7 +1739,7 @@ namespace BIGOS
                 rasterInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
                 rasterInfo.pNext                   = nullptr;
                 rasterInfo.flags                   = 0;
-                rasterInfo.rasterizerDiscardEnable = VK_TRUE; // Required for viewport dynamic state with prerasterization shader active
+                rasterInfo.rasterizerDiscardEnable = VK_FALSE;
                 rasterInfo.depthClampEnable        = gpDesc.rasterizeState.depthClipEnable;
                 rasterInfo.polygonMode             = MapBigosPolygonFillModeToVulkanPolygonMode( gpDesc.rasterizeState.fillMode );
                 rasterInfo.cullMode                = MapBigosCullModeToVulkanCullModeFlags( gpDesc.rasterizeState.cullMode );
@@ -1802,13 +1823,13 @@ namespace BIGOS
 
                 // Dynamic states - set to mimic D3D12 behaviour
                 uint32_t       statesCnt = 0;
-                VkDynamicState dynamicStates[ 8 ];
-                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_VIEWPORT;
-                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_SCISSOR;
+                VkDynamicState dynamicStates[ 16 ];
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
                 dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
                 dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
                 dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
-                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY; 
+                dynamicStates[ statesCnt++ ] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY;
                 if( gpDesc.inputState.inputBindingCount != 0 )
                 {
                     dynamicStates[ statesCnt++ ] =
@@ -1853,7 +1874,7 @@ namespace BIGOS
                 pipelineInfo.pVertexInputState   = &viInfo;
                 pipelineInfo.pInputAssemblyState = &inputAssembly;
                 pipelineInfo.pTessellationState  = nullptr;
-                pipelineInfo.pViewportState      = nullptr;
+                pipelineInfo.pViewportState      = &viewportState;
                 pipelineInfo.pRasterizationState = &rasterInfo;
                 pipelineInfo.pMultisampleState   = &multisampleInfo;
                 pipelineInfo.pDepthStencilState  = &depthStencilInfo;
