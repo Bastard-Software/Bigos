@@ -22,6 +22,7 @@ add_subdirectory(${SOURCE_DIR}/BigosFramework)
 add_subdirectory(${SOURCE_DIR}/BigosEngine)
 
 add_subdirectory(${SAMPLES_DIR}/DraftSandbox)
+add_subdirectory(${SAMPLES_DIR}/BackendAPI/VertexlessTriangle)
 
 if(BGS_VULKAN_API)
     add_subdirectory(${THIRD_PARTY_DIR}/volk)

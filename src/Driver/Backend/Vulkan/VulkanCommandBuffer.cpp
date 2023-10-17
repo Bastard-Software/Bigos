@@ -100,33 +100,44 @@ namespace BIGOS
 
                 VkRenderingAttachmentInfo renderTargets[ Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT ];
 
-                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.colorRenderTargetCount ); ++ndx )
+                // TODO: Avoid branching
+                if( desc.phColorRenderTargetViews != nullptr )
                 {
-                    VkRenderingAttachmentInfo& currTarget = renderTargets[ ndx ];
+                    for( index_t ndx = 0; ndx < static_cast<index_t>( desc.colorRenderTargetCount ); ++ndx )
+                    {
+                        VkRenderingAttachmentInfo& currTarget = renderTargets[ ndx ];
 
-                    currTarget.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-                    currTarget.pNext              = nullptr;
-                    currTarget.imageView          = desc.pHColorRenderTargetViews[ ndx ].GetNativeHandle()->imageView;
-                    currTarget.imageLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-                    currTarget.resolveMode        = VK_RESOLVE_MODE_NONE;
-                    currTarget.resolveImageView   = VK_NULL_HANDLE;
-                    currTarget.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                    currTarget.loadOp             = VK_ATTACHMENT_LOAD_OP_LOAD;
-                    currTarget.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
-                    currTarget.clearValue         = {}; // Ignored
+                        currTarget.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                        currTarget.pNext              = nullptr;
+                        currTarget.imageView          = desc.phColorRenderTargetViews[ ndx ].GetNativeHandle()->imageView;
+                        currTarget.imageLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                        currTarget.resolveMode        = VK_RESOLVE_MODE_NONE;
+                        currTarget.resolveImageView   = VK_NULL_HANDLE;
+                        currTarget.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                        currTarget.loadOp             = VK_ATTACHMENT_LOAD_OP_LOAD;
+                        currTarget.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+                        currTarget.clearValue         = {}; // Ignored
+                    }
                 }
 
-                VkRenderingAttachmentInfo depthStencilTarget;
-                depthStencilTarget.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-                depthStencilTarget.pNext              = nullptr;
-                depthStencilTarget.imageView          = desc.hDepthStencilTargetView.GetNativeHandle()->imageView;
-                depthStencilTarget.imageLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-                depthStencilTarget.resolveMode        = VK_RESOLVE_MODE_NONE;
-                depthStencilTarget.resolveImageView   = VK_NULL_HANDLE;
-                depthStencilTarget.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                depthStencilTarget.loadOp             = VK_ATTACHMENT_LOAD_OP_LOAD;
-                depthStencilTarget.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
-                depthStencilTarget.clearValue         = {}; // Ignored
+                VkRenderingAttachmentInfo  depthStencilTarget;
+                VkRenderingAttachmentInfo* pDSV = nullptr;
+                // TODO: Avoid branching
+                if( desc.hDepthStencilTargetView != ResourceViewHandle() )
+                {
+                    depthStencilTarget.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                    depthStencilTarget.pNext              = nullptr;
+                    depthStencilTarget.imageView          = desc.hDepthStencilTargetView.GetNativeHandle()->imageView;
+                    depthStencilTarget.imageLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    depthStencilTarget.resolveMode        = VK_RESOLVE_MODE_NONE;
+                    depthStencilTarget.resolveImageView   = VK_NULL_HANDLE;
+                    depthStencilTarget.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    depthStencilTarget.loadOp             = VK_ATTACHMENT_LOAD_OP_LOAD;
+                    depthStencilTarget.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+                    depthStencilTarget.clearValue         = {}; // Ignored
+
+                    pDSV = &depthStencilTarget;
+                }
 
                 VkRenderingInfo renderingInfo;
                 renderingInfo.sType                    = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -140,8 +151,8 @@ namespace BIGOS
                 renderingInfo.viewMask                 = 0;
                 renderingInfo.colorAttachmentCount     = desc.colorRenderTargetCount;
                 renderingInfo.pColorAttachments        = renderTargets;
-                renderingInfo.pDepthAttachment         = &depthStencilTarget;
-                renderingInfo.pStencilAttachment       = &depthStencilTarget;
+                renderingInfo.pDepthAttachment         = pDSV;
+                renderingInfo.pStencilAttachment       = pDSV;
 
                 vkCmdBeginRendering( nativeCommandBuffer, &renderingInfo );
             }

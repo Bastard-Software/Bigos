@@ -534,9 +534,9 @@ namespace BIGOS
 
             D3D12_BARRIER_ACCESS MapBigosAccessFlagsToD3D12BarrierAccess( AccessFlags flags )
             {
-                uint32_t nativeFlags = 0;
+                uint64_t nativeFlags = 0;
 
-                if( flags & BGS_FLAG( AccessFlagBits::NONE ) )
+                if( flags == BGS_FLAG( AccessFlagBits::NONE ) )
                 {
                     nativeFlags |= D3D12_BARRIER_ACCESS_NO_ACCESS;
                 }

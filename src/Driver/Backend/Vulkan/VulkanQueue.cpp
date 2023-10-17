@@ -79,9 +79,9 @@ namespace BIGOS
                 timelineInfo.sType                     = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
                 timelineInfo.pNext                     = nullptr;
                 timelineInfo.pWaitSemaphoreValues      = desc.pWaitValues;
-                timelineInfo.waitSemaphoreValueCount   = desc.waitFenceCount;
+                timelineInfo.waitSemaphoreValueCount   = desc.waitFenceCount + desc.waitSemaphoreCount; // Wierd doc condition.
                 timelineInfo.pSignalSemaphoreValues    = desc.pSignalValues;
-                timelineInfo.signalSemaphoreValueCount = desc.signalFenceCount;
+                timelineInfo.signalSemaphoreValueCount = desc.signalFenceCount + desc.signalSemaphoreCount; // Wierd doc condition.
 
                 VkSubmitInfo submitInfo;
                 submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
