@@ -21,7 +21,7 @@ const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::D3D12;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE = BIGOS::Driver::Backend::APITypes::VULKAN;
 
 // Temporary solution
 extern "C"
@@ -33,7 +33,6 @@ extern "C"
     BGS_API extern const char* D3D12SDKPath    = ".\\D3D12\\";
 
 #endif // ( BGS_D3D12_API )
-
 };
 
 int main()
@@ -281,6 +280,7 @@ int main()
     pipelineDesc.depthStencilState.stencilTestEnable = BIGOS::Core::BGS_FALSE;
     // BS
     BIGOS::Driver::Backend::RenderTargetBlendDesc rtb;
+    rtb.writeFlag                                      = BGS_FLAG( BIGOS::Driver::Backend::ColorComponentFlagBits::ALL );
     rtb.blendEnable                                    = BIGOS::Core::BGS_FALSE;
     pipelineDesc.blendState.enableLogicOperations      = BIGOS::Core::BGS_FALSE;
     pipelineDesc.blendState.pRenderTargetBlendDescs    = &rtb;

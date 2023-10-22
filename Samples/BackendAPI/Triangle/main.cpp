@@ -35,7 +35,7 @@ const char* SHADER = "struct VSInput\n"
                      "  return input.color;\n"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE               = BIGOS::Driver::Backend::APITypes::VULKAN;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE               = BIGOS::Driver::Backend::APITypes::D3D12;
 const uint32_t                         BACK_BUFFER_COUNT      = 2;
 const uint32_t                         FRAMES_IN_FLIGHT_COUNT = 2;
 

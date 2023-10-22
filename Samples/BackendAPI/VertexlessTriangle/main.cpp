@@ -22,7 +22,7 @@ const char* SHADER = "static const float4 positions[ 3 ] = { float4( -0.5f, -0.5
                      "  return float4( 255.0f / 255.0f, 240.0f / 255.0f, 0.0f / 255.0f, 1.0f );"
                      "}\n";
 
-const BIGOS::Driver::Backend::API_TYPE API_TYPE               = BIGOS::Driver::Backend::APITypes::VULKAN;
+const BIGOS::Driver::Backend::API_TYPE API_TYPE               = BIGOS::Driver::Backend::APITypes::D3D12;
 const uint32_t                         BACK_BUFFER_COUNT      = 2;
 const uint32_t                         FRAMES_IN_FLIGHT_COUNT = 2;
 

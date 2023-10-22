@@ -100,6 +100,7 @@ namespace BIGOS
             private:
                 RESULT CreateVkDevice();
                 RESULT CreateVkGraphicsPipeline( const GraphicsPipelineDesc& gpDesc, VkPipeline* pNativePipeline );
+                RESULT CreateVkComputePipeline( const ComputePipelineDesc& cpDesc, VkPipeline* pNativePipeline );
                 RESULT CreateVkBuffer( const ResourceDesc desc, VkBuffer* pBuff );
                 RESULT CreateVkImage( const ResourceDesc desc, VkImage* pImg );
 
