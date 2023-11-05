@@ -354,7 +354,8 @@ namespace BIGOS
             RESULT D3D12Device::CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
-                if( pHandle == nullptr )
+                BGS_ASSERT( desc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (desc.hPipelineLayout) must be valid handle." );
+                if( ( pHandle == nullptr ) && ( desc.hPipelineLayout == PipelineLayoutHandle() ) )
                 {
                     return Results::FAIL;
                 }
@@ -376,8 +377,14 @@ namespace BIGOS
                     }
                     case PipelineTypes::COMPUTE:
                     {
-                        // TODO: Implement
-                        return Results::FAIL;
+                        const ComputePipelineDesc& cpDesc = static_cast<const ComputePipelineDesc&>( desc );
+
+                        if( BGS_FAILED( CreateD3D12ComputePipeline( cpDesc, &pNativePipeline ) ) )
+                        {
+                            return Results::FAIL;
+                        }
+
+                        break;
                     }
                     case PipelineTypes::RAY_TRACING:
                     {
@@ -1231,12 +1238,6 @@ namespace BIGOS
 
             RESULT D3D12Device::CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline )
             {
-                BGS_ASSERT( gpDesc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (gpDesc.hPipelineLayout) must be valid handle." );
-                if( ( gpDesc.hPipelineLayout == PipelineLayoutHandle() ) )
-                {
-                    return Results::FAIL;
-                }
-
                 D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
                 // Shader stages
                 if( gpDesc.vertexShader.hShader != ShaderHandle() )
@@ -1459,6 +1460,52 @@ namespace BIGOS
 
                 pPipeline->pPipeline      = pNativePipeline;
                 pPipeline->pRootSignature = gpDesc.hPipelineLayout.GetNativeHandle();
+
+                *ppPipeline = pPipeline;
+
+                return Results::OK;
+            }
+
+            RESULT D3D12Device::CreateD3D12ComputePipeline( const ComputePipelineDesc& cpDesc, D3D12Pipeline** ppPipeline )
+            {
+                // Cahed pipeline - TODO: Handle
+                D3D12_CACHED_PIPELINE_STATE cachedPipeline{};
+
+                D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc;
+                if( cpDesc.computeShader.hShader != ShaderHandle() )
+                {
+                    D3D12ShaderModule* pShader = cpDesc.computeShader.hShader.GetNativeHandle();
+                    psoDesc.CS.pShaderBytecode = pShader->pByteCode;
+                    psoDesc.CS.BytecodeLength  = pShader->codeSize;
+                }
+                else
+                {
+                    psoDesc.CS.pShaderBytecode = nullptr;
+                    psoDesc.CS.BytecodeLength  = 0;
+                }
+
+                // Pipeline desc
+                psoDesc.pRootSignature = cpDesc.hPipelineLayout.GetNativeHandle();
+                psoDesc.CachedPSO      = cachedPipeline;
+                psoDesc.Flags          = D3D12_PIPELINE_STATE_FLAG_NONE;
+                psoDesc.NodeMask       = 0;
+
+                ID3D12Device*        pNativeDevice   = m_handle.GetNativeHandle();
+                ID3D12PipelineState* pNativePipeline = nullptr;
+                if( FAILED( pNativeDevice->CreateComputePipelineState( &psoDesc, IID_PPV_ARGS( &pNativePipeline ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                D3D12Pipeline* pPipeline = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pPipeline ) ) )
+                {
+                    RELEASE_COM_PTR( pNativePipeline );
+                    return Results::NO_MEMORY;
+                }
+
+                pPipeline->pPipeline      = pNativePipeline;
+                pPipeline->pRootSignature = cpDesc.hPipelineLayout.GetNativeHandle();
 
                 *ppPipeline = pPipeline;
 

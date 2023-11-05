@@ -304,7 +304,8 @@ namespace BIGOS
 
             struct PipelineDesc
             {
-                PIPELINE_TYPE type;
+                PipelineLayoutHandle hPipelineLayout;
+                PIPELINE_TYPE        type;
             };
 
             enum class InputStepRates : uint8_t
@@ -575,7 +576,11 @@ namespace BIGOS
                 uint32_t                renderTargetCount;
                 const FORMAT*           pRenderTargetFormats;
                 FORMAT                  depthStencilFormat;
-                PipelineLayoutHandle    hPipelineLayout;
+            };
+
+            struct ComputePipelineDesc : public PipelineDesc
+            {
+                ShaderStageDesc computeShader;
             };
 
             struct ViewportDesc

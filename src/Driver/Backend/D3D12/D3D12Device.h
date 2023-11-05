@@ -82,10 +82,7 @@ namespace BIGOS
                 // Function needed for D3D12 backend
             public:
                 D3D12Factory*         GetParent() const { return m_pParent; }
-                ID3D12DescriptorHeap* GetDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE type )
-                {
-                    return m_descHeaps[ BGS_ENUM_INDEX( type ) ].pHeap;
-                }
+                ID3D12DescriptorHeap* GetDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE type ) { return m_descHeaps[ BGS_ENUM_INDEX( type ) ].pHeap; }
 
             protected:
                 RESULT Create( const DeviceDesc& desc, D3D12Factory* pParent );
@@ -94,6 +91,7 @@ namespace BIGOS
             private:
                 RESULT   CreateD3D12Device();
                 RESULT   CreateD3D12GraphicsPipeline( const GraphicsPipelineDesc& gpDesc, D3D12Pipeline** ppPipeline );
+                RESULT   CreateD3D12ComputePipeline( const ComputePipelineDesc& cpDesc, D3D12Pipeline** ppPipeline );
                 RESULT   CreateD3D12GlobalDescriptorHeaps();
                 uint32_t CreateD3D12RTV( const TextureViewDesc& desc );
                 uint32_t CreateD3D12DSV( const TextureViewDesc& desc );

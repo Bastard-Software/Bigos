@@ -455,8 +455,9 @@ namespace BIGOS
 
             RESULT VulkanDevice::CreatePipeline( const PipelineDesc& desc, PipelineHandle* pHandle )
             {
+                BGS_ASSERT( desc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (desc.hPipelineLayout) must be valid handle." );
                 BGS_ASSERT( pHandle != nullptr, "Pipeline (pHandle) must be a valid address." );
-                if( pHandle == nullptr )
+                if( ( pHandle == nullptr ) || ( desc.hPipelineLayout == PipelineLayoutHandle() ) )
                 {
                     return Results::FAIL;
                 }
@@ -478,7 +479,13 @@ namespace BIGOS
                     }
                     case PipelineTypes::COMPUTE:
                     {
-                        // TODO: Implement
+                        const ComputePipelineDesc& cpDesc = static_cast<const ComputePipelineDesc&>( desc );
+
+                        if( BGS_FAILED( CreateVkComputePipeline( cpDesc, &nativePipeline ) ) )
+                        {
+                            return Results::FAIL;
+                        }
+
                         break;
                     }
                     case PipelineTypes::RAY_TRACING:
@@ -1641,12 +1648,6 @@ namespace BIGOS
 
             RESULT VulkanDevice::CreateVkGraphicsPipeline( const GraphicsPipelineDesc& gpDesc, VkPipeline* pNativePipeline )
             {
-                BGS_ASSERT( gpDesc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (gpDesc.hPipelineLayout) must be valid handle." );
-                if( ( gpDesc.hPipelineLayout == PipelineLayoutHandle() ) )
-                {
-                    return Results::FAIL;
-                }
-
                 // Shader stages
                 VkPipelineShaderStageCreateInfo shaderStages[ 5 ];
                 uint32_t                        stageCnt = 0;
@@ -1891,6 +1892,31 @@ namespace BIGOS
 
                 // TODO: Handle cached pso
                 if( vkCreateGraphicsPipelines( nativeDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &nativePipeline ) != VK_SUCCESS )
+                {
+                    return Results::FAIL;
+                }
+
+                *pNativePipeline = nativePipeline;
+
+                return Results::OK;
+            }
+
+            RESULT VulkanDevice::CreateVkComputePipeline( const ComputePipelineDesc& cpDesc, VkPipeline* pNativePipeline )
+            {
+                VkComputePipelineCreateInfo pipelineInfo;
+                pipelineInfo.sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+                pipelineInfo.pNext              = nullptr;
+                pipelineInfo.flags              = 0;
+                pipelineInfo.stage              = CreateShaderStage( cpDesc.computeShader, VK_SHADER_STAGE_COMPUTE_BIT );
+                pipelineInfo.layout             = cpDesc.hPipelineLayout.GetNativeHandle();
+                pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+                pipelineInfo.basePipelineIndex  = 0;
+
+                VkDevice   nativeDevice   = m_handle.GetNativeHandle();
+                VkPipeline nativePipeline = VK_NULL_HANDLE;
+
+                // TODO: Handle cached pso
+                if( vkCreateComputePipelines( nativeDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &nativePipeline ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
