@@ -1,5 +1,5 @@
 #include "Application.h"
-#include "Triangle.h"
+#include "OverwrittenSample.h"
 
 // Temporary solution
 extern "C"
@@ -15,6 +15,6 @@ extern "C"
 
 int main()
 {
-    Triangle sample( BIGOS::Driver::Backend::APITypes::D3D12, 1280, 720, "Triangle" );
+    OverwrittenSample sample( BIGOS::Driver::Backend::APITypes::D3D12, 1280, 720, "SampleTemplate" );
     return Application::Run( &sample );
 }
