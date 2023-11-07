@@ -494,7 +494,7 @@ namespace BIGOS
 
                 if( flags & BGS_FLAG( PipelineStageFlagBits::INPUT_ASSEMBLER ) )
                 {
-                    nativeFlags |= D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
+                    nativeFlags |= D3D12_BARRIER_SYNC_INDEX_INPUT;
                 }
                 if( flags & BGS_FLAG( PipelineStageFlagBits::VERTEX_SHADING ) )
                 {
