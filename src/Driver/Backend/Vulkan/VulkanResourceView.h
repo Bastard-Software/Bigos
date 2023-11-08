@@ -11,7 +11,7 @@ namespace BIGOS
 
             struct VulkanResourceView
             {
-                VulkanDescriptorInfo descriptorData;
+                void*                pDescriptorData;
                 VkImageView          imageView;
                 VULKAN_RESOURCE_TYPE type;
             };

@@ -9,6 +9,8 @@ namespace BIGOS::Driver::Backend
     {
         D3D12_SAMPLER_DESC        sampler;
         D3D12_STATIC_BORDER_COLOR staticColor;
+        uint32_t                  ndx;
+        SAMPLER_TYPE              type;
     };
 
 } // namespace BIGOS::Driver::Backend

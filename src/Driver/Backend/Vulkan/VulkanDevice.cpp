@@ -15,6 +15,7 @@
 #include "VulkanQueue.h"
 #include "VulkanResource.h"
 #include "VulkanResourceView.h"
+#include "VulkanSampler.h"
 #include "VulkanSwapchain.h"
 
 namespace BIGOS
@@ -993,15 +994,10 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                VulkanResourceView* pResView = nullptr;
-                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pResView ) ) )
-                {
-                    return Results::NO_MEMORY;
-                }
-                pResView->descriptorData.pData = nullptr;
-                pResView->descriptorData.size  = 0;
+                byte_t*             pBlock       = nullptr;
+                VulkanResourceView* pResView     = nullptr;
+                VkDevice            nativeDevice = m_handle.GetNativeHandle();
 
-                VkDevice nativeDevice = m_handle.GetNativeHandle();
                 if( desc.hResource.GetNativeHandle()->type == VulkanResourceTypes::IMAGE )
                 {
                     const TextureViewDesc& texDesc    = static_cast<const TextureViewDesc&>( desc );
@@ -1026,20 +1022,26 @@ namespace BIGOS
 
                     if( vkCreateImageView( nativeDevice, &viewInfo, nullptr, &nativeView ) != VK_SUCCESS )
                     {
-                        Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pResView );
                         return Results::FAIL;
                     }
-                    pResView->imageView = nativeView;
-                    pResView->type      = VulkanResourceTypes::IMAGE;
 
                     // Retriving descriptor data for image view based descriptor (not needed for rtv and dsv)
                     if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::SAMPLED_TEXTURE ) )
                     {
-                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+                        const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.sampledTextureBindingSize );
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                        {
+                            vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
+                        pResView->imageView       = nativeView;
+                        pResView->type            = VulkanResourceTypes::IMAGE;
 
                         VkDescriptorImageInfo imageInfo;
                         imageInfo.imageView   = nativeView;
-                        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                        imageInfo.imageLayout = MapBigosTextureLayoutToVulkanImageLayout( texDesc.layout );
 
                         VkDescriptorGetInfoEXT getInfo;
                         getInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
@@ -1047,15 +1049,24 @@ namespace BIGOS
                         getInfo.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                         getInfo.data.pSampledImage = &imageInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.sampledTextureBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXTURE ) )
                     {
-                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+                        const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.storageTextureBindingSize );
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                        {
+                            vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
+                        pResView->imageView       = nativeView;
+                        pResView->type            = VulkanResourceTypes::IMAGE;
 
                         VkDescriptorImageInfo imageInfo;
                         imageInfo.imageView   = nativeView;
-                        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                        imageInfo.imageLayout = MapBigosTextureLayoutToVulkanImageLayout( texDesc.layout );
 
                         VkDescriptorGetInfoEXT getInfo;
                         getInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
@@ -1063,7 +1074,20 @@ namespace BIGOS
                         getInfo.type               = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                         getInfo.data.pStorageImage = &imageInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.storageTextureBindingSize, pResView->pDescriptorData );
+                    }
+                    else // Handling render target and depth stencil view
+                    {
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock,
+                                                                     sizeof( VulkanResourceView ) ) ) )
+                        {
+                            vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = nullptr;
+                        pResView->imageView       = nativeView;
+                        pResView->type            = VulkanResourceTypes::IMAGE;
                     }
                 }
                 else
@@ -1072,7 +1096,14 @@ namespace BIGOS
                     if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::CONSTANT_TEXEL_BUFFER ) )
                     {
                         const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
-                        VulkanDescriptorInfo&      currInfo = pResView->descriptorData;
+                        const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.constantTexelBufferBindingSize );
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                        {
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
+                        pResView->type            = VulkanResourceTypes::BUFFER;
 
                         VkBufferDeviceAddressInfo addressInfo;
                         addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -1092,12 +1123,19 @@ namespace BIGOS
                         getInfo.type                     = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
                         getInfo.data.pUniformTexelBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.constantTexelBufferBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXEL_BUFFER ) )
                     {
                         const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
-                        VulkanDescriptorInfo&      currInfo = pResView->descriptorData;
+                        const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.storageTexelBufferBindingSize );
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                        {
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
+                        pResView->type            = VulkanResourceTypes::BUFFER;
 
                         VkBufferDeviceAddressInfo addressInfo;
                         addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -1117,12 +1155,19 @@ namespace BIGOS
                         getInfo.type                     = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
                         getInfo.data.pStorageTexelBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.storageTexelBufferBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::CONSTANT_BUFFER ) )
                     {
-                        const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
-                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+                        const BufferViewDesc& buffDesc  = static_cast<const BufferViewDesc&>( desc );
+                        const uint32_t        blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.constantBufferBindingSize );
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                        {
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
+                        pResView->type            = VulkanResourceTypes::BUFFER;
 
                         VkBufferDeviceAddressInfo addressInfo;
                         addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -1141,12 +1186,19 @@ namespace BIGOS
                         getInfo.type                = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                         getInfo.data.pUniformBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.constantBufferBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) )
                     {
                         const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
-                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+                        const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.readOnlyStorageBufferBindingSize );
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                        {
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
+                        pResView->type            = VulkanResourceTypes::BUFFER;
 
                         VkBufferDeviceAddressInfo addressInfo;
                         addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -1165,12 +1217,19 @@ namespace BIGOS
                         getInfo.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                         getInfo.data.pStorageBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.readOnlyStorageBufferBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
                     {
                         const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
-                        VulkanDescriptorInfo& currInfo = pResView->descriptorData;
+                        const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.readWriteStorageBufferBindingSize );
+                        if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                        {
+                            return Results::NO_MEMORY;
+                        }
+                        pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
+                        pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
+                        pResView->type            = VulkanResourceTypes::BUFFER;
 
                         VkBufferDeviceAddressInfo addressInfo;
                         addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -1189,7 +1248,7 @@ namespace BIGOS
                         getInfo.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                         getInfo.data.pStorageBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, currInfo.size, currInfo.pData );
+                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.readWriteStorageBufferBindingSize, pResView->pDescriptorData );
                     }
                 }
 
@@ -1213,7 +1272,7 @@ namespace BIGOS
                         vkDestroyImageView( nativeDevice, nativeView, nullptr );
                     }
 
-                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeView );
+                    Core::Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeView );
 
                     *pHandle = ResourceViewHandle();
                 }
@@ -1227,12 +1286,16 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                VkDevice  nativeDevice  = m_handle.GetNativeHandle();
-                VkSampler nativeSampler = VK_NULL_HANDLE;
-
+                byte_t*                                 pBlock = nullptr;
                 VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo;
                 if( desc.type == SamplerTypes::NORMAL )
                 {
+                    const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanSampler ) + m_limits.samplerBindingSize );
+                    if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
+                    {
+                        return Results::NO_MEMORY;
+                    }
+
                     borderColorInfo.sType                          = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
                     borderColorInfo.pNext                          = nullptr;
                     borderColorInfo.format                         = VK_FORMAT_UNDEFINED;
@@ -1241,6 +1304,16 @@ namespace BIGOS
                     borderColorInfo.customBorderColor.float32[ 2 ] = desc.customBorderColor.b;
                     borderColorInfo.customBorderColor.float32[ 3 ] = desc.customBorderColor.a;
                 }
+                else // desc.type == SamplerTypes::IMMUTABLE
+                {
+                    if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, sizeof( VulkanSampler ) ) ) )
+                    {
+                        return Results::NO_MEMORY;
+                    }
+                }
+
+                VkDevice  nativeDevice  = m_handle.GetNativeHandle();
+                VkSampler nativeSampler = VK_NULL_HANDLE;
 
                 VkSamplerReductionModeCreateInfo reductionModeInfo;
                 reductionModeInfo.sType         = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
@@ -1270,10 +1343,31 @@ namespace BIGOS
 
                 if( vkCreateSampler( nativeDevice, &samplerInfo, nullptr, &nativeSampler ) != VK_SUCCESS )
                 {
+                    Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock );
                     return Results::FAIL;
                 }
 
-                *pHandle = SamplerHandle( nativeSampler );
+                VulkanSampler* pSampler = reinterpret_cast<VulkanSampler*>( pBlock );
+                pSampler->sampler       = nativeSampler;
+                pSampler->type          = desc.type;
+                if( desc.type == SamplerTypes::NORMAL )
+                {
+                    pSampler->pDescriptorData = pBlock + sizeof( VulkanSampler );
+
+                    VkDescriptorGetInfoEXT getInfo;
+                    getInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                    getInfo.pNext         = nullptr;
+                    getInfo.type          = VK_DESCRIPTOR_TYPE_SAMPLER;
+                    getInfo.data.pSampler = &nativeSampler;
+
+                    vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.samplerBindingSize, pSampler->pDescriptorData );
+                }
+                else
+                {
+                    pSampler->pDescriptorData = nullptr;
+                }
+
+                *pHandle = SamplerHandle( pSampler );
 
                 return Results::OK;
             }
@@ -1284,10 +1378,11 @@ namespace BIGOS
                 BGS_ASSERT( *pHandle != SamplerHandle(), "Sampler (pHandle) must point to valid handle." );
                 if( ( pHandle != nullptr ) && ( *pHandle != SamplerHandle() ) )
                 {
-                    VkDevice  nativeDevice  = m_handle.GetNativeHandle();
-                    VkSampler nativeSampler = pHandle->GetNativeHandle();
+                    VkDevice       nativeDevice = m_handle.GetNativeHandle();
+                    VulkanSampler* pSampler     = pHandle->GetNativeHandle();
 
-                    vkDestroySampler( nativeDevice, nativeSampler, nullptr );
+                    vkDestroySampler( nativeDevice, pSampler->sampler, nullptr );
+                    Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pSampler );
 
                     *pHandle = SamplerHandle();
                 }
@@ -1322,7 +1417,7 @@ namespace BIGOS
                         // Creating immutable samplers
                         for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
                         {
-                            immutableSamplerRanges[ ndx ][ ndy ] = currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle();
+                            immutableSamplerRanges[ ndx ][ ndy ] = currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle()->sampler;
                         }
 
                         currBinding.pImmutableSamplers = immutableSamplerRanges[ ndx ];
@@ -1482,10 +1577,7 @@ namespace BIGOS
                 }
             }
 
-            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
-            {
-                desc;
-            }
+            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc ) { desc; }
 
             RESULT VulkanDevice::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
             {

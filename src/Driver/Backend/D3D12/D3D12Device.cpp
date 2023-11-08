@@ -889,8 +889,10 @@ namespace BIGOS
                     return Results::NO_MEMORY;
                 }
 
+                pSampler->type = desc.type;
+
                 pSampler->sampler.Filter         = MapBigosFiltesToD3D12Filter( desc.minFilter, desc.magFilter, desc.mipMapFilter, desc.reductionMode,
-                                                                                desc.anisotropyEnable, desc.compareEnable );
+                                                                        desc.anisotropyEnable, desc.compareEnable );
                 pSampler->sampler.AddressU       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressU );
                 pSampler->sampler.AddressV       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressV );
                 pSampler->sampler.AddressW       = MapBigosTextureAddressModeToD3D12TextureAddressMode( desc.addressW );
@@ -905,10 +907,24 @@ namespace BIGOS
                     pSampler->sampler.BorderColor[ 1 ] = desc.customBorderColor.g;
                     pSampler->sampler.BorderColor[ 2 ] = desc.customBorderColor.b;
                     pSampler->sampler.BorderColor[ 3 ] = desc.customBorderColor.a;
+
+                    // In place sampler data creation
+                    uint32_t ndx = MAX_UINT32;
+                    RESULT   res = m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER ) ].allocator.Allocate( &ndx );
+                    BGS_ASSERT( res == Results::OK );
+                    ID3D12Device*               pNativeDevice = m_handle.GetNativeHandle();
+                    D3D12_CPU_DESCRIPTOR_HANDLE handle =
+                        m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER ) ].pHeap->GetCPUDescriptorHandleForHeapStart();
+                    handle.ptr += ndx * pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER );
+                    pNativeDevice->CreateSampler( &pSampler->sampler, handle );
+
+                    pSampler->ndx = ndx;
                 }
                 else // desc.type == SamplerTypes::IMMUTABLE
                 {
                     pSampler->staticColor = MapBigosBorderColorToD3D12StaticBorderColor( desc.enumBorderColor );
+
+                    pSampler->ndx = MAX_UINT32;
                 }
 
                 *pHandle = SamplerHandle( pSampler );
@@ -923,6 +939,12 @@ namespace BIGOS
                 if( ( pHandle != nullptr ) && ( *pHandle != SamplerHandle() ) )
                 {
                     D3D12Sampler* pNativeSampler = pHandle->GetNativeHandle();
+
+                    if( pNativeSampler->type == SamplerTypes::NORMAL )
+                    {
+                        m_descHeaps[ BGS_ENUM_INDEX( D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER ) ].allocator.Free( pNativeSampler->ndx );
+                    }
+
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeSampler );
 
                     *pHandle = SamplerHandle();
@@ -1120,10 +1142,7 @@ namespace BIGOS
                 }
             }
 
-            void D3D12Device::CopyBinding( const CopyBindingDesc& desc )
-            {
-                desc;
-            }
+            void D3D12Device::CopyBinding( const CopyBindingDesc& desc ) { desc; }
 
             RESULT D3D12Device::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
             {

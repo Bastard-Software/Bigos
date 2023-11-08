@@ -9,6 +9,7 @@ namespace BIGOS::Driver::Backend
     struct VulkanMemory;
     struct VulkanResource;
     struct VulkanResourceView;
+    struct VulkanSampler;
 } // namespace BIGOS::Driver::Backend
 
 #if BGS_USE_VULKAN_HANDLES
@@ -31,13 +32,13 @@ BGS_DECLARE_VULKAN_HANDLE( PipelineLayout, VkPipelineLayout );
 BGS_DECLARE_VULKAN_HANDLE( Pipeline, VkPipeline );
 BGS_DECLARE_VULKAN_HANDLE( Fence, VkSemaphore );
 BGS_DECLARE_VULKAN_HANDLE( Semaphore, VkSemaphore );
-BGS_DECLARE_VULKAN_HANDLE( Memory, BIGOS::Driver::Backend::VulkanMemory* )
-BGS_DECLARE_VULKAN_HANDLE( Resource, BIGOS::Driver::Backend::VulkanResource* )
-BGS_DECLARE_VULKAN_HANDLE( ResourceView, BIGOS::Driver::Backend::VulkanResourceView* )
-BGS_DECLARE_VULKAN_HANDLE( Sampler, VkSampler )
+BGS_DECLARE_VULKAN_HANDLE( Memory, BIGOS::Driver::Backend::VulkanMemory* );
+BGS_DECLARE_VULKAN_HANDLE( Resource, BIGOS::Driver::Backend::VulkanResource* );
+BGS_DECLARE_VULKAN_HANDLE( ResourceView, BIGOS::Driver::Backend::VulkanResourceView* );
+BGS_DECLARE_VULKAN_HANDLE( Sampler, BIGOS::Driver::Backend::VulkanSampler* );
 BGS_DECLARE_VULKAN_HANDLE( BindingHeapLayout, VkDescriptorSetLayout );
 BGS_DECLARE_VULKAN_HANDLE( BindingHeap, BIGOS::Driver::Backend::VulkanBindingHeap* );
-BGS_DECLARE_VULKAN_HANDLE( QueryPool, VkQueryPool )
+BGS_DECLARE_VULKAN_HANDLE( QueryPool, VkQueryPool );
 
 #endif
 
