@@ -1006,6 +1006,7 @@ namespace BIGOS
                 TextureRangeDesc range;
                 FORMAT           format;
                 TEXTURE_TYPE     textureType;
+                TEXTURE_LAYOUT   layout;
             };
 
             enum class SamplerTypes : uint8_t
