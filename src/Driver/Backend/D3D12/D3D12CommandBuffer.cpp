@@ -413,7 +413,7 @@ namespace BIGOS
                 pNativeCommandList->SetDescriptorHeaps( heapCount, pHeaps );
             }
 
-            void D3D12CommandBuffer::SetBinding( const SetBindingDesc& desc )
+            void D3D12CommandBuffer::SetBindings( const SetBindingsDesc& desc )
             {
                 desc;
             }

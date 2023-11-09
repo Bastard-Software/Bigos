@@ -10,6 +10,8 @@ namespace BIGOS::Driver::Backend
         const D3D12_STATIC_SAMPLER_DESC* pImmutableSamplers;
         D3D12_ROOT_DESCRIPTOR_TABLE1     shaderResourceTable;
         D3D12_ROOT_DESCRIPTOR_TABLE1     samplerTable;
+        const BINDING_TYPE*              pBindingLayout;
+        uint32_t                         bindingCount;
         uint32_t                         immutableSamplerCount;
         D3D12_SHADER_VISIBILITY          visibility;
     };

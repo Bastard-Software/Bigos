@@ -25,12 +25,6 @@ private:
     BIGOS::RESULT CreatePipeline();
 
 private:
-    struct Vertex
-    {
-        float position[ 4 ];
-        float color[ 4 ];
-    };
-
     // Core objects
     BIGOS::Platform::WindowSystem* m_pWindowSystem;
     BIGOS::Platform::Window*       m_pWindow;

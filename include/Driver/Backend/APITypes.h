@@ -1129,12 +1129,21 @@ namespace BIGOS
                 BINDING_HEAP_TYPE type;
             };
 
+            struct GetBindingOffsetDesc
+            {
+                BindingHeapLayoutHandle hBindingHeapLayout;
+                uint32_t                bindingNdx;
+            };
+
             struct CopyBindingDesc
             {
             };
 
-            struct SetBindingDesc
+            struct SetBindingsDesc
             {
+                PipelineLayoutHandle hPipelineLayout;
+                uint32_t             baseBindingOffset;
+                PIPELINE_TYPE        type;
             };
 
             enum class QueryTypes : uint8_t

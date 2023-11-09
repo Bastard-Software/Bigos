@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(DraftSandbox)
+project(TexturedQuad)
 file(GLOB_RECURSE FILES *.h *.cpp)
 
 include ("${ROOT_DIR}/CMakeScripts/CompilerSettings.cmake" NO_POLICY_SCOPE)
@@ -16,4 +16,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   BigosFramework
 )
 
-include("${SAMPLES_DIR}/CMakeScripts/SampleProperties.cmake" NO_POLICY_SCOPE)
+include("${SAMPLES_DIR}/BackendAPI/CMakeScripts/SampleProperties.cmake" NO_POLICY_SCOPE)
