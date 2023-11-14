@@ -1577,6 +1577,18 @@ namespace BIGOS
                 }
             }
 
+            void VulkanDevice::GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset )
+            {
+                BGS_ASSERT( pOffset != nullptr, "Address (pAddress) must be a valid address." );
+                BGS_ASSERT( desc.hBindingHeapLayout != BindingHeapLayoutHandle(),
+                            "Binding heap layout handle (desc.hBindingHeapLayout) must be a valid handle." );
+
+                VkDevice              nativeDevice = m_handle.GetNativeHandle();
+                VkDescriptorSetLayout nativeLayout = desc.hBindingHeapLayout.GetNativeHandle();
+
+                vkGetDescriptorSetLayoutBindingOffsetEXT( nativeDevice, nativeLayout, desc.bindingNdx, pOffset );
+            }
+
             void VulkanDevice::CopyBinding( const CopyBindingDesc& desc ) { desc; }
 
             RESULT VulkanDevice::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
@@ -2059,9 +2071,11 @@ namespace BIGOS
                 imgInfo.extent.depth          = desc.size.depth;
                 imgInfo.mipLevels             = desc.mipLevelCount;
                 imgInfo.arrayLayers           = desc.arrayLayerCount;
+                imgInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
                 imgInfo.samples               = MapBigosSampleCountToVulkanSampleCountFlags( desc.sampleCount );
                 imgInfo.tiling                = MapBigosResourceLayoutToVulkanImageTiling( desc.resourceLayout );
                 imgInfo.usage                 = MapBigosResourceUsageFlagsToVulkanImageUsageFlags( desc.resourceUsage );
+                imgInfo.sharingMode           = MapBigosResourceSharingModeToVulkanSharingMode( desc.sharingMode );
                 imgInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
                 imgInfo.pQueueFamilyIndices   = qFamNdx;
 

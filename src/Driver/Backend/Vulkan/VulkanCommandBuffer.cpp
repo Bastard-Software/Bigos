@@ -441,10 +441,7 @@ namespace BIGOS
                 vkCmdBindDescriptorBuffersEXT( nativeCommandBuffer, heapCount, heaps );
             }
 
-            void VulkanCommandBuffer::SetBinding( const SetBindingDesc& desc )
-            {
-                desc;
-            }
+            void VulkanCommandBuffer::SetBindings( const SetBindingsDesc& desc ) { desc; }
 
             void VulkanCommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
             {

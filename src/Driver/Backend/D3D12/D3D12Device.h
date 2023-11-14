@@ -74,6 +74,7 @@ namespace BIGOS
                 virtual void   DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle ) override;
                 virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle ) override;
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle ) override;
+                virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset ) override;
                 virtual void   CopyBinding( const CopyBindingDesc& desc ) override;
 
                 virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) override;

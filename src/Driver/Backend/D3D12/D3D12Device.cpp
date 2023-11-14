@@ -260,25 +260,28 @@ namespace BIGOS
                 const D3D12_STATIC_SAMPLER_DESC* pImmutableSamplers  = nullptr;
                 uint32_t                         immutableSamplerCnt = 0;
                 uint32_t                         rootParamCnt        = 0;
-                bool_t                           createEmpty         = BGS_TRUE;
+                bool_t                           createEmpty         = BGS_FALSE;
 
                 const D3D12BindingHeapLayout& resourceLayout      = *desc.hBindigHeapLayout.GetNativeHandle();
-                D3D12_ROOT_PARAMETER1&        samplerTable        = rootParameters[ rootParamCnt++ ];
                 D3D12_ROOT_PARAMETER1&        shaderResourceTable = rootParameters[ rootParamCnt++ ];
+                D3D12_ROOT_PARAMETER1&        samplerTable        = rootParameters[ rootParamCnt++ ];
 
                 samplerTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
                 samplerTable.DescriptorTable  = resourceLayout.samplerTable;
                 samplerTable.ShaderVisibility = resourceLayout.visibility;
-                createEmpty                   = resourceLayout.samplerTable.NumDescriptorRanges != 0 ? BGS_FALSE : BGS_TRUE;
 
                 shaderResourceTable.ParameterType    = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
                 shaderResourceTable.DescriptorTable  = resourceLayout.shaderResourceTable;
                 shaderResourceTable.ShaderVisibility = resourceLayout.visibility;
-                createEmpty                          = resourceLayout.shaderResourceTable.NumDescriptorRanges != 0 ? BGS_FALSE : BGS_TRUE;
 
                 pImmutableSamplers  = resourceLayout.pImmutableSamplers;
                 immutableSamplerCnt = resourceLayout.immutableSamplerCount;
-                createEmpty         = resourceLayout.immutableSamplerCount != 0 ? BGS_FALSE : BGS_TRUE;
+
+                if( ( resourceLayout.samplerTable.NumDescriptorRanges == 0 ) && ( resourceLayout.shaderResourceTable.NumDescriptorRanges == 0 ) &&
+                    resourceLayout.immutableSamplerCount == 0 )
+                {
+                    createEmpty = BGS_TRUE;
+                }
 
                 if( ( desc.pConstantRanges != nullptr ) && ( desc.constantRangeCount != 0 ) )
                 {
@@ -967,6 +970,7 @@ namespace BIGOS
                 uint32_t                immutableSamplerRangeCnt = 0;
                 uint32_t                shaderResourceRangeCnt   = 0;
                 uint32_t                samplerRangeCnt          = 0;
+                uint32_t                bindingCount             = 0;
 
                 // Calculating size of needed memory allocation
                 uint32_t allocSize = 0;
@@ -983,10 +987,12 @@ namespace BIGOS
                     else if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers == nullptr ) )
                     {
                         samplerRangeCnt++;
+                        bindingCount += currDesc.bindingCount;
                     }
                     else // other shader resources
                     {
                         shaderResourceRangeCnt++;
+                        bindingCount += currDesc.bindingCount;
                     }
                 }
                 // Crash if we have to much immutable samplers
@@ -998,6 +1004,8 @@ namespace BIGOS
                 allocSize += samplerRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
                 // Memory for shader resources
                 allocSize += shaderResourceRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                // Memory for binding layout emulation
+                allocSize += bindingCount;
                 // Memory for binding set layout emulation
                 allocSize += sizeof( D3D12BindingHeapLayout );
 
@@ -1046,8 +1054,11 @@ namespace BIGOS
                 pMem += samplerRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
                 D3D12_DESCRIPTOR_RANGE1* pShaderResourceRanges = reinterpret_cast<D3D12_DESCRIPTOR_RANGE1*>( pMem );
                 pMem += shaderResourceRangeCnt * sizeof( D3D12_DESCRIPTOR_RANGE1 );
+                BINDING_TYPE* pBindingLayout = reinterpret_cast<BINDING_TYPE*>( pMem );
+                pMem += bindingCount;
                 uint32_t samplerNdx   = 0;
                 uint32_t shaderResNdx = 0;
+                uint32_t bindingNdx   = 0;
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
                     const BindingRangeDesc& currDesc = desc.pBindingRanges[ ndx ];
@@ -1060,6 +1071,11 @@ namespace BIGOS
                         range.RangeType                         = MapBigosBindingTypeToD3D12DescriptorRangeType( currDesc.type );
                         range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
                         range.Flags                             = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+
+                        for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
+                        {
+                            pBindingLayout[ bindingNdx++ ] = currDesc.type;
+                        }
                     }
                     else if( currDesc.type != BindingTypes::SAMPLER )
                     {
@@ -1070,6 +1086,11 @@ namespace BIGOS
                         range.RangeType                         = MapBigosBindingTypeToD3D12DescriptorRangeType( currDesc.type );
                         range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
                         range.Flags                             = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+
+                        for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
+                        {
+                            pBindingLayout[ bindingNdx++ ] = currDesc.type;
+                        }
                     }
                 }
 
@@ -1081,6 +1102,8 @@ namespace BIGOS
                 pLayout->pImmutableSamplers                      = pImmutableSamplers;
                 pLayout->immutableSamplerCount                   = immutableSamplerCnt;
                 pLayout->visibility                              = MapBigosShaderVisibilityToD3D12ShaderVisibility( desc.visibility );
+                pLayout->pBindingLayout                          = pBindingLayout;
+                pLayout->bindingCount                            = bindingNdx;
 
                 *pHandle = BindingHeapLayoutHandle( pLayout );
 
@@ -1140,6 +1163,32 @@ namespace BIGOS
 
                     *pHandle = BindingHeapHandle();
                 }
+            }
+
+            void D3D12Device::GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset )
+            {
+                BGS_ASSERT( pOffset != nullptr, "Address (pAddress) must be a valid address." );
+                BGS_ASSERT( desc.hBindingHeapLayout != BindingHeapLayoutHandle(),
+                            "Binding heap layout handle (desc.hBindingHeapLayout) must be a valid handle." );
+
+                D3D12BindingHeapLayout* pLayout = desc.hBindingHeapLayout.GetNativeHandle();
+                BGS_ASSERT( desc.bindingNdx < pLayout->bindingCount );
+                uint32_t samplerNdx        = 0;
+                uint32_t shaderResourceNdx = 0;
+                bool_t   isSampler         = pLayout->pBindingLayout[ desc.bindingNdx ] == BindingTypes::SAMPLER ? BGS_TRUE : BGS_FALSE;
+                for( index_t ndx = 0; ndx < static_cast<index_t>( desc.bindingNdx ); ++ndx )
+                {
+                    if( pLayout->pBindingLayout[ ndx ] == BindingTypes::SAMPLER )
+                    {
+                        samplerNdx++;
+                    }
+                    else
+                    {
+                        shaderResourceNdx++;
+                    }
+                }
+
+                *pOffset = isSampler ? samplerNdx * m_limits.samplerBindingSize : shaderResourceNdx * m_limits.constantBufferBindingSize;
             }
 
             void D3D12Device::CopyBinding( const CopyBindingDesc& desc ) { desc; }

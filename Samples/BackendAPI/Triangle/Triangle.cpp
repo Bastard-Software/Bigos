@@ -23,6 +23,8 @@ Triangle::Triangle( APITypes APIType, uint32_t width, uint32_t height, const cha
     , m_hRTVs()
     , m_backBuffers()
     , m_frameNdx( 0 )
+    , m_hVertexBuffer()
+    , m_hVertexBufferMemory()
 {
 }
 
