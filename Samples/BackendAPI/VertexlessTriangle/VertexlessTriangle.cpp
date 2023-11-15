@@ -15,7 +15,7 @@ VertexlessTriangle::VertexlessTriangle( APITypes APIType, uint32_t width, uint32
     , m_hVertexShader()
     , m_hPixelShader()
     , m_pSwapchain( nullptr )
-    , m_hBindingHeapLayout()
+    , m_hBindingSetLayout()
     , m_hPipelineLayout()
     , m_hPipeline()
     , m_hCommandPools()
@@ -213,7 +213,7 @@ void VertexlessTriangle::OnDestroy()
     m_pAPIDevice->DestroyShader( &m_hPixelShader );
     m_pAPIDevice->DestroyPipeline( &m_hPipeline );
     m_pAPIDevice->DestroyPipelineLayout( &m_hPipelineLayout );
-    m_pAPIDevice->DestroyBindingHeapLayout( &m_hBindingHeapLayout );
+    m_pAPIDevice->DestroyBindingSetLayout( &m_hBindingSetLayout );
     for( uint32_t ndx = 0; ndx < FRAME_COUNT; ++ndx )
     {
         m_pAPIDevice->DestroyFence( &m_hFences[ ndx ] );
@@ -408,20 +408,21 @@ BIGOS::RESULT VertexlessTriangle::CreatePipeline()
     delete[] pShader;
 
     // Binding heap layout
-    BIGOS::Driver::Backend::BindingHeapLayoutDesc bindingLayoutDesc;
+    BIGOS::Driver::Backend::BindingSetLayoutDesc bindingLayoutDesc;
     bindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
     bindingLayoutDesc.bindingRangeCount = 0;
     bindingLayoutDesc.pBindingRanges    = nullptr;
-    if( BGS_FAILED( m_pAPIDevice->CreateBindingHeapLayout( bindingLayoutDesc, &m_hBindingHeapLayout ) ) )
+    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hBindingSetLayout ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
     // Pipeline layout
     BIGOS::Driver::Backend::PipelineLayoutDesc pipelineLayoutDesc;
-    pipelineLayoutDesc.constantRangeCount = 0;
-    pipelineLayoutDesc.hBindigHeapLayout  = m_hBindingHeapLayout;
-    pipelineLayoutDesc.pConstantRanges    = nullptr;
+    pipelineLayoutDesc.constantRangeCount    = 0;
+    pipelineLayoutDesc.bindingSetLayoutCount = 1;
+    pipelineLayoutDesc.phBindigSetLayouts    = &m_hBindingSetLayout;
+    pipelineLayoutDesc.pConstantRanges       = nullptr;
     if( BGS_FAILED( m_pAPIDevice->CreatePipelineLayout( pipelineLayoutDesc, &m_hPipelineLayout ) ) )
     {
         return BIGOS::Results::FAIL;

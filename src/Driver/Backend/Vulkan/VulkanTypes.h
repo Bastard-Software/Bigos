@@ -36,7 +36,7 @@ BGS_DECLARE_VULKAN_HANDLE( Memory, BIGOS::Driver::Backend::VulkanMemory* );
 BGS_DECLARE_VULKAN_HANDLE( Resource, BIGOS::Driver::Backend::VulkanResource* );
 BGS_DECLARE_VULKAN_HANDLE( ResourceView, BIGOS::Driver::Backend::VulkanResourceView* );
 BGS_DECLARE_VULKAN_HANDLE( Sampler, BIGOS::Driver::Backend::VulkanSampler* );
-BGS_DECLARE_VULKAN_HANDLE( BindingHeapLayout, VkDescriptorSetLayout );
+BGS_DECLARE_VULKAN_HANDLE( BindingSetLayout, VkDescriptorSetLayout );
 BGS_DECLARE_VULKAN_HANDLE( BindingHeap, BIGOS::Driver::Backend::VulkanBindingHeap* );
 BGS_DECLARE_VULKAN_HANDLE( QueryPool, VkQueryPool );
 

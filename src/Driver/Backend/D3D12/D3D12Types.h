@@ -15,7 +15,7 @@ namespace BIGOS::Driver::Backend
     struct D3D12Resource;
     struct D3D12ResourceView;
     struct D3D12Sampler;
-    struct D3D12BindingHeapLayout;
+    struct D3D12BindingSetLayout;
 } // namespace BIGOS::Driver::Backend
 
 #if BGS_USE_D3D12_HANDLES
@@ -42,7 +42,7 @@ BGS_DECLARE_D3D12_HANDLE( Memory, ID3D12Heap* )
 BGS_DECLARE_D3D12_HANDLE( Resource, BIGOS::Driver::Backend::D3D12Resource* )
 BGS_DECLARE_D3D12_HANDLE( ResourceView, BIGOS::Driver::Backend::D3D12ResourceView* )
 BGS_DECLARE_D3D12_HANDLE( Sampler, BIGOS::Driver::Backend::D3D12Sampler* )
-BGS_DECLARE_D3D12_HANDLE( BindingHeapLayout, BIGOS::Driver::Backend::D3D12BindingHeapLayout* )
+BGS_DECLARE_D3D12_HANDLE( BindingSetLayout, BIGOS::Driver::Backend::D3D12BindingSetLayout* )
 BGS_DECLARE_D3D12_HANDLE( BindingHeap, ID3D12DescriptorHeap* )
 BGS_DECLARE_D3D12_HANDLE( QueryPool, ID3D12QueryHeap* )
 
