@@ -159,9 +159,10 @@ namespace BIGOS
 
             struct PipelineLayoutDesc
             {
-                BindingHeapLayoutHandle      hBindigHeapLayout;
-                const PushConstantRangeDesc* pConstantRanges;
-                uint32_t                     constantRangeCount;
+                const BindingSetLayoutHandle* phBindigSetLayouts;
+                const PushConstantRangeDesc*  pConstantRanges;
+                uint32_t                      constantRangeCount;
+                uint32_t                      bindingSetLayoutCount;
             };
 
             enum class Formats : uint8_t
@@ -1101,14 +1102,13 @@ namespace BIGOS
 
             struct BindingRangeDesc
             {
-                ImmutableSamplerInfo immutableSampler; // Only valid for binding type SAMPLER
                 uint32_t             bindingCount;
                 uint32_t             baseBindingSlot;
                 uint32_t             baseShaderRegister;
                 BINDING_TYPE         type;
             };
 
-            struct BindingHeapLayoutDesc
+            struct BindingSetLayoutDesc
             {
                 const BindingRangeDesc* pBindingRanges;
                 uint32_t                bindingRangeCount;
@@ -1131,8 +1131,8 @@ namespace BIGOS
 
             struct GetBindingOffsetDesc
             {
-                BindingHeapLayoutHandle hBindingHeapLayout;
-                uint32_t                bindingNdx;
+                BindingSetLayoutHandle hBindingSetLayout;
+                uint32_t               bindingNdx;
             };
 
             struct CopyBindingDesc

@@ -396,9 +396,16 @@ namespace BIGOS
                 BGS_ASSERT( pHandle != nullptr, "Pipeline layout (pHandle) must be a valid address." );
                 BGS_ASSERT( desc.constantRangeCount <= BGS_ENUM_COUNT( ShaderVisibilities ),
                             "Push constant range count (desc.constantRangeCount) must be less than %d.", BGS_ENUM_COUNT( ShaderVisibilities ) );
-                BGS_ASSERT( desc.hBindigHeapLayout != BindingHeapLayoutHandle(),
-                            "Binding heap layout (desc.hBindigHeapLayout) must be valid handle." )
-                if( ( desc.constantRangeCount > BGS_ENUM_COUNT( ShaderVisibilities ) ) || ( desc.hBindigHeapLayout == BindingHeapLayoutHandle() ) )
+                BGS_ASSERT( desc.phBindigSetLayouts[ 0 ] != BindingSetLayoutHandle(),
+                            "Binding set layout array (desc.phBindigSetLayouts) must contain at least one valid handle." );
+                BGS_ASSERT( desc.phBindigSetLayouts != nullptr, "Binding set layout (desc.phBindigSetLayouts) must be valid array." );
+                BGS_ASSERT( desc.bindingSetLayoutCount != 0, "Binding set layout count (desc.bindingSetLayoutCount) must be at least 1." );
+                BGS_ASSERT( desc.bindingSetLayoutCount <= Config::Driver::Pipeline::MAX_BINDING_SET_LAYOUT_COUNT,
+                            "Binding set layout count (desc.bindingSetLayoutCount) must less than or equal %d.",
+                            Config::Driver::Pipeline::MAX_BINDING_SET_LAYOUT_COUNT );
+                if( ( desc.constantRangeCount > BGS_ENUM_COUNT( ShaderVisibilities ) ) || ( desc.phBindigSetLayouts == nullptr ) ||
+                    desc.phBindigSetLayouts[ 0 ] == BindingSetLayoutHandle() || ( desc.bindingSetLayoutCount == 0 ) ||
+                    ( desc.bindingSetLayoutCount > Config::Driver::Pipeline::MAX_BINDING_SET_LAYOUT_COUNT ) )
                 {
                     return Results::FAIL;
                 }
@@ -407,7 +414,12 @@ namespace BIGOS
                 VkPipelineLayout nativeLayout = VK_NULL_HANDLE;
 
                 VkPushConstantRange   constantRanges[ BGS_ENUM_COUNT( ShaderVisibilities ) ]; // each for one of shader visibility
-                VkDescriptorSetLayout nativeSetLayout = desc.hBindigHeapLayout.GetNativeHandle();
+                VkDescriptorSetLayout nativeSetLayouts[ Config::Driver::Pipeline::MAX_BINDING_SET_LAYOUT_COUNT ];
+
+                for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingSetLayoutCount; ++ndx )
+                {
+                    nativeSetLayouts[ ndx ] = desc.phBindigSetLayouts[ ndx ].GetNativeHandle();
+                }
 
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.constantRangeCount; ++ndx )
                 {
@@ -424,8 +436,8 @@ namespace BIGOS
                 layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
                 layoutInfo.pNext                  = nullptr;
                 layoutInfo.flags                  = 0;
-                layoutInfo.setLayoutCount         = 1;
-                layoutInfo.pSetLayouts            = &nativeSetLayout;
+                layoutInfo.setLayoutCount         = desc.bindingSetLayoutCount;
+                layoutInfo.pSetLayouts            = nativeSetLayouts;
                 layoutInfo.pushConstantRangeCount = desc.constantRangeCount;
                 layoutInfo.pPushConstantRanges    = constantRanges;
 
@@ -1388,7 +1400,7 @@ namespace BIGOS
                 }
             }
 
-            RESULT VulkanDevice::CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle )
+            RESULT VulkanDevice::CreateBindingSetLayout( const BindingSetLayoutDesc& desc, BindingSetLayoutHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
                 BGS_ASSERT( desc.bindingRangeCount <= Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT,
@@ -1398,41 +1410,19 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                uint32_t                     immutableSamplerCnt = 0;
-                VkDevice                     nativeDevice        = m_handle.GetNativeHandle();
-                VkDescriptorSetLayout        nativeLayout        = VK_NULL_HANDLE;
+                VkDevice                     nativeDevice = m_handle.GetNativeHandle();
+                VkDescriptorSetLayout        nativeLayout = VK_NULL_HANDLE;
                 VkDescriptorSetLayoutBinding layoutBindings[ Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ];
-                VkSampler                    immutableSamplerRanges[ Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ]
-                                                [ Config::Driver::Pipeline::MAX_IMMUTABLE_SAMPLER_COUNT ];
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
                     const BindingRangeDesc&       currDesc    = desc.pBindingRanges[ ndx ];
                     VkDescriptorSetLayoutBinding& currBinding = layoutBindings[ ndx ];
 
-                    currBinding.descriptorCount = currDesc.bindingCount;
-                    currBinding.binding         = currDesc.baseBindingSlot;
-                    currBinding.descriptorType  = MapBigosBindingTypeToVulkanDescriptorType( currDesc.type );
-                    if( ( currDesc.type == BindingTypes::SAMPLER ) && ( currDesc.immutableSampler.phSamplers != nullptr ) )
-                    {
-                        // Creating immutable samplers
-                        for( index_t ndy = 0; static_cast<uint32_t>( ndy ) < currDesc.bindingCount; ++ndy )
-                        {
-                            immutableSamplerRanges[ ndx ][ ndy ] = currDesc.immutableSampler.phSamplers[ ndy ].GetNativeHandle()->sampler;
-                        }
-
-                        currBinding.pImmutableSamplers = immutableSamplerRanges[ ndx ];
-                        currBinding.stageFlags         = MapBigosShaderVisibilityToVulkanShaderStageFlags( currDesc.immutableSampler.visibility );
-                        immutableSamplerCnt += currDesc.bindingCount;
-                        if( immutableSamplerCnt > Config::Driver::Pipeline::MAX_IMMUTABLE_SAMPLER_COUNT )
-                        {
-                            return Results::FAIL;
-                        }
-                    }
-                    else
-                    {
-                        currBinding.pImmutableSamplers = nullptr;
-                        currBinding.stageFlags         = MapBigosShaderVisibilityToVulkanShaderStageFlags( desc.visibility );
-                    }
+                    currBinding.descriptorCount    = currDesc.bindingCount;
+                    currBinding.binding            = currDesc.baseBindingSlot;
+                    currBinding.descriptorType     = MapBigosBindingTypeToVulkanDescriptorType( currDesc.type );
+                    currBinding.pImmutableSamplers = nullptr;
+                    currBinding.stageFlags         = MapBigosShaderVisibilityToVulkanShaderStageFlags( desc.visibility );
                 }
 
                 VkDescriptorSetLayoutCreateInfo layoutInfo;
@@ -1447,23 +1437,23 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                *pHandle = BindingHeapLayoutHandle( nativeLayout );
+                *pHandle = BindingSetLayoutHandle( nativeLayout );
 
                 return Results::OK;
             }
 
-            void VulkanDevice::DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle )
+            void VulkanDevice::DestroyBindingSetLayout( BindingSetLayoutHandle* pHandle )
             {
-                BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );
-                BGS_ASSERT( *pHandle != BindingHeapLayoutHandle(), "Binding heap layout (pHandle) must point to valid handle." );
-                if( ( pHandle != nullptr ) && ( *pHandle != BindingHeapLayoutHandle() ) )
+                BGS_ASSERT( pHandle != nullptr, "Binding set layout (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != BindingSetLayoutHandle(), "Binding set layout (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != BindingSetLayoutHandle() ) )
                 {
                     VkDevice              nativeDevice = m_handle.GetNativeHandle();
                     VkDescriptorSetLayout nativeLayout = pHandle->GetNativeHandle();
 
                     vkDestroyDescriptorSetLayout( nativeDevice, nativeLayout, nullptr );
 
-                    *pHandle = BindingHeapLayoutHandle();
+                    *pHandle = BindingSetLayoutHandle();
                 }
             }
 
@@ -1580,16 +1570,19 @@ namespace BIGOS
             void VulkanDevice::GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset )
             {
                 BGS_ASSERT( pOffset != nullptr, "Address (pAddress) must be a valid address." );
-                BGS_ASSERT( desc.hBindingHeapLayout != BindingHeapLayoutHandle(),
-                            "Binding heap layout handle (desc.hBindingHeapLayout) must be a valid handle." );
+                BGS_ASSERT( desc.hBindingSetLayout != BindingSetLayoutHandle(),
+                            "Binding set layout handle (desc.hBindingSetLayout) must be a valid handle." );
 
                 VkDevice              nativeDevice = m_handle.GetNativeHandle();
-                VkDescriptorSetLayout nativeLayout = desc.hBindingHeapLayout.GetNativeHandle();
+                VkDescriptorSetLayout nativeLayout = desc.hBindingSetLayout.GetNativeHandle();
 
                 vkGetDescriptorSetLayoutBindingOffsetEXT( nativeDevice, nativeLayout, desc.bindingNdx, pOffset );
             }
 
-            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc ) { desc; }
+            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
+            {
+                desc;
+            }
 
             RESULT VulkanDevice::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
             {

@@ -70,8 +70,8 @@ namespace BIGOS
                 virtual RESULT CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle ) override;
                 virtual void   DestroySampler( SamplerHandle* pHandle ) override;
 
-                virtual RESULT CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle ) override;
-                virtual void   DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle ) override;
+                virtual RESULT CreateBindingSetLayout( const BindingSetLayoutDesc& desc, BindingSetLayoutHandle* pHandle ) override;
+                virtual void   DestroyBindingSetLayout( BindingSetLayoutHandle* pHandle ) override;
                 virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle ) override;
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle ) override;
                 virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset ) override;

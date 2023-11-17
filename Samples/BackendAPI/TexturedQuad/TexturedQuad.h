@@ -47,18 +47,20 @@ private:
     Backend::IQueue*               m_pQueue;
 
     // Pipeline objects
-    Backend::ISwapchain*             m_pSwapchain;
-    Backend::BindingHeapLayoutHandle m_hBindingHeapLayout;
-    Backend::BindingHeapHandle       m_hSamplerHeap;
-    Backend::BindingHeapHandle       m_hShaderResourceHeap;
-    Backend::PipelineLayoutHandle    m_hPipelineLayout;
-    Backend::PipelineHandle          m_hPipeline;
-    Backend::CommandPoolHandle       m_hCommandPools[ FRAME_COUNT ];
-    Backend::ICommandBuffer*         m_pCommandBuffers[ FRAME_COUNT ];
-    Backend::ResourceViewHandle      m_hRTVs[ FRAME_COUNT ];
-    Backend::BackBufferArray         m_backBuffers;
-    uint64_t                         m_bindingOffset;
-    uint32_t                         m_frameNdx;
+    Backend::ISwapchain*            m_pSwapchain;
+    Backend::BindingSetLayoutHandle m_hSamplerSetLayout;
+    Backend::BindingSetLayoutHandle m_hShaderResourceSetLayout;
+    Backend::BindingHeapHandle      m_hSamplerHeap;
+    Backend::BindingHeapHandle      m_hShaderResourceHeap;
+    Backend::PipelineLayoutHandle   m_hPipelineLayout;
+    Backend::PipelineHandle         m_hPipeline;
+    Backend::CommandPoolHandle      m_hCommandPools[ FRAME_COUNT ];
+    Backend::ICommandBuffer*        m_pCommandBuffers[ FRAME_COUNT ];
+    Backend::ResourceViewHandle     m_hRTVs[ FRAME_COUNT ];
+    Backend::BackBufferArray        m_backBuffers;
+    uint64_t                        m_samplerOffset;
+    uint64_t                        m_textureOffset;
+    uint32_t                        m_frameNdx;
 
     // App resource
     Backend::ShaderHandle m_hVertexShader;

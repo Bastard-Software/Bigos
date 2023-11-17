@@ -13,7 +13,8 @@ TexturedQuad::TexturedQuad( APITypes APIType, uint32_t width, uint32_t height, c
     , m_pAPIDevice( nullptr )
     , m_pQueue( nullptr )
     , m_pSwapchain( nullptr )
-    , m_hBindingHeapLayout()
+    , m_hSamplerSetLayout()
+    , m_hShaderResourceSetLayout()
     , m_hSamplerHeap()
     , m_hShaderResourceHeap()
     , m_hPipelineLayout()
@@ -22,6 +23,8 @@ TexturedQuad::TexturedQuad( APITypes APIType, uint32_t width, uint32_t height, c
     , m_pCommandBuffers()
     , m_hRTVs()
     , m_backBuffers()
+    , m_samplerOffset( BIGOS::MAX_UINT64 )
+    , m_textureOffset( BIGOS::MAX_UINT64 )
     , m_frameNdx( 0 )
     , m_shaderSourceSize( 0 )
     , m_pShaderSource( nullptr )
@@ -270,7 +273,8 @@ void TexturedQuad::OnDestroy()
     m_pAPIDevice->DestroyBindingHeap( &m_hShaderResourceHeap );
     m_pAPIDevice->DestroyPipeline( &m_hPipeline );
     m_pAPIDevice->DestroyPipelineLayout( &m_hPipelineLayout );
-    m_pAPIDevice->DestroyBindingHeapLayout( &m_hBindingHeapLayout );
+    m_pAPIDevice->DestroyBindingSetLayout( &m_hSamplerSetLayout );
+    m_pAPIDevice->DestroyBindingSetLayout( &m_hShaderResourceSetLayout );
     for( uint32_t ndx = 0; ndx < FRAME_COUNT; ++ndx )
     {
         m_pAPIDevice->DestroyFence( &m_hFences[ ndx ] );
@@ -711,22 +715,24 @@ BIGOS::RESULT TexturedQuad::UploadResourceData()
 BIGOS::RESULT TexturedQuad::CreatePipeline()
 {
     // Binding heap layout
-    BIGOS::Driver::Backend::BindingRangeDesc bindingRanges[ 2 ];
-    bindingRanges[ 0 ].baseBindingSlot             = 0;
-    bindingRanges[ 0 ].baseShaderRegister          = 0;
-    bindingRanges[ 0 ].bindingCount                = 1;
-    bindingRanges[ 0 ].type                        = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
-    bindingRanges[ 0 ].immutableSampler.phSamplers = nullptr;
-    bindingRanges[ 1 ].baseBindingSlot             = 1;
-    bindingRanges[ 1 ].baseShaderRegister          = 1;
-    bindingRanges[ 1 ].bindingCount                = 1;
-    bindingRanges[ 1 ].type                        = BIGOS::Driver::Backend::BindingTypes::SAMPLED_TEXTURE;
-
-    BIGOS::Driver::Backend::BindingHeapLayoutDesc bindingLayoutDesc;
+    BIGOS::Driver::Backend::BindingRangeDesc bindingRange;
+    bindingRange.baseBindingSlot    = 0;
+    bindingRange.baseShaderRegister = 0;
+    bindingRange.bindingCount       = 1;
+    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
+    BIGOS::Driver::Backend::BindingSetLayoutDesc bindingLayoutDesc;
     bindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
-    bindingLayoutDesc.bindingRangeCount = 2;
-    bindingLayoutDesc.pBindingRanges    = bindingRanges;
-    if( BGS_FAILED( m_pAPIDevice->CreateBindingHeapLayout( bindingLayoutDesc, &m_hBindingHeapLayout ) ) )
+    bindingLayoutDesc.bindingRangeCount = 1;
+    bindingLayoutDesc.pBindingRanges    = &bindingRange;
+    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hSamplerSetLayout ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+    bindingRange.baseBindingSlot    = 1;
+    bindingRange.baseShaderRegister = 1;
+    bindingRange.bindingCount       = 1;
+    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLED_TEXTURE;
+    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hShaderResourceSetLayout ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -746,16 +752,19 @@ BIGOS::RESULT TexturedQuad::CreatePipeline()
     }
 
     BIGOS::Driver::Backend::GetBindingOffsetDesc getAddressDesc;
-    getAddressDesc.hBindingHeapLayout = m_hBindingHeapLayout;
-    getAddressDesc.bindingNdx         = 0;
-    m_bindingOffset                   = BIGOS::MAX_UINT64;
-    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_bindingOffset );
+    getAddressDesc.hBindingSetLayout = m_hSamplerSetLayout;
+    getAddressDesc.bindingNdx        = 0;
+    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_samplerOffset );
+    getAddressDesc.hBindingSetLayout = m_hShaderResourceSetLayout;
+    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_textureOffset );
 
     // Pipeline layout
-    BIGOS::Driver::Backend::PipelineLayoutDesc pipelineLayoutDesc;
-    pipelineLayoutDesc.constantRangeCount = 0;
-    pipelineLayoutDesc.hBindigHeapLayout  = m_hBindingHeapLayout;
-    pipelineLayoutDesc.pConstantRanges    = nullptr;
+    BIGOS::Driver::Backend::BindingSetLayoutHandle layouts[] = { m_hSamplerSetLayout, m_hShaderResourceSetLayout };
+    BIGOS::Driver::Backend::PipelineLayoutDesc     pipelineLayoutDesc;
+    pipelineLayoutDesc.constantRangeCount    = 0;
+    pipelineLayoutDesc.bindingSetLayoutCount = 2;
+    pipelineLayoutDesc.phBindigSetLayouts    = layouts;
+    pipelineLayoutDesc.pConstantRanges       = nullptr;
     if( BGS_FAILED( m_pAPIDevice->CreatePipelineLayout( pipelineLayoutDesc, &m_hPipelineLayout ) ) )
     {
         return BIGOS::Results::FAIL;

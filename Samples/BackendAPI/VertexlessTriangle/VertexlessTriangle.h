@@ -39,16 +39,16 @@ private:
     Backend::IQueue*               m_pQueue;
 
     // Pipeline objects
-    Backend::ShaderHandle            m_hVertexShader, m_hPixelShader;
-    Backend::ISwapchain*             m_pSwapchain;
-    Backend::BindingHeapLayoutHandle m_hBindingHeapLayout;
-    Backend::PipelineLayoutHandle    m_hPipelineLayout;
-    Backend::PipelineHandle          m_hPipeline;
-    Backend::CommandPoolHandle       m_hCommandPools[ FRAME_COUNT ];
-    Backend::ICommandBuffer*         m_pCommandBuffers[ FRAME_COUNT ];
-    Backend::ResourceViewHandle      m_hRTVs[ FRAME_COUNT ];
-    Backend::BackBufferArray         m_backBuffers;
-    uint32_t                         m_frameNdx;
+    Backend::ShaderHandle           m_hVertexShader, m_hPixelShader;
+    Backend::ISwapchain*            m_pSwapchain;
+    Backend::BindingSetLayoutHandle m_hBindingSetLayout;
+    Backend::PipelineLayoutHandle   m_hPipelineLayout;
+    Backend::PipelineHandle         m_hPipeline;
+    Backend::CommandPoolHandle      m_hCommandPools[ FRAME_COUNT ];
+    Backend::ICommandBuffer*        m_pCommandBuffers[ FRAME_COUNT ];
+    Backend::ResourceViewHandle     m_hRTVs[ FRAME_COUNT ];
+    Backend::BackBufferArray        m_backBuffers;
+    uint32_t                        m_frameNdx;
 
     // Synchronization objects
     Backend::FenceHandle     m_hFences[ FRAME_COUNT ];

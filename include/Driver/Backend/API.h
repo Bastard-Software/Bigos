@@ -94,19 +94,19 @@ namespace BIGOS
                 virtual RESULT CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )                = 0;
                 virtual void   DestroySampler( SamplerHandle* pHandle )                                        = 0;
 
-                virtual RESULT CreateBindingHeapLayout( const BindingHeapLayoutDesc& desc, BindingHeapLayoutHandle* pHandle ) = 0;
-                virtual void   DestroyBindingHeapLayout( BindingHeapLayoutHandle* pHandle )                                   = 0;
-                virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )                   = 0;
-                virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle )                                               = 0;
-                virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset )                        = 0;
-                virtual void   CopyBinding( const CopyBindingDesc& desc )                                                     = 0;
+                virtual RESULT CreateBindingSetLayout( const BindingSetLayoutDesc& desc, BindingSetLayoutHandle* pHandle ) = 0;
+                virtual void   DestroyBindingSetLayout( BindingSetLayoutHandle* pHandle )                                  = 0;
+                virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )                = 0;
+                virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle )                                            = 0;
+                virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset )                     = 0;
+                virtual void   CopyBinding( const CopyBindingDesc& desc )                                                  = 0;
 
                 virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) = 0;
                 virtual void   DestroyQueryPool( QueryPoolHandle* pHandle )                           = 0;
 
                 BGS_FORCEINLINE const DeviceLimits& GetLimits() const { return m_limits; }
-                BGS_FORCEINLINE const DeviceDesc&  GetDesc() const { return m_desc; }
-                BGS_FORCEINLINE const DeviceHandle GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const DeviceDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const DeviceHandle  GetHandle() const { return m_handle; }
 
             protected:
                 DeviceLimits m_limits;
@@ -122,8 +122,8 @@ namespace BIGOS
                 virtual RESULT Submit( const QueueSubmitDesc& desc ) = 0;
 
                 BGS_FORCEINLINE const QueueLimits& GetLimits() const { return m_limits; }
-                BGS_FORCEINLINE const QueueDesc&  GetDesc() const { return m_desc; }
-                BGS_FORCEINLINE const QueueHandle GetHandle() const { return m_handle; }
+                BGS_FORCEINLINE const QueueDesc&   GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const QueueHandle  GetHandle() const { return m_handle; }
 
             protected:
                 QueueLimits m_limits;
@@ -140,7 +140,7 @@ namespace BIGOS
                 virtual RESULT Present( const SwapchainPresentDesc& desc ) = 0;
                 virtual RESULT GetNextFrame( FrameInfo* pInfo )            = 0;
 
-                BGS_FORCEINLINE const SwapchainDesc& GetDesc() const { return m_desc; }
+                BGS_FORCEINLINE const SwapchainDesc&   GetDesc() const { return m_desc; }
                 BGS_FORCEINLINE const BackBufferArray& GetBackBuffers() const { return m_backBuffers; }
                 BGS_FORCEINLINE const SwapchainHandle  GetHandle() const { return m_handle; }
 
