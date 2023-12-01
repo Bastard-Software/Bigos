@@ -15,6 +15,6 @@ extern "C"
 
 int main()
 {
-    TexturedQuad sample( BIGOS::Driver::Backend::APITypes::VULKAN, 1280, 720, "Textured quad" );
+    TexturedQuad sample( BIGOS::Driver::Backend::APITypes::D3D12, 1280, 720, "Textured quad" );
     return Application::Run( &sample );
 }

@@ -183,6 +183,11 @@ namespace BIGOS
 
                 virtual void Barrier( const BarierDesc& desc ) = 0;
 
+                virtual void CopyBuffer( const CopyBufferDesc& desc )                 = 0;
+                virtual void CopyTexture( const CopyTextureDesc& desc )               = 0;
+                virtual void CopyBuferToTexture( const CopyBufferTextureDesc& desc )  = 0;
+                virtual void CopyTextureToBuffer( const CopyBufferTextureDesc& desc ) = 0;
+
                 virtual void BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )           = 0;
                 virtual void EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )             = 0;
                 virtual void Timestamp( QueryPoolHandle handle, uint32_t queryNdx )                             = 0;

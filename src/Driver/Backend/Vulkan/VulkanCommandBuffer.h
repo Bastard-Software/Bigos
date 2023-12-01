@@ -38,6 +38,11 @@ namespace BIGOS
 
                 virtual void Barrier( const BarierDesc& barrier ) override;
 
+                virtual void CopyBuffer( const CopyBufferDesc& desc ) override;
+                virtual void CopyTexture( const CopyTextureDesc& desc ) override;
+                virtual void CopyBuferToTexture( const CopyBufferTextureDesc& desc ) override;
+                virtual void CopyTextureToBuffer( const CopyBufferTextureDesc& desc ) override;
+
                 virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type ) override;
                 virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) override;
                 virtual void SetBindings( const SetBindingsDesc& desc ) override;

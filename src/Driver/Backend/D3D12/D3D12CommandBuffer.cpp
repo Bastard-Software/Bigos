@@ -134,7 +134,7 @@ namespace BIGOS
 
                 D3D12_CPU_DESCRIPTOR_HANDLE* pDSV = nullptr;
                 // TODO: Avoid branching
-                if (desc.hDepthStencilTargetView != ResourceViewHandle())
+                if( desc.hDepthStencilTargetView != ResourceViewHandle() )
                 {
                     m_boundDepthStencilTarget.ptr =
                         pDSVHeap->GetCPUDescriptorHandleForHeapStart().ptr + desc.hDepthStencilTargetView.GetNativeHandle()->dsvNdx * m_dsvDescSize;
@@ -385,6 +385,121 @@ namespace BIGOS
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->Barrier( 3, barriers );
+            }
+
+            void D3D12CommandBuffer::CopyBuffer( const CopyBufferDesc& desc )
+            {
+                BGS_ASSERT( desc.hSrcBuffer != ResourceHandle(), "Buffer (desc.hSrcBuffer) must be a valid handle." );
+                BGS_ASSERT( desc.hDstBuffer != ResourceHandle(), "Buffer (desc.hDstBuffer) must be a valid handle." );
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->CopyBufferRegion( desc.hDstBuffer.GetNativeHandle()->pNativeResource, desc.dstOffset,
+                                                      desc.hSrcBuffer.GetNativeHandle()->pNativeResource, desc.srcOffset, desc.size );
+            }
+
+            void D3D12CommandBuffer::CopyTexture( const CopyTextureDesc& desc )
+            {
+                BGS_ASSERT( desc.hSrcTexture != ResourceHandle(), "Texture (desc.hSrcTexture) must be a valid handle." );
+                BGS_ASSERT( desc.hDstTexture != ResourceHandle(), "Texture (desc.hDstTexture) must be a valid handle." );
+
+                const uint32_t srcNdx = D3D12CalcSubresource( desc.srcRange.mipLevel, desc.srcRange.arrayLayer,
+                                                              MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.srcRange.components ),
+                                                              desc.srcRange.mipLevelCount, desc.srcRange.arrayLayerCount );
+
+                const uint32_t dstNdx = D3D12CalcSubresource( desc.dstRange.mipLevel, desc.dstRange.arrayLayer,
+                                                              MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.dstRange.components ),
+                                                              desc.dstRange.mipLevelCount, desc.dstRange.arrayLayerCount );
+
+                D3D12_TEXTURE_COPY_LOCATION srcTex;
+                srcTex.pResource        = desc.hSrcTexture.GetNativeHandle()->pNativeResource;
+                srcTex.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                srcTex.SubresourceIndex = srcNdx;
+
+                D3D12_TEXTURE_COPY_LOCATION dstTex;
+                dstTex.pResource        = desc.hDstTexture.GetNativeHandle()->pNativeResource;
+                dstTex.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                dstTex.SubresourceIndex = dstNdx;
+
+                D3D12_BOX region;
+                region.left   = desc.srcOffset.x;
+                region.top    = desc.srcOffset.y;
+                region.front  = desc.srcOffset.z;
+                region.right  = region.left + desc.size.width;
+                region.bottom = region.top + desc.size.height;
+                region.back   = region.front + desc.size.depth;
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->CopyTextureRegion( &dstTex, desc.dstOffset.x, desc.dstOffset.y, desc.dstOffset.z, &srcTex, &region );
+            }
+
+            void D3D12CommandBuffer::CopyBuferToTexture( const CopyBufferTextureDesc& desc )
+            {
+                BGS_ASSERT( desc.hBuffer != ResourceHandle(), "Buffer (desc.hBuffer) must be a valid handle." );
+                BGS_ASSERT( desc.hTexture != ResourceHandle(), "Texture (desc.hTexture) must be a valid handle." );
+                BGS_ASSERT( desc.bufferOffset % 512 == 0, "Buffer offset (desc.bufferOffset) must be 512 aligned." );
+
+                D3D12_TEXTURE_COPY_LOCATION srcBuff;
+                srcBuff.pResource                          = desc.hBuffer.GetNativeHandle()->pNativeResource;
+                srcBuff.Type                               = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+                srcBuff.PlacedFootprint.Offset             = desc.bufferOffset;
+                srcBuff.PlacedFootprint.Footprint.Width    = desc.size.width;
+                srcBuff.PlacedFootprint.Footprint.Height   = desc.size.height;
+                srcBuff.PlacedFootprint.Footprint.Depth    = desc.size.depth;
+                srcBuff.PlacedFootprint.Footprint.Format   = MapBigosFormatToD3D12Format( desc.textureFormat );
+                srcBuff.PlacedFootprint.Footprint.RowPitch = GetBigosFormatSize( desc.textureFormat ) * desc.size.width;
+
+                const uint32_t dstNdx = D3D12CalcSubresource( desc.textureRange.mipLevel, desc.textureRange.arrayLayer,
+                                                              MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.textureRange.components ),
+                                                              desc.textureRange.mipLevelCount, desc.textureRange.arrayLayerCount );
+
+                D3D12_TEXTURE_COPY_LOCATION dstTex;
+                dstTex.pResource        = desc.hTexture.GetNativeHandle()->pNativeResource;
+                dstTex.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                dstTex.SubresourceIndex = dstNdx;
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->CopyTextureRegion( &dstTex, desc.textureOffset.x, desc.textureOffset.y, desc.textureOffset.z, &srcBuff, nullptr );
+            }
+
+            void D3D12CommandBuffer::CopyTextureToBuffer( const CopyBufferTextureDesc& desc )
+            {
+                BGS_ASSERT( desc.hBuffer != ResourceHandle(), "Buffer (desc.hBuffer) must be a valid handle." );
+                BGS_ASSERT( desc.hTexture != ResourceHandle(), "Texture (desc.hTexture) must be a valid handle." );
+                BGS_ASSERT( desc.bufferOffset % 512 == 0, "Buffer offset (desc.bufferOffset) must be 512 aligned." );
+
+                const uint32_t srcNdx = D3D12CalcSubresource( desc.textureRange.mipLevel, desc.textureRange.arrayLayer,
+                                                              MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.textureRange.components ),
+                                                              desc.textureRange.mipLevelCount, desc.textureRange.arrayLayerCount );
+
+                D3D12_TEXTURE_COPY_LOCATION srcTex;
+                srcTex.pResource        = desc.hTexture.GetNativeHandle()->pNativeResource;
+                srcTex.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                srcTex.SubresourceIndex = srcNdx;
+
+                D3D12_TEXTURE_COPY_LOCATION dstBuff;
+                dstBuff.pResource                          = desc.hBuffer.GetNativeHandle()->pNativeResource;
+                dstBuff.Type                               = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+                dstBuff.PlacedFootprint.Offset             = desc.bufferOffset;
+                dstBuff.PlacedFootprint.Footprint.Width    = desc.size.width;
+                dstBuff.PlacedFootprint.Footprint.Height   = desc.size.height;
+                dstBuff.PlacedFootprint.Footprint.Depth    = desc.size.depth;
+                dstBuff.PlacedFootprint.Footprint.Format   = MapBigosFormatToD3D12Format( desc.textureFormat );
+                dstBuff.PlacedFootprint.Footprint.RowPitch = GetBigosFormatSize( desc.textureFormat ) * desc.size.width;
+
+                D3D12_BOX region;
+                region.left   = desc.textureOffset.x;
+                region.top    = desc.textureOffset.y;
+                region.front  = desc.textureOffset.z;
+                region.right  = region.left + desc.size.width;
+                region.bottom = region.top + desc.size.height;
+                region.back   = region.front + desc.size.depth;
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->CopyTextureRegion( &dstBuff, desc.textureOffset.x, desc.textureOffset.y, desc.textureOffset.z, &srcTex, &region );
             }
 
             void D3D12CommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )

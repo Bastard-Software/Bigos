@@ -411,6 +411,108 @@ namespace BIGOS
                 vkCmdPipelineBarrier2( nativeCommandBuffer, &info );
             }
 
+            void VulkanCommandBuffer::CopyBuffer( const CopyBufferDesc& desc )
+            {
+                BGS_ASSERT( desc.hSrcBuffer != ResourceHandle(), "Buffer (desc.hSrcBuffer) must be a valid handle." );
+                BGS_ASSERT( desc.hDstBuffer != ResourceHandle(), "Buffer (desc.hDstBuffer) must be a valid handle." );
+
+                VkBufferCopy buffCpy;
+                buffCpy.size      = desc.size;
+                buffCpy.dstOffset = desc.dstOffset;
+                buffCpy.srcOffset = desc.srcOffset;
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdCopyBuffer( nativeCommandBuffer, desc.hSrcBuffer.GetNativeHandle()->buffer, desc.hDstBuffer.GetNativeHandle()->buffer, 1,
+                                 &buffCpy );
+            }
+
+            void VulkanCommandBuffer::CopyTexture( const CopyTextureDesc& desc )
+            {
+                BGS_ASSERT( desc.hSrcTexture != ResourceHandle(), "Texture (desc.hSrcTexture) must be a valid handle." );
+                BGS_ASSERT( desc.hDstTexture != ResourceHandle(), "Texture (desc.hDstTexture) must be a valid handle." );
+
+                VkImageCopy texcpy;
+                texcpy.srcOffset.x                   = desc.srcOffset.x;
+                texcpy.srcOffset.y                   = desc.srcOffset.y;
+                texcpy.srcOffset.z                   = desc.srcOffset.z;
+                texcpy.dstOffset.x                   = desc.dstOffset.x;
+                texcpy.dstOffset.y                   = desc.dstOffset.y;
+                texcpy.dstOffset.z                   = desc.dstOffset.z;
+                texcpy.extent.width                  = desc.size.width;
+                texcpy.extent.height                 = desc.size.height;
+                texcpy.extent.depth                  = desc.size.depth;
+                texcpy.srcSubresource.aspectMask     = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.srcRange.components );
+                texcpy.srcSubresource.mipLevel       = desc.srcRange.mipLevel;
+                texcpy.srcSubresource.baseArrayLayer = desc.srcRange.arrayLayer;
+                texcpy.srcSubresource.layerCount     = 1; // Mimic D3D12 behavior
+                texcpy.dstSubresource.aspectMask     = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.dstRange.components );
+                texcpy.dstSubresource.mipLevel       = desc.dstRange.mipLevel;
+                texcpy.dstSubresource.baseArrayLayer = desc.dstRange.arrayLayer;
+                texcpy.dstSubresource.layerCount     = 1; // Mimic D3D12 behavior
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdCopyImage( nativeCommandBuffer, desc.hSrcTexture.GetNativeHandle()->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                desc.hDstTexture.GetNativeHandle()->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &texcpy );
+            }
+
+            void VulkanCommandBuffer::CopyBuferToTexture( const CopyBufferTextureDesc& desc )
+            {
+                BGS_ASSERT( desc.hBuffer != ResourceHandle(), "Buffer (desc.hBuffer) must be a valid handle." );
+                BGS_ASSERT( desc.hTexture != ResourceHandle(), "Texture (desc.hTexture) must be a valid handle." );
+                BGS_ASSERT( desc.bufferOffset % 512 == 0, "Buffer offset (desc.bufferOffset) must be 512 aligned." );
+
+                VkBufferImageCopy buffTexCpy;
+                // That means tightly packed
+                buffTexCpy.bufferImageHeight               = 0;
+                buffTexCpy.bufferRowLength                 = 0;
+                buffTexCpy.bufferOffset                    = desc.bufferOffset;
+                buffTexCpy.imageOffset.x                   = desc.textureOffset.x;
+                buffTexCpy.imageOffset.y                   = desc.textureOffset.y;
+                buffTexCpy.imageOffset.z                   = desc.textureOffset.z;
+                buffTexCpy.imageExtent.width               = desc.size.width;
+                buffTexCpy.imageExtent.height              = desc.size.height;
+                buffTexCpy.imageExtent.depth               = desc.size.depth;
+                buffTexCpy.imageSubresource.aspectMask     = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.textureRange.components );
+                buffTexCpy.imageSubresource.mipLevel       = desc.textureRange.mipLevel;
+                buffTexCpy.imageSubresource.baseArrayLayer = desc.textureRange.arrayLayer;
+                buffTexCpy.imageSubresource.layerCount     = 1; // Mimic D3D12 behavior
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdCopyBufferToImage( nativeCommandBuffer, desc.hBuffer.GetNativeHandle()->buffer, desc.hTexture.GetNativeHandle()->image,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &buffTexCpy );
+            }
+
+            void VulkanCommandBuffer::CopyTextureToBuffer( const CopyBufferTextureDesc& desc )
+            {
+                BGS_ASSERT( desc.hBuffer != ResourceHandle(), "Buffer (desc.hBuffer) must be a valid handle." );
+                BGS_ASSERT( desc.hTexture != ResourceHandle(), "Texture (desc.hTexture) must be a valid handle." );
+                BGS_ASSERT( desc.bufferOffset % 512 == 0, "Buffer offset (desc.bufferOffset) must be 512 aligned." );
+
+                VkBufferImageCopy buffTexCpy;
+                // That means tightly packed
+                buffTexCpy.bufferImageHeight               = 0;
+                buffTexCpy.bufferRowLength                 = 0;
+                buffTexCpy.bufferOffset                    = desc.bufferOffset;
+                buffTexCpy.imageOffset.x                   = desc.textureOffset.x;
+                buffTexCpy.imageOffset.y                   = desc.textureOffset.y;
+                buffTexCpy.imageOffset.z                   = desc.textureOffset.z;
+                buffTexCpy.imageExtent.width               = desc.size.width;
+                buffTexCpy.imageExtent.height              = desc.size.height;
+                buffTexCpy.imageExtent.depth               = desc.size.depth;
+                buffTexCpy.imageSubresource.aspectMask     = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.textureRange.components );
+                buffTexCpy.imageSubresource.mipLevel       = desc.textureRange.mipLevel;
+                buffTexCpy.imageSubresource.baseArrayLayer = desc.textureRange.arrayLayer;
+                buffTexCpy.imageSubresource.layerCount     = 1; // Mimic D3D12 behavior
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                vkCmdCopyImageToBuffer( nativeCommandBuffer, desc.hTexture.GetNativeHandle()->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        desc.hBuffer.GetNativeHandle()->buffer, 1, &buffTexCpy );
+            }
+
             void VulkanCommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
             {
                 BGS_ASSERT( handle != PipelineHandle(), "Pipeline (handle) must be a valid handle." );
@@ -441,7 +543,10 @@ namespace BIGOS
                 vkCmdBindDescriptorBuffersEXT( nativeCommandBuffer, heapCount, heaps );
             }
 
-            void VulkanCommandBuffer::SetBindings( const SetBindingsDesc& desc ) { desc; }
+            void VulkanCommandBuffer::SetBindings( const SetBindingsDesc& desc )
+            {
+                desc;
+            }
 
             void VulkanCommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
             {
