@@ -709,6 +709,125 @@ BIGOS::RESULT TexturedQuad::UploadResourceData()
 {
     BGS_ASSERT( m_pQueue );
 
+    BIGOS::Driver::Backend::CommandPoolHandle hCpyPool;
+    BIGOS::Driver::Backend::CommandPoolDesc   cpyPoolDesc;
+    cpyPoolDesc.pQueue = m_pQueue;
+    if( BGS_FAILED( m_pAPIDevice->CreateCommandPool( cpyPoolDesc, &hCpyPool ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    BIGOS::Driver::Backend::ICommandBuffer*   pCpyCmdBuffer = nullptr;
+    BIGOS::Driver::Backend::CommandBufferDesc cpyCmdBufferDesc;
+    cpyCmdBufferDesc.hCommandPool = hCpyPool;
+    cpyCmdBufferDesc.level        = BIGOS::Driver::Backend::CommandBufferLevels::PRIMARY;
+    cpyCmdBufferDesc.pQueue       = m_pQueue;
+    if( BGS_FAILED( m_pAPIDevice->CreateCommandBuffer( cpyCmdBufferDesc, &pCpyCmdBuffer ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    uint64_t                            fenceWaitValue = 1;
+    BIGOS::Driver::Backend::FenceHandle hUploadFence;
+    BIGOS::Driver::Backend::FenceDesc   uploadFenceDesc;
+    uploadFenceDesc.initialValue = 0;
+    if( BGS_FAILED( m_pAPIDevice->CreateFence( uploadFenceDesc, &hUploadFence ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    BIGOS::Driver::Backend::BeginCommandBufferDesc beginCmdBuffDesc;
+    pCpyCmdBuffer->Begin( beginCmdBuffDesc );
+
+    BIGOS::Driver::Backend::CopyBufferDesc cpyBuffDesc;
+    cpyBuffDesc.hSrcBuffer = m_hUploadBuffer;
+    cpyBuffDesc.hDstBuffer = m_hVertexBuffer;
+    cpyBuffDesc.srcOffset  = 0;
+    cpyBuffDesc.dstOffset  = 0;
+    cpyBuffDesc.size       = 4 * 6 * sizeof( float );
+    pCpyCmdBuffer->CopyBuffer( cpyBuffDesc );
+
+    cpyBuffDesc.hDstBuffer = m_hIndexBuffer;
+    cpyBuffDesc.srcOffset  = 4 * 6 * sizeof( float );
+    cpyBuffDesc.size       = 6 * sizeof( uint16_t );
+    pCpyCmdBuffer->CopyBuffer( cpyBuffDesc );
+
+    BIGOS::Driver::Backend::TextureBarrierDesc preCpyBarrier;
+    preCpyBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::NONE );
+    preCpyBarrier.srcAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::NONE );
+    preCpyBarrier.srcLayout    = BIGOS::Driver::Backend::TextureLayouts::UNDEFINED;
+    preCpyBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::TRANSFER );
+    preCpyBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::TRANSFER_DST );
+    preCpyBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::TRANSFER_DST;
+    preCpyBarrier.hResouce     = m_hTexture;
+    preCpyBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
+
+    BIGOS::Driver::Backend::BarierDesc barrier;
+    barrier.textureBarrierCount = 1;
+    barrier.pTextureBarriers    = &preCpyBarrier;
+    barrier.globalBarrierCount  = 0;
+    barrier.pGlobalBarriers     = nullptr;
+    barrier.bufferBarrierCount  = 0;
+    barrier.pBufferBarriers     = nullptr;
+    pCpyCmdBuffer->Barrier( barrier );
+
+    BIGOS::Driver::Backend::CopyBufferTextureDesc cpyBuffTexDesc;
+    cpyBuffTexDesc.hBuffer       = m_hUploadBuffer;
+    cpyBuffTexDesc.hTexture      = m_hTexture;
+    cpyBuffTexDesc.bufferOffset  = 512;
+    cpyBuffTexDesc.textureOffset = { 0, 0, 0 };
+    cpyBuffTexDesc.size          = { 256, 256, 1 };
+    cpyBuffTexDesc.textureFormat = BIGOS::Driver::Backend::Formats::R8G8B8A8_UNORM;
+    cpyBuffTexDesc.textureRange  = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
+    pCpyCmdBuffer->CopyBuferToTexture( cpyBuffTexDesc );
+
+    BIGOS::Driver::Backend::TextureBarrierDesc postCpyBarrier;
+    postCpyBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::TRANSFER );
+    postCpyBarrier.srcAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::TRANSFER_DST );
+    postCpyBarrier.srcLayout    = BIGOS::Driver::Backend::TextureLayouts::TRANSFER_DST;
+    postCpyBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::PIXEL_SHADING );
+    postCpyBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::SHADER_READ_ONLY );
+    postCpyBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::SHADER_READ_ONLY;
+    postCpyBarrier.hResouce     = m_hTexture;
+    postCpyBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
+
+    barrier.pTextureBarriers = &postCpyBarrier;
+    pCpyCmdBuffer->Barrier( barrier );
+
+    pCpyCmdBuffer->End();
+
+    BIGOS::Driver::Backend::QueueSubmitDesc submitDesc;
+    submitDesc.waitSemaphoreCount   = 0;
+    submitDesc.phWaitSemaphores     = nullptr;
+    submitDesc.waitFenceCount       = 0;
+    submitDesc.phWaitFences         = nullptr;
+    submitDesc.pWaitValues          = nullptr;
+    submitDesc.commandBufferCount   = 1;
+    submitDesc.ppCommandBuffers     = &pCpyCmdBuffer;
+    submitDesc.signalSemaphoreCount = 0;
+    submitDesc.phSignalSemaphores   = nullptr;
+    submitDesc.signalFenceCount     = 1;
+    submitDesc.phSignalFences       = &hUploadFence;
+    submitDesc.pSignalValues        = &fenceWaitValue;
+    if( BGS_FAILED( m_pQueue->Submit( submitDesc ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    BIGOS::Driver::Backend::WaitForFencesDesc waitForFenceDesc;
+    waitForFenceDesc.fenceCount  = 1;
+    waitForFenceDesc.pFences     = &hUploadFence;
+    waitForFenceDesc.pWaitValues = &fenceWaitValue;
+    waitForFenceDesc.waitAll     = BIGOS::BGS_FALSE;
+    if( BGS_FAILED( m_pAPIDevice->WaitForFences( waitForFenceDesc, UINT64_MAX ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    m_pAPIDevice->DestroyFence( &hUploadFence );
+    m_pAPIDevice->DestroyCommandBuffer( &pCpyCmdBuffer );
+    m_pAPIDevice->DestroyCommandPool( &hCpyPool );
+
     return BIGOS::Results::OK;
 }
 

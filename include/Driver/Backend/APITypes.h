@@ -1102,10 +1102,10 @@ namespace BIGOS
 
             struct BindingRangeDesc
             {
-                uint32_t             bindingCount;
-                uint32_t             baseBindingSlot;
-                uint32_t             baseShaderRegister;
-                BINDING_TYPE         type;
+                uint32_t     bindingCount;
+                uint32_t     baseBindingSlot;
+                uint32_t     baseShaderRegister;
+                BINDING_TYPE type;
             };
 
             struct BindingSetLayoutDesc
@@ -1144,6 +1144,37 @@ namespace BIGOS
                 PipelineLayoutHandle hPipelineLayout;
                 uint32_t             baseBindingOffset;
                 PIPELINE_TYPE        type;
+            };
+
+            struct CopyBufferDesc
+            {
+                ResourceHandle hSrcBuffer;
+                ResourceHandle hDstBuffer;
+                uint64_t       srcOffset;
+                uint64_t       dstOffset;
+                uint64_t       size;
+            };
+
+            struct CopyTextureDesc
+            {
+                TextureRangeDesc srcRange;
+                TextureRangeDesc dstRange;
+                ResourceHandle   hSrcTexture;
+                ResourceHandle   hDstTexture;
+                Size3D           size;
+                Offset3D         srcOffset;
+                Offset3D         dstOffset;
+            };
+
+            struct CopyBufferTextureDesc
+            {
+                TextureRangeDesc textureRange;
+                ResourceHandle   hBuffer;
+                ResourceHandle   hTexture;
+                Size3D           size;
+                Offset3D         textureOffset;
+                uint64_t         bufferOffset;
+                FORMAT           textureFormat;
             };
 
             enum class QueryTypes : uint8_t
