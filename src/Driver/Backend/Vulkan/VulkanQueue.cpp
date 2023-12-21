@@ -94,7 +94,7 @@ namespace BIGOS
                 submitInfo.pSignalSemaphores    = nativeSignalSemaphores;
                 submitInfo.signalSemaphoreCount = desc.signalFenceCount + desc.signalSemaphoreCount;
 
-                if( vkQueueSubmit( m_handle.GetNativeHandle(), 1, &submitInfo, VK_NULL_HANDLE ) != VK_SUCCESS )
+                if( m_pParent->GetDeviceAPI()->vkQueueSubmit( m_handle.GetNativeHandle(), 1, &submitInfo, VK_NULL_HANDLE ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -120,7 +120,7 @@ namespace BIGOS
 
                 VkDevice nativeDevice = m_pParent->GetHandle().GetNativeHandle();
                 VkQueue  nativeQueue  = VK_NULL_HANDLE;
-                vkGetDeviceQueue( nativeDevice, m_nativeQueueFamilyIndex, m_nativeQueueIndex, &nativeQueue );
+                m_pParent->GetDeviceAPI()->vkGetDeviceQueue( nativeDevice, m_nativeQueueFamilyIndex, m_nativeQueueIndex, &nativeQueue );
                 m_handle = QueueHandle( nativeQueue );
                 QueryQueueLimits();
 

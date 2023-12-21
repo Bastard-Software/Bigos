@@ -265,7 +265,7 @@ namespace BIGOS
                 VkDevice      nativeDevice      = m_handle.GetNativeHandle();
                 VkCommandPool nativeCommandPool = VK_NULL_HANDLE;
 
-                if( vkCreateCommandPool( nativeDevice, &poolInfo, nullptr, &nativeCommandPool ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateCommandPool( nativeDevice, &poolInfo, nullptr, &nativeCommandPool ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -284,7 +284,7 @@ namespace BIGOS
                     VkDevice      nativeDevice      = m_handle.GetNativeHandle();
                     VkCommandPool nativeCommandPool = pHandle->GetNativeHandle();
 
-                    vkDestroyCommandPool( nativeDevice, nativeCommandPool, nullptr );
+                    m_pDeviceAPI->vkDestroyCommandPool( nativeDevice, nativeCommandPool, nullptr );
 
                     *pHandle = CommandPoolHandle();
                 }
@@ -300,7 +300,7 @@ namespace BIGOS
 
                 VkDevice      nativeDevice      = m_handle.GetNativeHandle();
                 VkCommandPool nativeCommandPool = handle.GetNativeHandle();
-                if( vkResetCommandPool( nativeDevice, nativeCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkResetCommandPool( nativeDevice, nativeCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -366,7 +366,7 @@ namespace BIGOS
                 VkDevice       nativeDevice = m_handle.GetNativeHandle();
                 VkShaderModule nativeShader = pHandle->GetNativeHandle();
 
-                if( vkCreateShaderModule( nativeDevice, &shaderInfo, nullptr, &nativeShader ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateShaderModule( nativeDevice, &shaderInfo, nullptr, &nativeShader ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -385,7 +385,7 @@ namespace BIGOS
                     VkDevice       nativeDevice = m_handle.GetNativeHandle();
                     VkShaderModule nativeShader = pHandle->GetNativeHandle();
 
-                    vkDestroyShaderModule( nativeDevice, nativeShader, nullptr );
+                    m_pDeviceAPI->vkDestroyShaderModule( nativeDevice, nativeShader, nullptr );
 
                     *pHandle = ShaderHandle();
                 }
@@ -441,7 +441,7 @@ namespace BIGOS
                 layoutInfo.pushConstantRangeCount = desc.constantRangeCount;
                 layoutInfo.pPushConstantRanges    = constantRanges;
 
-                if( vkCreatePipelineLayout( nativeDevice, &layoutInfo, nullptr, &nativeLayout ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreatePipelineLayout( nativeDevice, &layoutInfo, nullptr, &nativeLayout ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -460,7 +460,7 @@ namespace BIGOS
                     VkDevice         nativeDevice = m_handle.GetNativeHandle();
                     VkPipelineLayout nativeLayout = pHandle->GetNativeHandle();
 
-                    vkDestroyPipelineLayout( nativeDevice, nativeLayout, nullptr );
+                    m_pDeviceAPI->vkDestroyPipelineLayout( nativeDevice, nativeLayout, nullptr );
 
                     *pHandle = PipelineLayoutHandle();
                 }
@@ -522,7 +522,7 @@ namespace BIGOS
                     VkDevice   nativeDevice   = m_handle.GetNativeHandle();
                     VkPipeline nativePipeline = pHandle->GetNativeHandle();
 
-                    vkDestroyPipeline( nativeDevice, nativePipeline, nullptr );
+                    m_pDeviceAPI->vkDestroyPipeline( nativeDevice, nativePipeline, nullptr );
 
                     *pHandle = PipelineHandle();
                 }
@@ -547,7 +547,7 @@ namespace BIGOS
                 VkSemaphore nativeFence  = VK_NULL_HANDLE;
                 VkDevice    nativeDevice = m_handle.GetNativeHandle();
 
-                if( vkCreateSemaphore( nativeDevice, &semaphoreInfo, nullptr, &nativeFence ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateSemaphore( nativeDevice, &semaphoreInfo, nullptr, &nativeFence ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -566,7 +566,7 @@ namespace BIGOS
                     VkDevice    nativeDevice = m_handle.GetNativeHandle();
                     VkSemaphore nativeFence  = pHandle->GetNativeHandle();
 
-                    vkDestroySemaphore( nativeDevice, nativeFence, nullptr );
+                    m_pDeviceAPI->vkDestroySemaphore( nativeDevice, nativeFence, nullptr );
 
                     *pHandle = FenceHandle();
                 }
@@ -601,7 +601,7 @@ namespace BIGOS
                 waitInfo.pValues        = waitVals;
 
                 VkDevice nativeDevice = m_handle.GetNativeHandle();
-                VkResult result       = vkWaitSemaphores( nativeDevice, &waitInfo, timeout );
+                VkResult result       = m_pDeviceAPI->vkWaitSemaphores( nativeDevice, &waitInfo, timeout );
 
                 if( result == VK_TIMEOUT )
                 {
@@ -632,7 +632,7 @@ namespace BIGOS
                 signalInfo.semaphore = nativeFence;
                 signalInfo.value     = value;
 
-                if( vkSignalSemaphore( nativeDevice, &signalInfo ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkSignalSemaphore( nativeDevice, &signalInfo ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -651,7 +651,7 @@ namespace BIGOS
                 VkSemaphore nativeFence  = handle.GetNativeHandle();
                 VkDevice    nativeDevice = m_handle.GetNativeHandle();
 
-                if( vkGetSemaphoreCounterValue( nativeDevice, nativeFence, pValue ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkGetSemaphoreCounterValue( nativeDevice, nativeFence, pValue ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -672,7 +672,7 @@ namespace BIGOS
                 VkDevice    nativeDevice    = m_handle.GetNativeHandle();
                 VkSemaphore nativeSemaphore = VK_NULL_HANDLE;
 
-                if( vkCreateSemaphore( nativeDevice, &semaphoreInfo, nullptr, &nativeSemaphore ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateSemaphore( nativeDevice, &semaphoreInfo, nullptr, &nativeSemaphore ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -691,7 +691,7 @@ namespace BIGOS
                     VkDevice    nativeDevice    = m_handle.GetNativeHandle();
                     VkSemaphore nativeSemaphore = pHandle->GetNativeHandle();
 
-                    vkDestroySemaphore( nativeDevice, nativeSemaphore, nullptr );
+                    m_pDeviceAPI->vkDestroySemaphore( nativeDevice, nativeSemaphore, nullptr );
 
                     *pHandle = SemaphoreHandle();
                 }
@@ -731,7 +731,7 @@ namespace BIGOS
                 allocInfo.allocationSize  = desc.size;
                 allocInfo.memoryTypeIndex = ndx;
 
-                if( vkAllocateMemory( nativeDevice, &allocInfo, nullptr, &pNativeMem->nativeMemory ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkAllocateMemory( nativeDevice, &allocInfo, nullptr, &pNativeMem->nativeMemory ) != VK_SUCCESS )
                 {
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeMem );
                     return Results::FAIL;
@@ -740,9 +740,10 @@ namespace BIGOS
                 // Maping memory for futer use i9n D3D12 behaviour emulation
                 if( nativePropsFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT )
                 {
-                    if( vkMapMemory( nativeDevice, pNativeMem->nativeMemory, 0, VK_WHOLE_SIZE, 0, &pNativeMem->pHostMemory ) != VK_SUCCESS )
+                    if( m_pDeviceAPI->vkMapMemory( nativeDevice, pNativeMem->nativeMemory, 0, VK_WHOLE_SIZE, 0, &pNativeMem->pHostMemory ) !=
+                        VK_SUCCESS )
                     {
-                        vkFreeMemory( nativeDevice, pNativeMem->nativeMemory, nullptr );
+                        m_pDeviceAPI->vkFreeMemory( nativeDevice, pNativeMem->nativeMemory, nullptr );
                         Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeMem );
                         return Results::FAIL;
                     }
@@ -762,7 +763,7 @@ namespace BIGOS
                     VkDevice      nativeDevice = m_handle.GetNativeHandle();
                     VulkanMemory* pNativeMem   = pHandle->GetNativeHandle();
 
-                    vkFreeMemory( nativeDevice, pNativeMem->nativeMemory, nullptr );
+                    m_pDeviceAPI->vkFreeMemory( nativeDevice, pNativeMem->nativeMemory, nullptr );
 
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeMem );
 
@@ -820,11 +821,11 @@ namespace BIGOS
 
                     if( pNativeRes->type == VulkanResourceTypes::BUFFER )
                     {
-                        vkDestroyBuffer( nativeDevice, pNativeRes->buffer, nullptr );
+                        m_pDeviceAPI->vkDestroyBuffer( nativeDevice, pNativeRes->buffer, nullptr );
                     }
                     else // Images
                     {
-                        vkDestroyImage( nativeDevice, pNativeRes->image, nullptr );
+                        m_pDeviceAPI->vkDestroyImage( nativeDevice, pNativeRes->image, nullptr );
                     }
 
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeRes );
@@ -850,14 +851,14 @@ namespace BIGOS
                 VkDeviceMemory  nativeMem    = desc.hMemory.GetNativeHandle()->nativeMemory;
                 if( pRes->type == VulkanResourceTypes::BUFFER )
                 {
-                    if( vkBindBufferMemory( nativeDevice, pRes->buffer, nativeMem, desc.memoryOffset ) != VK_SUCCESS )
+                    if( m_pDeviceAPI->vkBindBufferMemory( nativeDevice, pRes->buffer, nativeMem, desc.memoryOffset ) != VK_SUCCESS )
                     {
                         return Results::FAIL;
                     }
                 }
                 else // Images
                 {
-                    if( vkBindImageMemory( nativeDevice, pRes->image, nativeMem, desc.memoryOffset ) != VK_SUCCESS )
+                    if( m_pDeviceAPI->vkBindImageMemory( nativeDevice, pRes->image, nativeMem, desc.memoryOffset ) != VK_SUCCESS )
                     {
                         return Results::FAIL;
                     }
@@ -883,11 +884,11 @@ namespace BIGOS
 
                     if( pRes->type == VulkanResourceTypes::IMAGE )
                     {
-                        vkGetImageMemoryRequirements( nativeDevice, pRes->image, &memRequirements );
+                        m_pDeviceAPI->vkGetImageMemoryRequirements( nativeDevice, pRes->image, &memRequirements );
                     }
                     else // Buffer
                     {
-                        vkGetBufferMemoryRequirements( nativeDevice, pRes->buffer, &memRequirements );
+                        m_pDeviceAPI->vkGetBufferMemoryRequirements( nativeDevice, pRes->buffer, &memRequirements );
                     }
 
                     pInfo->alignment = memRequirements.alignment;
@@ -918,7 +919,7 @@ namespace BIGOS
                     subresource.arrayLayer = desc.textureRange.arrayLayer;
                     subresource.mipLevel   = desc.textureRange.mipLevel;
 
-                    vkGetImageSubresourceLayout( nativeDevice, nativeImage, &subresource, &subresourceLayout );
+                    m_pDeviceAPI->vkGetImageSubresourceLayout( nativeDevice, nativeImage, &subresource, &subresourceLayout );
 
                     // Note that subresourceLayout.offset is offset from begining of resource
                     offset += subresourceLayout.offset;
@@ -937,7 +938,7 @@ namespace BIGOS
                 nativeMemRange.size   = size;
                 nativeMemRange.offset = offset;
 
-                if( vkInvalidateMappedMemoryRanges( nativeDevice, 1, &nativeMemRange ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkInvalidateMappedMemoryRanges( nativeDevice, 1, &nativeMemRange ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -971,7 +972,7 @@ namespace BIGOS
                     subresource.arrayLayer = desc.textureRange.arrayLayer;
                     subresource.mipLevel   = desc.textureRange.mipLevel;
 
-                    vkGetImageSubresourceLayout( nativeDevice, nativeImage, &subresource, &subresourceLayout );
+                    m_pDeviceAPI->vkGetImageSubresourceLayout( nativeDevice, nativeImage, &subresource, &subresourceLayout );
 
                     // Note that subresourceLayout.offset is offset from begining of resource
                     offset += subresourceLayout.offset;
@@ -990,7 +991,7 @@ namespace BIGOS
                 nativeMemRange.size   = size;
                 nativeMemRange.offset = offset;
 
-                if( vkFlushMappedMemoryRanges( nativeDevice, 1, &nativeMemRange ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkFlushMappedMemoryRanges( nativeDevice, 1, &nativeMemRange ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -1032,7 +1033,7 @@ namespace BIGOS
                     viewInfo.subresourceRange.baseArrayLayer = texDesc.range.arrayLayer;
                     viewInfo.subresourceRange.layerCount     = texDesc.range.arrayLayerCount;
 
-                    if( vkCreateImageView( nativeDevice, &viewInfo, nullptr, &nativeView ) != VK_SUCCESS )
+                    if( m_pDeviceAPI->vkCreateImageView( nativeDevice, &viewInfo, nullptr, &nativeView ) != VK_SUCCESS )
                     {
                         return Results::FAIL;
                     }
@@ -1043,7 +1044,7 @@ namespace BIGOS
                         const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.sampledTextureBindingSize );
                         if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
                         {
-                            vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                            m_pDeviceAPI->vkDestroyImageView( nativeDevice, nativeView, nullptr );
                             return Results::NO_MEMORY;
                         }
                         pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
@@ -1061,14 +1062,14 @@ namespace BIGOS
                         getInfo.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                         getInfo.data.pSampledImage = &imageInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.sampledTextureBindingSize, pResView->pDescriptorData );
+                        m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.sampledTextureBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXTURE ) )
                     {
                         const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.storageTextureBindingSize );
                         if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock, blockSize ) ) )
                         {
-                            vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                            m_pDeviceAPI->vkDestroyImageView( nativeDevice, nativeView, nullptr );
                             return Results::NO_MEMORY;
                         }
                         pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
@@ -1086,14 +1087,14 @@ namespace BIGOS
                         getInfo.type               = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                         getInfo.data.pStorageImage = &imageInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.storageTextureBindingSize, pResView->pDescriptorData );
+                        m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.storageTextureBindingSize, pResView->pDescriptorData );
                     }
                     else // Handling render target and depth stencil view
                     {
                         if( BGS_FAILED( Core::Memory::AllocateBytes( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock,
                                                                      sizeof( VulkanResourceView ) ) ) )
                         {
-                            vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                            m_pDeviceAPI->vkDestroyImageView( nativeDevice, nativeView, nullptr );
                             return Results::NO_MEMORY;
                         }
                         pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
@@ -1125,7 +1126,7 @@ namespace BIGOS
                         VkDescriptorAddressInfoEXT buffInfo;
                         buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
                         buffInfo.pNext   = nullptr;
-                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
                         buffInfo.format  = MapBigosFormatToVulkanFormat( buffDesc.format );
 
@@ -1135,7 +1136,8 @@ namespace BIGOS
                         getInfo.type                     = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
                         getInfo.data.pUniformTexelBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.constantTexelBufferBindingSize, pResView->pDescriptorData );
+                        m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.constantTexelBufferBindingSize,
+                                                          pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXEL_BUFFER ) )
                     {
@@ -1157,7 +1159,7 @@ namespace BIGOS
                         VkDescriptorAddressInfoEXT buffInfo;
                         buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
                         buffInfo.pNext   = nullptr;
-                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
                         buffInfo.format  = MapBigosFormatToVulkanFormat( buffDesc.format );
 
@@ -1167,7 +1169,7 @@ namespace BIGOS
                         getInfo.type                     = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
                         getInfo.data.pStorageTexelBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.storageTexelBufferBindingSize, pResView->pDescriptorData );
+                        m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.storageTexelBufferBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::CONSTANT_BUFFER ) )
                     {
@@ -1189,7 +1191,7 @@ namespace BIGOS
                         VkDescriptorAddressInfoEXT buffInfo;
                         buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
                         buffInfo.pNext   = nullptr;
-                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
 
                         VkDescriptorGetInfoEXT getInfo;
@@ -1198,7 +1200,7 @@ namespace BIGOS
                         getInfo.type                = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                         getInfo.data.pUniformBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.constantBufferBindingSize, pResView->pDescriptorData );
+                        m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.constantBufferBindingSize, pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) )
                     {
@@ -1220,7 +1222,7 @@ namespace BIGOS
                         VkDescriptorAddressInfoEXT buffInfo;
                         buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
                         buffInfo.pNext   = nullptr;
-                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
 
                         VkDescriptorGetInfoEXT getInfo;
@@ -1229,7 +1231,8 @@ namespace BIGOS
                         getInfo.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                         getInfo.data.pStorageBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.readOnlyStorageBufferBindingSize, pResView->pDescriptorData );
+                        m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.readOnlyStorageBufferBindingSize,
+                                                          pResView->pDescriptorData );
                     }
                     else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
                     {
@@ -1251,7 +1254,7 @@ namespace BIGOS
                         VkDescriptorAddressInfoEXT buffInfo;
                         buffInfo.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
                         buffInfo.pNext   = nullptr;
-                        buffInfo.address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
+                        buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
 
                         VkDescriptorGetInfoEXT getInfo;
@@ -1260,7 +1263,8 @@ namespace BIGOS
                         getInfo.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                         getInfo.data.pStorageBuffer = &buffInfo;
 
-                        vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.readWriteStorageBufferBindingSize, pResView->pDescriptorData );
+                        m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.readWriteStorageBufferBindingSize,
+                                                          pResView->pDescriptorData );
                     }
                 }
 
@@ -1281,7 +1285,7 @@ namespace BIGOS
                         VkDevice    nativeDevice = m_handle.GetNativeHandle();
                         VkImageView nativeView   = pNativeView->imageView;
 
-                        vkDestroyImageView( nativeDevice, nativeView, nullptr );
+                        m_pDeviceAPI->vkDestroyImageView( nativeDevice, nativeView, nullptr );
                     }
 
                     Core::Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeView );
@@ -1353,7 +1357,7 @@ namespace BIGOS
                                                                                     : VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
                 samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-                if( vkCreateSampler( nativeDevice, &samplerInfo, nullptr, &nativeSampler ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateSampler( nativeDevice, &samplerInfo, nullptr, &nativeSampler ) != VK_SUCCESS )
                 {
                     Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pBlock );
                     return Results::FAIL;
@@ -1372,7 +1376,7 @@ namespace BIGOS
                     getInfo.type          = VK_DESCRIPTOR_TYPE_SAMPLER;
                     getInfo.data.pSampler = &nativeSampler;
 
-                    vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.samplerBindingSize, pSampler->pDescriptorData );
+                    m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.samplerBindingSize, pSampler->pDescriptorData );
                 }
                 else
                 {
@@ -1393,7 +1397,7 @@ namespace BIGOS
                     VkDevice       nativeDevice = m_handle.GetNativeHandle();
                     VulkanSampler* pSampler     = pHandle->GetNativeHandle();
 
-                    vkDestroySampler( nativeDevice, pSampler->sampler, nullptr );
+                    m_pDeviceAPI->vkDestroySampler( nativeDevice, pSampler->sampler, nullptr );
                     Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pSampler );
 
                     *pHandle = SamplerHandle();
@@ -1432,7 +1436,7 @@ namespace BIGOS
                 layoutInfo.pBindings    = layoutBindings;
                 layoutInfo.bindingCount = desc.bindingRangeCount;
 
-                if( vkCreateDescriptorSetLayout( nativeDevice, &layoutInfo, nullptr, &nativeLayout ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateDescriptorSetLayout( nativeDevice, &layoutInfo, nullptr, &nativeLayout ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -1451,7 +1455,7 @@ namespace BIGOS
                     VkDevice              nativeDevice = m_handle.GetNativeHandle();
                     VkDescriptorSetLayout nativeLayout = pHandle->GetNativeHandle();
 
-                    vkDestroyDescriptorSetLayout( nativeDevice, nativeLayout, nullptr );
+                    m_pDeviceAPI->vkDestroyDescriptorSetLayout( nativeDevice, nativeLayout, nullptr );
 
                     *pHandle = BindingSetLayoutHandle();
                 }
@@ -1489,7 +1493,7 @@ namespace BIGOS
                 buffInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
                 buffInfo.pQueueFamilyIndices   = qFamNdx;
 
-                if( vkCreateBuffer( nativeDevice, &buffInfo, nullptr, &nativeHeap ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateBuffer( nativeDevice, &buffInfo, nullptr, &nativeHeap ) != VK_SUCCESS )
                 {
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
                     return Results::FAIL;
@@ -1499,13 +1503,13 @@ namespace BIGOS
                 BGS_ASSERT( memNdx != MAX_UINT32 );
                 if( memNdx == MAX_UINT32 )
                 {
-                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    m_pDeviceAPI->vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
                     return Results::NO_MEMORY;
                 }
 
                 VkMemoryRequirements memRequirements;
-                vkGetBufferMemoryRequirements( nativeDevice, nativeHeap, &memRequirements );
+                m_pDeviceAPI->vkGetBufferMemoryRequirements( nativeDevice, nativeHeap, &memRequirements );
 
                 VkMemoryAllocateFlagsInfo allocFlags;
                 allocFlags.sType      = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
@@ -1519,18 +1523,18 @@ namespace BIGOS
                 allocInfo.memoryTypeIndex = memNdx;
                 allocInfo.allocationSize  = memRequirements.size;
 
-                if( vkAllocateMemory( nativeDevice, &allocInfo, nullptr, &nativeMemory ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkAllocateMemory( nativeDevice, &allocInfo, nullptr, &nativeMemory ) != VK_SUCCESS )
                 {
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
-                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    m_pDeviceAPI->vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
                     return Results::NO_MEMORY;
                 }
 
-                if( vkBindBufferMemory( nativeDevice, nativeHeap, nativeMemory, 0 ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkBindBufferMemory( nativeDevice, nativeHeap, nativeMemory, 0 ) != VK_SUCCESS )
                 {
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
-                    vkFreeMemory( nativeDevice, nativeMemory, nullptr );
-                    vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    m_pDeviceAPI->vkFreeMemory( nativeDevice, nativeMemory, nullptr );
+                    m_pDeviceAPI->vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
                     return Results::FAIL;
                 }
 
@@ -1541,7 +1545,7 @@ namespace BIGOS
 
                 pHeap->buffer  = nativeHeap;
                 pHeap->memory  = nativeMemory;
-                pHeap->address = vkGetBufferDeviceAddress( nativeDevice, &addressInfo );
+                pHeap->address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo );
                 pHeap->flags   = buffInfo.usage;
 
                 *pHandle = BindingHeapHandle( pHeap );
@@ -1558,8 +1562,8 @@ namespace BIGOS
                     VulkanBindingHeap* pHeap        = pHandle->GetNativeHandle();
                     VkDevice           nativeDevice = m_handle.GetNativeHandle();
 
-                    vkDestroyBuffer( nativeDevice, pHeap->buffer, nullptr );
-                    vkFreeMemory( nativeDevice, pHeap->memory, nullptr );
+                    m_pDeviceAPI->vkDestroyBuffer( nativeDevice, pHeap->buffer, nullptr );
+                    m_pDeviceAPI->vkFreeMemory( nativeDevice, pHeap->memory, nullptr );
 
                     Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
 
@@ -1576,7 +1580,7 @@ namespace BIGOS
                 VkDevice              nativeDevice = m_handle.GetNativeHandle();
                 VkDescriptorSetLayout nativeLayout = desc.hBindingSetLayout.GetNativeHandle();
 
-                vkGetDescriptorSetLayoutBindingOffsetEXT( nativeDevice, nativeLayout, desc.bindingNdx, pOffset );
+                m_pDeviceAPI->vkGetDescriptorSetLayoutBindingOffsetEXT( nativeDevice, nativeLayout, desc.bindingNdx, pOffset );
             }
 
             void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
@@ -1612,7 +1616,7 @@ namespace BIGOS
                     VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT |
                     VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
 
-                if( vkCreateQueryPool( nativeDevice, &poolInfo, nullptr, &nativePool ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateQueryPool( nativeDevice, &poolInfo, nullptr, &nativePool ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -1631,7 +1635,7 @@ namespace BIGOS
                     VkDevice    nativeDevice = m_handle.GetNativeHandle();
                     VkQueryPool nativePool   = pHandle->GetNativeHandle();
 
-                    vkDestroyQueryPool( nativeDevice, nativePool, nullptr );
+                    m_pDeviceAPI->vkDestroyQueryPool( nativeDevice, nativePool, nullptr );
 
                     *pHandle = QueryPoolHandle();
                 }
@@ -1664,8 +1668,12 @@ namespace BIGOS
                 if( m_handle != DeviceHandle() )
                 {
                     VkDevice nativeDevice = m_handle.GetNativeHandle();
-                    vkDestroyDevice( nativeDevice, nullptr );
-                    // m_deviceAPI.vkDestroyDevice( nativeDevice, nullptr );
+                    m_pDeviceAPI->vkDestroyDevice( nativeDevice, nullptr );
+                }
+
+                if( m_pDeviceAPI != nullptr )
+                {
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &m_pDeviceAPI );
                 }
 
                 for( index_t ndx = 0; ndx < m_queueProperties.size(); ++ndx )
@@ -1711,6 +1719,11 @@ namespace BIGOS
                     return Results::NOT_FOUND;
                 }
 
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &m_pDeviceAPI ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
                 VkDeviceCreateInfo devInfo;
                 devInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
                 devInfo.pNext                   = deviceFeaturesHelper.GetExtChain();
@@ -1727,9 +1740,9 @@ namespace BIGOS
                 {
                     return Results::FAIL;
                 }
-                // TODO: Change to volkLOadDeviceTable() not working right now (24.07.2023)
-                // volkLoadDeviceTable( &m_deviceAPI, nativeDevice );
-                volkLoadDevice( nativeDevice );
+
+                BGS_ASSERT( m_pDeviceAPI != nullptr );
+                volkLoadDeviceTable( m_pDeviceAPI, nativeDevice );
 
                 // Geting needed internals
                 m_heapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
@@ -1988,7 +2001,8 @@ namespace BIGOS
                 VkPipeline nativePipeline = VK_NULL_HANDLE;
 
                 // TODO: Handle cached pso
-                if( vkCreateGraphicsPipelines( nativeDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &nativePipeline ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateGraphicsPipelines( nativeDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &nativePipeline ) !=
+                    VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -2013,7 +2027,7 @@ namespace BIGOS
                 VkPipeline nativePipeline = VK_NULL_HANDLE;
 
                 // TODO: Handle cached pso
-                if( vkCreateComputePipelines( nativeDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &nativePipeline ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateComputePipelines( nativeDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &nativePipeline ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -2039,7 +2053,7 @@ namespace BIGOS
                 buffInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
                 buffInfo.pQueueFamilyIndices   = qFamNdx;
 
-                if( vkCreateBuffer( nativeDevice, &buffInfo, nullptr, pBuff ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateBuffer( nativeDevice, &buffInfo, nullptr, pBuff ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -2072,7 +2086,7 @@ namespace BIGOS
                 imgInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
                 imgInfo.pQueueFamilyIndices   = qFamNdx;
 
-                if( vkCreateImage( nativeDevice, &imgInfo, nullptr, pImg ) != VK_SUCCESS )
+                if( m_pDeviceAPI->vkCreateImage( nativeDevice, &imgInfo, nullptr, pImg ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -2086,7 +2100,7 @@ namespace BIGOS
 
                 uint32_t familyCount = 0;
                 vkGetPhysicalDeviceQueueFamilyProperties( nativeAdapter, &familyCount, nullptr );
-                VkQueueFamilyProperties nativeProps[ 5 ];   // Max number of queue families is 5 for current hardware
+                VkQueueFamilyProperties nativeProps[ 5 ]; // Max number of queue families is 5 for current hardware
                 vkGetPhysicalDeviceQueueFamilyProperties( nativeAdapter, &familyCount, nativeProps );
                 m_queueProperties.resize( familyCount );
 

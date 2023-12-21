@@ -92,7 +92,8 @@ namespace BIGOS
                 RESULT FindSuitableQueue( QUEUE_TYPE type, QUEUE_PRIORITY_TYPE prio, uint32_t* familyIndex, uint32_t* queueIndex );
                 void   FreeNativeQueue( uint32_t familyIndex, uint32_t queueIndex );
 
-                BGS_FORCEINLINE VulkanFactory* GetParent() const { return m_pParent; }
+                BGS_FORCEINLINE VulkanFactory*   GetParent() const { return m_pParent; }
+                BGS_FORCEINLINE VolkDeviceTable* GetDeviceAPI() { return m_pDeviceAPI; }
 
             protected:
                 RESULT Create( const DeviceDesc& desc, VulkanFactory* pFactory );
@@ -115,7 +116,7 @@ namespace BIGOS
                 VulkanHeapProperties  m_heapProperties;
                 VulkanFactory*        m_pParent     = nullptr;
                 uint64_t              m_bindingSize = 0;
-                // VolkDeviceTable m_deviceAPI;
+                VolkDeviceTable*      m_pDeviceAPI;
             };
         } // namespace Backend
     }     // namespace Driver
