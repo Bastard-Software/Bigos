@@ -36,7 +36,7 @@ namespace BIGOS
                 VkDevice        nativeDevice        = m_pParent->GetHandle().GetNativeHandle();
                 VkCommandBuffer nativeCommandBuffer = VK_NULL_HANDLE;
 
-                if( vkAllocateCommandBuffers( nativeDevice, &allocateInfo, &nativeCommandBuffer ) != VK_SUCCESS )
+                if( m_pParent->GetDeviceAPI()->vkAllocateCommandBuffers( nativeDevice, &allocateInfo, &nativeCommandBuffer ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -55,7 +55,7 @@ namespace BIGOS
                     VkDevice        nativeDevice        = m_pParent->GetHandle().GetNativeHandle();
                     VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                    vkFreeCommandBuffers( nativeDevice, m_desc.hCommandPool.GetNativeHandle(), 1, &nativeCommandBuffer );
+                    m_pParent->GetDeviceAPI()->vkFreeCommandBuffers( nativeDevice, m_desc.hCommandPool.GetNativeHandle(), 1, &nativeCommandBuffer );
                 }
 
                 m_pParent = nullptr;
@@ -74,21 +74,21 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkBeginCommandBuffer( nativeCommandBuffer, &beginInfo );
+                m_pParent->GetDeviceAPI()->vkBeginCommandBuffer( nativeCommandBuffer, &beginInfo );
             }
 
             void VulkanCommandBuffer::End()
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkEndCommandBuffer( nativeCommandBuffer );
+                m_pParent->GetDeviceAPI()->vkEndCommandBuffer( nativeCommandBuffer );
             }
 
             void VulkanCommandBuffer::Reset()
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkResetCommandBuffer( nativeCommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+                m_pParent->GetDeviceAPI()->vkResetCommandBuffer( nativeCommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
             }
 
             void VulkanCommandBuffer::BeginRendering( const BeginRenderingDesc& desc )
@@ -154,14 +154,14 @@ namespace BIGOS
                 renderingInfo.pDepthAttachment         = pDSV;
                 renderingInfo.pStencilAttachment       = pDSV;
 
-                vkCmdBeginRendering( nativeCommandBuffer, &renderingInfo );
+                m_pParent->GetDeviceAPI()->vkCmdBeginRendering( nativeCommandBuffer, &renderingInfo );
             }
 
             void VulkanCommandBuffer::EndRendering()
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdEndRendering( nativeCommandBuffer );
+                m_pParent->GetDeviceAPI()->vkCmdEndRendering( nativeCommandBuffer );
             }
 
             void VulkanCommandBuffer::ClearBoundColorRenderTarget( uint32_t index, const ColorValue& clearValue, uint32_t rectCount,
@@ -194,7 +194,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdClearAttachments( nativeCommandBuffer, 1, &target, rectCount, rects );
+                m_pParent->GetDeviceAPI()->vkCmdClearAttachments( nativeCommandBuffer, 1, &target, rectCount, rects );
             }
 
             void VulkanCommandBuffer::ClearBoundDepthStencilTarget( const DepthStencilValue& clearValue, TextureComponentFlags components,
@@ -226,7 +226,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdClearAttachments( nativeCommandBuffer, 1, &target, rectCount, rects );
+                m_pParent->GetDeviceAPI()->vkCmdClearAttachments( nativeCommandBuffer, 1, &target, rectCount, rects );
             }
 
             void VulkanCommandBuffer::SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports )
@@ -253,7 +253,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdSetViewportWithCount( nativeCommandBuffer, viewportCount, viewports );
+                m_pParent->GetDeviceAPI()->vkCmdSetViewportWithCount( nativeCommandBuffer, viewportCount, viewports );
             }
 
             void VulkanCommandBuffer::SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )
@@ -264,14 +264,16 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdSetScissorWithCount( nativeCommandBuffer, scissorCount, reinterpret_cast<const VkRect2D*>( pScissors ) );
+                m_pParent->GetDeviceAPI()->vkCmdSetScissorWithCount( nativeCommandBuffer, scissorCount,
+                                                                     reinterpret_cast<const VkRect2D*>( pScissors ) );
             }
 
             void VulkanCommandBuffer::SetPrimitiveTopology( PRIMITIVE_TOPOLOGY topology )
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdSetPrimitiveTopology( nativeCommandBuffer, MapBigosPrimitiveTopologyToVulkanPrimitiveTopology( topology ) );
+                m_pParent->GetDeviceAPI()->vkCmdSetPrimitiveTopology( nativeCommandBuffer,
+                                                                      MapBigosPrimitiveTopologyToVulkanPrimitiveTopology( topology ) );
             }
 
             void VulkanCommandBuffer::SetVertexBuffers( uint32_t startBinding, uint32_t bufferCount, const VertexBufferDesc* pVertexBuffers )
@@ -299,29 +301,32 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdBindVertexBuffers2( nativeCommandBuffer, startBinding, bufferCount, buffers, offsets, sizes, strides );
+                m_pParent->GetDeviceAPI()->vkCmdBindVertexBuffers2( nativeCommandBuffer, startBinding, bufferCount, buffers, offsets, sizes,
+                                                                    strides );
             }
 
             void VulkanCommandBuffer::SetIndexBuffer( const IndexBufferDesc& desc )
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdBindIndexBuffer( nativeCommandBuffer, desc.hIndexBuffer.GetNativeHandle()->buffer, desc.offset,
-                                      MapBigosIndexTypeToVulkanIndexType( desc.indexType ) );
+                m_pParent->GetDeviceAPI()->vkCmdBindIndexBuffer( nativeCommandBuffer, desc.hIndexBuffer.GetNativeHandle()->buffer, desc.offset,
+                                                                 MapBigosIndexTypeToVulkanIndexType( desc.indexType ) );
             }
 
             void VulkanCommandBuffer::Draw( const DrawDesc& desc )
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdDraw( nativeCommandBuffer, desc.vertexCount, desc.instanceCount, desc.firstVertex, desc.firstInstance );
+                m_pParent->GetDeviceAPI()->vkCmdDraw( nativeCommandBuffer, desc.vertexCount, desc.instanceCount, desc.firstVertex,
+                                                      desc.firstInstance );
             }
 
             void VulkanCommandBuffer::DrawIndexed( const DrawDesc& desc )
             {
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdDrawIndexed( nativeCommandBuffer, desc.indexCount, desc.instanceCount, desc.firstIndex, desc.vertexOffset, desc.firstInstance );
+                m_pParent->GetDeviceAPI()->vkCmdDrawIndexed( nativeCommandBuffer, desc.indexCount, desc.instanceCount, desc.firstIndex,
+                                                             desc.vertexOffset, desc.firstInstance );
             }
 
             void VulkanCommandBuffer::Barrier( const BarierDesc& desc )
@@ -408,7 +413,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdPipelineBarrier2( nativeCommandBuffer, &info );
+                m_pParent->GetDeviceAPI()->vkCmdPipelineBarrier2( nativeCommandBuffer, &info );
             }
 
             void VulkanCommandBuffer::CopyBuffer( const CopyBufferDesc& desc )
@@ -423,8 +428,8 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdCopyBuffer( nativeCommandBuffer, desc.hSrcBuffer.GetNativeHandle()->buffer, desc.hDstBuffer.GetNativeHandle()->buffer, 1,
-                                 &buffCpy );
+                m_pParent->GetDeviceAPI()->vkCmdCopyBuffer( nativeCommandBuffer, desc.hSrcBuffer.GetNativeHandle()->buffer,
+                                                            desc.hDstBuffer.GetNativeHandle()->buffer, 1, &buffCpy );
             }
 
             void VulkanCommandBuffer::CopyTexture( const CopyTextureDesc& desc )
@@ -453,8 +458,9 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdCopyImage( nativeCommandBuffer, desc.hSrcTexture.GetNativeHandle()->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                desc.hDstTexture.GetNativeHandle()->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &texcpy );
+                m_pParent->GetDeviceAPI()->vkCmdCopyImage( nativeCommandBuffer, desc.hSrcTexture.GetNativeHandle()->image,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, desc.hDstTexture.GetNativeHandle()->image,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &texcpy );
             }
 
             void VulkanCommandBuffer::CopyBuferToTexture( const CopyBufferTextureDesc& desc )
@@ -481,8 +487,9 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdCopyBufferToImage( nativeCommandBuffer, desc.hBuffer.GetNativeHandle()->buffer, desc.hTexture.GetNativeHandle()->image,
-                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &buffTexCpy );
+                m_pParent->GetDeviceAPI()->vkCmdCopyBufferToImage( nativeCommandBuffer, desc.hBuffer.GetNativeHandle()->buffer,
+                                                                   desc.hTexture.GetNativeHandle()->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                                                                   &buffTexCpy );
             }
 
             void VulkanCommandBuffer::CopyTextureToBuffer( const CopyBufferTextureDesc& desc )
@@ -509,8 +516,9 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdCopyImageToBuffer( nativeCommandBuffer, desc.hTexture.GetNativeHandle()->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                        desc.hBuffer.GetNativeHandle()->buffer, 1, &buffTexCpy );
+                m_pParent->GetDeviceAPI()->vkCmdCopyImageToBuffer( nativeCommandBuffer, desc.hTexture.GetNativeHandle()->image,
+                                                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, desc.hBuffer.GetNativeHandle()->buffer, 1,
+                                                                   &buffTexCpy );
             }
 
             void VulkanCommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
@@ -519,7 +527,8 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdBindPipeline( nativeCommandBuffer, MapBigosPipelineTypeToVulkanPipelineBindPoint( type ), handle.GetNativeHandle() );
+                m_pParent->GetDeviceAPI()->vkCmdBindPipeline( nativeCommandBuffer, MapBigosPipelineTypeToVulkanPipelineBindPoint( type ),
+                                                              handle.GetNativeHandle() );
             }
 
             void VulkanCommandBuffer::SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle )
@@ -540,7 +549,7 @@ namespace BIGOS
                     currBuff.usage   = pDesc->flags;
                 }
 
-                vkCmdBindDescriptorBuffersEXT( nativeCommandBuffer, heapCount, heaps );
+                m_pParent->GetDeviceAPI()->vkCmdBindDescriptorBuffersEXT( nativeCommandBuffer, heapCount, heaps );
             }
 
             void VulkanCommandBuffer::SetBindings( const SetBindingsDesc& desc )
@@ -555,7 +564,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdBeginQuery( nativeCommandBuffer, handle.GetNativeHandle(), queryNdx, 0 );
+                m_pParent->GetDeviceAPI()->vkCmdBeginQuery( nativeCommandBuffer, handle.GetNativeHandle(), queryNdx, 0 );
             }
 
             void VulkanCommandBuffer::EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
@@ -565,7 +574,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdEndQuery( nativeCommandBuffer, handle.GetNativeHandle(), queryNdx );
+                m_pParent->GetDeviceAPI()->vkCmdEndQuery( nativeCommandBuffer, handle.GetNativeHandle(), queryNdx );
             }
 
             void VulkanCommandBuffer::Timestamp( QueryPoolHandle handle, uint32_t queryNdx )
@@ -576,7 +585,8 @@ namespace BIGOS
 
                 // pipelineStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT - that means that timestamp will be written when all previous commands reach
                 // bottom of the pipe stage. That is exactly the same as in D3D12.
-                vkCmdWriteTimestamp( nativeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, handle.GetNativeHandle(), queryNdx );
+                m_pParent->GetDeviceAPI()->vkCmdWriteTimestamp( nativeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, handle.GetNativeHandle(),
+                                                                queryNdx );
             }
 
             void VulkanCommandBuffer::ResetQueryPool( QueryPoolHandle handle, uint32_t firstQuery, uint32_t queryCount )
@@ -585,7 +595,7 @@ namespace BIGOS
 
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
-                vkCmdResetQueryPool( nativeCommandBuffer, handle.GetNativeHandle(), firstQuery, queryCount );
+                m_pParent->GetDeviceAPI()->vkCmdResetQueryPool( nativeCommandBuffer, handle.GetNativeHandle(), firstQuery, queryCount );
             }
 
             void VulkanCommandBuffer::CopyQueryResults( const CopyQueryResultsDesc& desc )
@@ -598,8 +608,9 @@ namespace BIGOS
                 // Hardcoded params:
                 //      stride = sizeof( uint64_t )      - To mimic D3D12 behavior (we always use uint64_t as query)
                 //      flags  = VK_QUERY_RESULT_64_BIT  - To mimic D3D12 behavior (we always use uint64_t as query)
-                vkCmdCopyQueryPoolResults( nativeCommandBuffer, desc.hQueryPool.GetNativeHandle(), desc.firstQuery, desc.queryCount,
-                                           desc.hBuffer.GetNativeHandle()->buffer, desc.bufferOffset, sizeof( uint64_t ), VK_QUERY_RESULT_64_BIT );
+                m_pParent->GetDeviceAPI()->vkCmdCopyQueryPoolResults( nativeCommandBuffer, desc.hQueryPool.GetNativeHandle(), desc.firstQuery,
+                                                                      desc.queryCount, desc.hBuffer.GetNativeHandle()->buffer, desc.bufferOffset,
+                                                                      sizeof( uint64_t ), VK_QUERY_RESULT_64_BIT );
             }
 
         } // namespace Backend

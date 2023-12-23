@@ -281,7 +281,6 @@ namespace BIGOS
                 {
                     return Results::FAIL;
                 }
-                // volkLoadInstance( nativeInstance );
                 volkLoadInstanceOnly( nativeInstance );
 
 #if( BGS_RENDER_DEBUG )

@@ -60,7 +60,7 @@ namespace BIGOS
                 presInfo.pSwapchains        = &nativeSwapchain;
                 presInfo.pImageIndices      = &m_bufferToPresent;
                 presInfo.pResults           = nullptr;
-                if( vkQueuePresentKHR( nativeQueue, &presInfo ) != VK_SUCCESS )
+                if( m_pParent->GetDeviceAPI()->vkQueuePresentKHR( nativeQueue, &presInfo ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
@@ -79,7 +79,8 @@ namespace BIGOS
                 uint32_t       bufferNdx;
                 // Timeout 0 ns mimics D3D12 behaviour, additionaly we do not support vulkan fences here.
                 // TODO: Timeout 0 doesn't work.
-                VkResult res = vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, UINT64_MAX, nativeSemaphore, VK_NULL_HANDLE, &bufferNdx );
+                VkResult res = m_pParent->GetDeviceAPI()->vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, UINT64_MAX, nativeSemaphore,
+                                                                                 VK_NULL_HANDLE, &bufferNdx );
 
                 pInfo->hBackBufferAvailableSemaphore = m_backBuffers[ m_semaphoreNdx ].hBackBufferAvailableSemaphore;
                 pInfo->swapChainBackBufferIndex      = m_semaphoreNdx;
@@ -130,7 +131,7 @@ namespace BIGOS
                     VkSwapchainKHR nativeSwapchain = m_handle.GetNativeHandle();
                     VkInstance     nativeFactory   = m_pParent->GetParent()->GetHandle().GetNativeHandle();
 
-                    vkDestroySwapchainKHR( nativeDevice, nativeSwapchain, nullptr );
+                    m_pParent->GetDeviceAPI()->vkDestroySwapchainKHR( nativeDevice, nativeSwapchain, nullptr );
                     vkDestroySurfaceKHR( nativeFactory, m_surface, nullptr );
 
                     return Results::FAIL;
@@ -146,7 +147,7 @@ namespace BIGOS
                     VkDevice       nativeDevice    = m_pParent->GetHandle().GetNativeHandle();
                     VkSwapchainKHR nativeSwapchain = m_handle.GetNativeHandle();
 
-                    vkDestroySwapchainKHR( nativeDevice, nativeSwapchain, nullptr );
+                    m_pParent->GetDeviceAPI()->vkDestroySwapchainKHR( nativeDevice, nativeSwapchain, nullptr );
 
                     if( m_surface != VK_NULL_HANDLE )
                     {
@@ -209,7 +210,7 @@ namespace BIGOS
 
                 VkDevice       nativeDevice    = m_pParent->GetHandle().GetNativeHandle();
                 VkSwapchainKHR nativeSwapchain = VK_NULL_HANDLE;
-                if( vkCreateSwapchainKHR( nativeDevice, &scInfo, nullptr, &nativeSwapchain ) != VK_SUCCESS )
+                if( m_pParent->GetDeviceAPI()->vkCreateSwapchainKHR( nativeDevice, &scInfo, nullptr, &nativeSwapchain ) != VK_SUCCESS )
                 {
                     vkDestroySurfaceKHR( nativeFactory, m_surface, nullptr );
                     return Results::FAIL;
@@ -226,7 +227,7 @@ namespace BIGOS
                 VkSwapchainKHR nativeSwapchain = m_handle.GetNativeHandle();
                 VkImage        images[ Config::Driver::Swapchain::MAX_BACK_BUFFER_COUNT ];
                 m_backBuffers.resize( m_desc.backBufferCount );
-                if( vkGetSwapchainImagesKHR( nativeDevice, nativeSwapchain, &m_desc.backBufferCount, images ) )
+                if( m_pParent->GetDeviceAPI()->vkGetSwapchainImagesKHR( nativeDevice, nativeSwapchain, &m_desc.backBufferCount, images ) )
                 {
                     return Results::FAIL;
                 }
