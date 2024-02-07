@@ -815,43 +815,43 @@ namespace BIGOS
                 else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::CONSTANT_BUFFER ) )
                 {
                     const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
-                    pResView->cbvNdx               = CreateD3D12CBV( buffDesc );
+                    pResView->cbvSrvUavNdx         = CreateD3D12CBV( buffDesc );
                     pResView->type                 = D3D12DescriptorTypes::CBV;
                 }
                 else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::SAMPLED_TEXTURE ) )
                 {
                     const TextureViewDesc& texDesc = static_cast<const TextureViewDesc&>( desc );
-                    pResView->srvNdx               = CreateD3D12SRV( texDesc );
+                    pResView->cbvSrvUavNdx         = CreateD3D12SRV( texDesc );
                     pResView->type                 = D3D12DescriptorTypes::SRV;
                 }
                 else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXTURE ) )
                 {
                     const TextureViewDesc& texDesc = static_cast<const TextureViewDesc&>( desc );
-                    pResView->uavNdx               = CreateD3D12UAV( texDesc );
+                    pResView->cbvSrvUavNdx         = CreateD3D12UAV( texDesc );
                     pResView->type                 = D3D12DescriptorTypes::UAV;
                 }
                 else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::CONSTANT_TEXEL_BUFFER ) )
                 {
                     const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
-                    pResView->srvNdx                    = CreateD3D12SRV( buffDesc );
+                    pResView->cbvSrvUavNdx              = CreateD3D12SRV( buffDesc );
                     pResView->type                      = D3D12DescriptorTypes::SRV;
                 }
                 else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::STORAGE_TEXEL_BUFFER ) )
                 {
                     const TexelBufferViewDesc& buffDesc = static_cast<const TexelBufferViewDesc&>( desc );
-                    pResView->uavNdx                    = CreateD3D12UAV( buffDesc );
+                    pResView->cbvSrvUavNdx              = CreateD3D12UAV( buffDesc );
                     pResView->type                      = D3D12DescriptorTypes::UAV;
                 }
                 else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) )
                 {
                     const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
-                    pResView->srvNdx               = CreateD3D12SRV( buffDesc );
+                    pResView->cbvSrvUavNdx         = CreateD3D12SRV( buffDesc );
                     pResView->type                 = D3D12DescriptorTypes::SRV;
                 }
                 else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
                 {
                     const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
-                    pResView->uavNdx               = CreateD3D12UAV( buffDesc );
+                    pResView->cbvSrvUavNdx         = CreateD3D12UAV( buffDesc );
                     pResView->type                 = D3D12DescriptorTypes::UAV;
                 }
 
@@ -867,17 +867,10 @@ namespace BIGOS
                 if( ( pHandle != nullptr ) && ( *pHandle != ResourceViewHandle() ) )
                 {
                     D3D12ResourceView* pNativeView = pHandle->GetNativeHandle();
-                    if( pNativeView->type == D3D12DescriptorTypes::CBV )
+                    if( ( pNativeView->type == D3D12DescriptorTypes::CBV ) || ( pNativeView->type == D3D12DescriptorTypes::SRV ) ||
+                        ( pNativeView->type == D3D12DescriptorTypes::UAV ) )
                     {
-                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Free( pNativeView->cbvNdx );
-                    }
-                    else if( pNativeView->type == D3D12DescriptorTypes::SRV )
-                    {
-                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Free( pNativeView->srvNdx );
-                    }
-                    else if( pNativeView->type == D3D12DescriptorTypes::UAV )
-                    {
-                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Free( pNativeView->uavNdx );
+                        m_descHeaps[ static_cast<uint32_t>( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ) ].allocator.Free( pNativeView->cbvSrvUavNdx );
                     }
                     else if( pNativeView->type == D3D12DescriptorTypes::RTV )
                     {
@@ -1078,9 +1071,22 @@ namespace BIGOS
                                      : desc.bindingNdx * m_limits.constantBufferBindingSize; // each binding has the same size besides samplers
             }
 
-            void D3D12Device::CopyBinding( const CopyBindingDesc& desc )
+            void D3D12Device::WriteBinding( const WriteBindingDesc& desc )
             {
-                desc;
+                BGS_ASSERT( desc.hDstHeap != BindingHeapHandle(), "Binding heap handle (desc.hDstHeap) must be a valid handle." );
+                BGS_ASSERT( ( desc.hResourceView != ResourceViewHandle() || desc.hSampler != SamplerHandle() ),
+                            "Resource view handle (desc.hResourceView) or sampler handle (desc.hSampler) must be a valid handle." );
+
+                ID3D12Device*              pNativeDevice = m_handle.GetNativeHandle();
+                D3D12_DESCRIPTOR_HEAP_TYPE heapType      = MapBigosBindingTypeToD3D12DescriptorHeapType( desc.bindingType );
+
+                const uint32_t              srcNdx = desc.bindingType == BindingTypes::SAMPLER ? desc.hSampler.GetNativeHandle()->ndx
+                                                                                               : desc.hResourceView.GetNativeHandle()->cbvSrvUavNdx;
+                D3D12_CPU_DESCRIPTOR_HANDLE src{ m_descHeaps[ BGS_ENUM_INDEX( heapType ) ].pHeap->GetCPUDescriptorHandleForHeapStart().ptr +
+                                                 m_bindingSizes[ BGS_ENUM_INDEX( desc.bindingType ) ] * srcNdx };
+                D3D12_CPU_DESCRIPTOR_HANDLE dst{ desc.hDstHeap.GetNativeHandle()->GetCPUDescriptorHandleForHeapStart().ptr + desc.dstOffset };
+
+                pNativeDevice->CopyDescriptorsSimple( 1, dst, src, heapType );
             }
 
             RESULT D3D12Device::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
@@ -1147,6 +1153,8 @@ namespace BIGOS
                     RELEASE_COM_PTR( pNativeDevice );
                     return Results::FAIL;
                 }
+
+                Memory::Set( m_bindingSizes, 0, sizeof( m_bindingSizes ) );
 
                 QueryD3D12BindingsSize();
 
@@ -1959,17 +1967,25 @@ namespace BIGOS
 
             void D3D12Device::QueryD3D12BindingsSize()
             {
-                ID3D12Device*  pNativeDevice              = m_handle.GetNativeHandle();
-                const uint64_t shaderResBindingSize       = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
-                const uint64_t samplerBindingSize         = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER );
-                m_limits.samplerBindingSize               = samplerBindingSize;
-                m_limits.sampledTextureBindingSize        = shaderResBindingSize;
-                m_limits.storageTextureBindingSize        = shaderResBindingSize;
-                m_limits.constantTexelBufferBindingSize   = shaderResBindingSize;
-                m_limits.storageTexelBufferBindingSize    = shaderResBindingSize;
-                m_limits.constantBufferBindingSize        = shaderResBindingSize;
-                m_limits.readOnlyStorageBufferBindingSize = shaderResBindingSize;
-                m_limits.readWriteStorageBufferBindingSize = shaderResBindingSize;
+                ID3D12Device*  pNativeDevice        = m_handle.GetNativeHandle();
+                const uint64_t shaderResBindingSize = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
+                const uint64_t samplerBindingSize   = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER );
+                m_limits.samplerBindingSize         = samplerBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::SAMPLER ) ]                   = m_limits.samplerBindingSize;
+                m_limits.sampledTextureBindingSize                                          = shaderResBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::SAMPLED_TEXTURE ) ]           = m_limits.sampledTextureBindingSize;
+                m_limits.storageTextureBindingSize                                          = shaderResBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::STORAGE_TEXTURE ) ]           = m_limits.storageTextureBindingSize;
+                m_limits.constantTexelBufferBindingSize                                     = shaderResBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::CONSTANT_TEXEL_BUFFER ) ]     = m_limits.constantTexelBufferBindingSize;
+                m_limits.storageTexelBufferBindingSize                                      = shaderResBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::STORAGE_TEXEL_BUFFER ) ]      = m_limits.storageTexelBufferBindingSize;
+                m_limits.constantBufferBindingSize                                          = shaderResBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::CONSTANT_BUFFER ) ]           = m_limits.constantBufferBindingSize;
+                m_limits.readOnlyStorageBufferBindingSize                                   = shaderResBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::READ_ONLY_STORAGE_BUFFER ) ]  = m_limits.readOnlyStorageBufferBindingSize;
+                m_limits.readWriteStorageBufferBindingSize                                  = shaderResBindingSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::READ_WRITE_STORAGE_BUFFER ) ] = m_limits.readWriteStorageBufferBindingSize;
             }
 
         } // namespace Backend
