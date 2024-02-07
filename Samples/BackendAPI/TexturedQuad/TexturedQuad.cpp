@@ -145,6 +145,21 @@ void TexturedQuad::OnRender()
     };
     m_pCommandBuffers[ m_frameNdx ]->SetBindingHeaps( 2, bindingHeaps );
 
+    BIGOS::Driver::Backend::SetBindingsDesc setBindingDesc;
+    setBindingDesc.baseBindingOffset = m_textureOffset;
+    setBindingDesc.heapNdx           = 0;
+    setBindingDesc.setSpaceNdx       = 0;
+    setBindingDesc.hPipelineLayout   = m_hPipelineLayout;
+    setBindingDesc.type              = BIGOS::Driver::Backend::PipelineTypes::GRAPHICS;
+    m_pCommandBuffers[ m_frameNdx ]->SetBindings( setBindingDesc );
+
+    setBindingDesc.baseBindingOffset = m_samplerOffset;
+    setBindingDesc.heapNdx           = 1;
+    setBindingDesc.setSpaceNdx       = 1;
+    setBindingDesc.hPipelineLayout   = m_hPipelineLayout;
+    setBindingDesc.type              = BIGOS::Driver::Backend::PipelineTypes::GRAPHICS;
+    m_pCommandBuffers[ m_frameNdx ]->SetBindings( setBindingDesc );
+
     BIGOS::Driver::Backend::ViewportDesc vp;
     vp.upperLeftX = 0.0f;
     vp.upperLeftY = 0.0f;
@@ -838,20 +853,20 @@ BIGOS::RESULT TexturedQuad::CreatePipeline()
     bindingRange.baseBindingSlot    = 0;
     bindingRange.baseShaderRegister = 0;
     bindingRange.bindingCount       = 1;
-    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
+    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLED_TEXTURE;
     BIGOS::Driver::Backend::BindingSetLayoutDesc bindingLayoutDesc;
     bindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
     bindingLayoutDesc.bindingRangeCount = 1;
     bindingLayoutDesc.pBindingRanges    = &bindingRange;
-    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hSamplerSetLayout ) ) )
+    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hShaderResourceSetLayout ) ) )
     {
         return BIGOS::Results::FAIL;
     }
     bindingRange.baseBindingSlot    = 1;
     bindingRange.baseShaderRegister = 1;
     bindingRange.bindingCount       = 1;
-    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLED_TEXTURE;
-    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hShaderResourceSetLayout ) ) )
+    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
+    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hSamplerSetLayout ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -877,8 +892,22 @@ BIGOS::RESULT TexturedQuad::CreatePipeline()
     getAddressDesc.hBindingSetLayout = m_hShaderResourceSetLayout;
     m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_textureOffset );
 
+    // Write bindings to heaps
+    BIGOS::Driver::Backend::WriteBindingDesc writeBindingDesc;
+    writeBindingDesc.bindingType   = BindingTypes::SAMPLED_TEXTURE;
+    writeBindingDesc.hDstHeap      = m_hShaderResourceHeap;
+    writeBindingDesc.dstOffset     = m_textureOffset;
+    writeBindingDesc.hResourceView = m_hSampledTextureView;
+    m_pAPIDevice->WriteBinding( writeBindingDesc );
+
+    writeBindingDesc.bindingType = BindingTypes::SAMPLER;
+    writeBindingDesc.hDstHeap    = m_hSamplerHeap;
+    writeBindingDesc.dstOffset   = m_samplerOffset;
+    writeBindingDesc.hSampler    = m_hSampler;
+    m_pAPIDevice->WriteBinding( writeBindingDesc );
+
     // Pipeline layout
-    BIGOS::Driver::Backend::BindingSetLayoutHandle layouts[] = { m_hSamplerSetLayout, m_hShaderResourceSetLayout };
+    BIGOS::Driver::Backend::BindingSetLayoutHandle layouts[] = { m_hShaderResourceSetLayout, m_hSamplerSetLayout };
     BIGOS::Driver::Backend::PipelineLayoutDesc     pipelineLayoutDesc;
     pipelineLayoutDesc.constantRangeCount    = 0;
     pipelineLayoutDesc.bindingSetLayoutCount = 2;

@@ -99,7 +99,7 @@ namespace BIGOS
                 virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )                = 0;
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle )                                            = 0;
                 virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset )                     = 0;
-                virtual void   CopyBinding( const CopyBindingDesc& desc )                                                  = 0;
+                virtual void   WriteBinding( const WriteBindingDesc& desc )                                                = 0; // TODO: For now, writes only one binding at the time.
 
                 virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) = 0;
                 virtual void   DestroyQueryPool( QueryPoolHandle* pHandle )                           = 0;

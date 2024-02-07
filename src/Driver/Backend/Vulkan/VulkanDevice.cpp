@@ -52,12 +52,14 @@ namespace BIGOS
                     m_dev11Features.pNext = &m_dev12Features;
 
                     // Vulkan 1.2 features
-                    m_dev12Features.sType                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-                    m_dev12Features.pNext                    = &m_dev13Features;
-                    m_dev12Features.drawIndirectCount        = VK_TRUE;
-                    m_dev12Features.samplerMirrorClampToEdge = VK_TRUE;
-                    m_dev12Features.timelineSemaphore        = VK_TRUE; // Crucial for synchronization
-                    m_dev12Features.bufferDeviceAddress      = VK_TRUE; // Needed for descriptor buffer ext
+                    m_dev12Features.sType                                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                    m_dev12Features.pNext                                    = &m_dev13Features;
+                    m_dev12Features.drawIndirectCount                        = VK_TRUE;
+                    m_dev12Features.samplerMirrorClampToEdge                 = VK_TRUE;
+                    m_dev12Features.timelineSemaphore                        = VK_TRUE; // Crucial for synchronization
+                    m_dev12Features.bufferDeviceAddress                      = VK_TRUE; // Needed for descriptor buffer ext
+                    m_dev12Features.descriptorIndexing                       = VK_TRUE; // Needed for descriptor buffer ext
+                    m_dev12Features.descriptorBindingVariableDescriptorCount = VK_TRUE; // Needed for descriptor buffer ext
 
                     // Vulkan 1.3 features
                     m_dev13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -1417,6 +1419,9 @@ namespace BIGOS
                 VkDevice                     nativeDevice = m_handle.GetNativeHandle();
                 VkDescriptorSetLayout        nativeLayout = VK_NULL_HANDLE;
                 VkDescriptorSetLayoutBinding layoutBindings[ Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ];
+                index_t                      maxBindingRangeNdx = 0;
+                uint32_t                     currMaxBindingSlot = 0;
+
                 for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.bindingRangeCount; ++ndx )
                 {
                     const BindingRangeDesc&       currDesc    = desc.pBindingRanges[ ndx ];
@@ -1427,12 +1432,28 @@ namespace BIGOS
                     currBinding.descriptorType     = MapBigosBindingTypeToVulkanDescriptorType( currDesc.type );
                     currBinding.pImmutableSamplers = nullptr;
                     currBinding.stageFlags         = MapBigosShaderVisibilityToVulkanShaderStageFlags( desc.visibility );
+
+                    if( currMaxBindingSlot < currBinding.binding )
+                    {
+                        maxBindingRangeNdx = ndx;
+                        currMaxBindingSlot = currBinding.binding;
+                    }
                 }
+
+                VkDescriptorBindingFlags bindingFlags[ Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ];
+                Memory::Set( bindingFlags, 0, sizeof( VkDescriptorBindingFlags ) );
+                bindingFlags[ maxBindingRangeNdx ] = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+
+                VkDescriptorSetLayoutBindingFlagsCreateInfo createFlags;
+                createFlags.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+                createFlags.pNext         = nullptr;
+                createFlags.bindingCount  = desc.bindingRangeCount;
+                createFlags.pBindingFlags = bindingFlags;
 
                 VkDescriptorSetLayoutCreateInfo layoutInfo;
                 layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
                 layoutInfo.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-                layoutInfo.pNext        = nullptr;
+                layoutInfo.pNext        = &createFlags;
                 layoutInfo.pBindings    = layoutBindings;
                 layoutInfo.bindingCount = desc.bindingRangeCount;
 
@@ -1538,6 +1559,14 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
+                if( m_pDeviceAPI->vkMapMemory( nativeDevice, nativeMemory, 0, VK_WHOLE_SIZE, 0, &pHeap->pHost ) != VK_SUCCESS )
+                {
+                    Core::Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pHeap );
+                    m_pDeviceAPI->vkFreeMemory( nativeDevice, nativeMemory, nullptr );
+                    m_pDeviceAPI->vkDestroyBuffer( nativeDevice, nativeHeap, nullptr );
+                    return Results::FAIL;
+                }
+
                 VkBufferDeviceAddressInfo addressInfo;
                 addressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
                 addressInfo.pNext  = nullptr;
@@ -1562,6 +1591,7 @@ namespace BIGOS
                     VulkanBindingHeap* pHeap        = pHandle->GetNativeHandle();
                     VkDevice           nativeDevice = m_handle.GetNativeHandle();
 
+                    m_pDeviceAPI->vkUnmapMemory( nativeDevice, pHeap->memory );
                     m_pDeviceAPI->vkDestroyBuffer( nativeDevice, pHeap->buffer, nullptr );
                     m_pDeviceAPI->vkFreeMemory( nativeDevice, pHeap->memory, nullptr );
 
@@ -1583,9 +1613,28 @@ namespace BIGOS
                 m_pDeviceAPI->vkGetDescriptorSetLayoutBindingOffsetEXT( nativeDevice, nativeLayout, desc.bindingNdx, pOffset );
             }
 
-            void VulkanDevice::CopyBinding( const CopyBindingDesc& desc )
+            void VulkanDevice::WriteBinding( const WriteBindingDesc& desc )
             {
-                desc;
+                BGS_ASSERT( desc.hDstHeap != BindingHeapHandle(), "Binding heap handle (desc.hDstHeap) must be a valid handle." );
+                BGS_ASSERT( ( desc.hResourceView != ResourceViewHandle() || desc.hSampler != SamplerHandle() ),
+                            "Resource view handle (desc.hResourceView) or sampler handle (desc.hSampler) must be a valid handle." );
+
+                VkDevice           nativeDevice = m_handle.GetNativeHandle();
+                VulkanBindingHeap* pHeap        = desc.hDstHeap.GetNativeHandle();
+                const void*        pData        = desc.bindingType == BindingTypes::SAMPLER ? desc.hSampler.GetNativeHandle()->pDescriptorData
+                                                                                            : desc.hResourceView.GetNativeHandle()->pDescriptorData;
+                byte_t*            pDst         = reinterpret_cast<byte_t*>( pHeap->pHost ) + desc.dstOffset;
+                const size_t       bindingSize  = static_cast<size_t>( m_bindingSizes[ BGS_ENUM_INDEX( desc.bindingType ) ] );
+                Memory::Copy( pData, bindingSize, pDst, bindingSize );
+
+                VkMappedMemoryRange range;
+                range.sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+                range.pNext  = nullptr;
+                range.offset = 0;
+                range.size   = VK_WHOLE_SIZE;
+                range.memory = pHeap->memory;
+
+                m_pDeviceAPI->vkFlushMappedMemoryRanges( nativeDevice, 1, &range );
             }
 
             RESULT VulkanDevice::CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle )
@@ -1748,6 +1797,8 @@ namespace BIGOS
                 m_heapProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
                 m_heapProperties.pNext = nullptr;
                 vkGetPhysicalDeviceMemoryProperties2( nativeAdapter, &m_heapProperties );
+
+                Memory::Set( m_bindingSizes, 0, sizeof( m_bindingSizes ) );
 
                 QueryVkBindingsSize();
 
@@ -2190,14 +2241,22 @@ namespace BIGOS
                 nativeProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
                 nativeProps2.pNext = &descBufferProps;
                 vkGetPhysicalDeviceProperties2( nativeAdapter, &nativeProps2 );
-                m_limits.samplerBindingSize                = descBufferProps.samplerDescriptorSize;
-                m_limits.sampledTextureBindingSize         = descBufferProps.sampledImageDescriptorSize;
-                m_limits.storageTextureBindingSize         = descBufferProps.storageImageDescriptorSize;
-                m_limits.constantTexelBufferBindingSize    = descBufferProps.uniformTexelBufferDescriptorSize;
-                m_limits.storageTexelBufferBindingSize     = descBufferProps.storageTexelBufferDescriptorSize;
-                m_limits.constantBufferBindingSize         = descBufferProps.uniformBufferDescriptorSize;
-                m_limits.readOnlyStorageBufferBindingSize  = descBufferProps.storageBufferDescriptorSize;
-                m_limits.readWriteStorageBufferBindingSize = descBufferProps.storageBufferDescriptorSize;
+                m_limits.samplerBindingSize                                                 = descBufferProps.samplerDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::SAMPLER ) ]                   = m_limits.samplerBindingSize;
+                m_limits.sampledTextureBindingSize                                          = descBufferProps.sampledImageDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::SAMPLED_TEXTURE ) ]           = m_limits.sampledTextureBindingSize;
+                m_limits.storageTextureBindingSize                                          = descBufferProps.storageImageDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::STORAGE_TEXTURE ) ]           = m_limits.storageTextureBindingSize;
+                m_limits.constantTexelBufferBindingSize                                     = descBufferProps.uniformTexelBufferDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::CONSTANT_TEXEL_BUFFER ) ]     = m_limits.constantTexelBufferBindingSize;
+                m_limits.storageTexelBufferBindingSize                                      = descBufferProps.storageTexelBufferDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::STORAGE_TEXEL_BUFFER ) ]      = m_limits.storageTexelBufferBindingSize;
+                m_limits.constantBufferBindingSize                                          = descBufferProps.uniformBufferDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::CONSTANT_BUFFER ) ]           = m_limits.constantBufferBindingSize;
+                m_limits.readOnlyStorageBufferBindingSize                                   = descBufferProps.storageBufferDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::READ_ONLY_STORAGE_BUFFER ) ]  = m_limits.readOnlyStorageBufferBindingSize;
+                m_limits.readWriteStorageBufferBindingSize                                  = descBufferProps.storageBufferDescriptorSize;
+                m_bindingSizes[ BGS_ENUM_INDEX( BindingTypes::READ_WRITE_STORAGE_BUFFER ) ] = m_limits.readWriteStorageBufferBindingSize;
 
                 if( m_limits.samplerBindingSize > m_bindingSize )
                 {

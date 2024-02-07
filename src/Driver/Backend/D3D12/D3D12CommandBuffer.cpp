@@ -32,6 +32,22 @@ namespace BIGOS
                 SetComputePipelineLayout,
             };
 
+            static void SetGraphicsBindings( ID3D12GraphicsCommandList* pList, UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor )
+            {
+                pList->SetGraphicsRootDescriptorTable( RootParameterIndex, BaseDescriptor );
+            }
+
+            static void SetComputeBindings( ID3D12GraphicsCommandList* pList, UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor )
+            {
+                pList->SetComputeRootDescriptorTable( RootParameterIndex, BaseDescriptor );
+            }
+
+            void ( *pSetBindingsFn[] )( ID3D12GraphicsCommandList*, UINT, D3D12_GPU_DESCRIPTOR_HANDLE ) = {
+                SetGraphicsBindings,
+                SetComputeBindings,
+                SetComputeBindings,
+            };
+
             RESULT D3D12CommandBuffer::Create( const CommandBufferDesc& desc, D3D12Device* pDevice )
             {
                 BGS_ASSERT( pDevice != nullptr, "Device (pDevice) must be a valid pointer." );
@@ -56,10 +72,13 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                m_rtvDescSize            = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
-                m_dsvDescSize            = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
-                m_colorRenderTargetCount = 0;
-                for( index_t ndx = 0; ndx < static_cast<index_t>( m_colorRenderTargetCount ); ++ndx )
+                Memory::Set( m_pBoundHeaps, 0, sizeof( m_pBoundHeaps ) );
+                m_heapCnt = 0;
+
+                m_rtvDescSize          = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
+                m_dsvDescSize          = pNativeDevice->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
+                m_colorRenderTargetCnt = 0;
+                for( index_t ndx = 0; ndx < static_cast<index_t>( Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT ); ++ndx )
                 {
                     m_boundColorRenderTargets[ ndx ] = D3D12_CPU_DESCRIPTOR_HANDLE();
                 }
@@ -107,6 +126,10 @@ namespace BIGOS
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
                 pNativeCommandList->Close();
+
+                // Unbind bound resources
+                Memory::Set( m_pBoundHeaps, 0, sizeof( m_pBoundHeaps ) );
+                m_heapCnt = 0;
             }
 
             void D3D12CommandBuffer::Reset()
@@ -130,7 +153,7 @@ namespace BIGOS
                     m_boundColorRenderTargets[ ndx ].ptr = pRTVHeap->GetCPUDescriptorHandleForHeapStart().ptr +
                                                            desc.phColorRenderTargetViews[ ndx ].GetNativeHandle()->rtvNdx * m_rtvDescSize;
                 }
-                m_colorRenderTargetCount = desc.colorRenderTargetCount;
+                m_colorRenderTargetCnt = desc.colorRenderTargetCount;
 
                 D3D12_CPU_DESCRIPTOR_HANDLE* pDSV = nullptr;
                 // TODO: Avoid branching
@@ -143,17 +166,17 @@ namespace BIGOS
 
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
-                pNativeCommandList->OMSetRenderTargets( m_colorRenderTargetCount, m_boundColorRenderTargets, FALSE, pDSV );
+                pNativeCommandList->OMSetRenderTargets( m_colorRenderTargetCnt, m_boundColorRenderTargets, FALSE, pDSV );
             }
 
             void D3D12CommandBuffer::EndRendering()
             {
-                for( index_t ndx = 0; ndx < static_cast<index_t>( m_colorRenderTargetCount ); ++ndx )
+                for( index_t ndx = 0; ndx < static_cast<index_t>( m_colorRenderTargetCnt ); ++ndx )
                 {
                     m_boundColorRenderTargets[ ndx ] = D3D12_CPU_DESCRIPTOR_HANDLE();
                 }
                 m_boundDepthStencilTarget = D3D12_CPU_DESCRIPTOR_HANDLE();
-                m_colorRenderTargetCount  = 0;
+                m_colorRenderTargetCnt    = 0;
             }
 
             void D3D12CommandBuffer::ClearBoundColorRenderTarget( uint32_t index, const ColorValue& clearValue, uint32_t rectCount,
@@ -522,15 +545,27 @@ namespace BIGOS
                 ID3D12DescriptorHeap*       pHeaps[ 2 ];
                 for( index_t ndx = 0; ndx < static_cast<index_t>( heapCount ); ++ndx )
                 {
-                    pHeaps[ ndx ] = pHandle[ ndx ].GetNativeHandle();
+                    pHeaps[ ndx ]        = pHandle[ ndx ].GetNativeHandle();
+                    m_pBoundHeaps[ ndx ] = pHeaps[ ndx ];
                 }
+                m_heapCnt = heapCount;
 
                 pNativeCommandList->SetDescriptorHeaps( heapCount, pHeaps );
             }
 
             void D3D12CommandBuffer::SetBindings( const SetBindingsDesc& desc )
             {
-                desc;
+                BGS_ASSERT( desc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (handle) must be a valid handle." );
+                BGS_ASSERT( desc.setSpaceNdx < Config::Driver::Pipeline::MAX_BINDING_SET_COUNT,
+                            "Set space index (desc.setSpaceNdx) must be less than %d.", Config::Driver::Pipeline::MAX_BINDING_SET_COUNT );
+                BGS_ASSERT( desc.heapNdx < 2, "Binding heap index (desc.heapNdx) must be less than 2." );
+                BGS_ASSERT( m_pBoundHeaps[ desc.heapNdx ] != nullptr, "No heaps bound at index %d", desc.heapNdx );
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                const D3D12_GPU_DESCRIPTOR_HANDLE handle{ m_pBoundHeaps[desc.heapNdx]->GetGPUDescriptorHandleForHeapStart().ptr + desc.baseBindingOffset };
+
+                pSetBindingsFn[ BGS_ENUM_INDEX( desc.type ) ]( pNativeCommandList, desc.setSpaceNdx, handle );
             }
 
             void D3D12CommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )

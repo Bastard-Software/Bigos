@@ -466,6 +466,22 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
+            D3D12_DESCRIPTOR_HEAP_TYPE MapBigosBindingTypeToD3D12DescriptorHeapType( BINDING_TYPE type )
+            {
+                static const D3D12_DESCRIPTOR_HEAP_TYPE translateTable[ BGS_ENUM_COUNT( BindingTypes ) ] = {
+                    D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,     // SAMPLER
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // SAMPLED_TEXTURE
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // STORAGE_TEXTURE
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // CONSTANT_TEXEL_BUFFER
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // STORAGE_TEXEL_BUFFER
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // CONSTANT_BUFFER
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // READ_ONLY_STORAGE_BUFFER
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, // READ_WRITE_STORAGE_BUFFER
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
             D3D12_QUERY_HEAP_TYPE MapBigosQueryTypeToD3D12QueryHeapType( QUERY_TYPE type )
             {
                 static const D3D12_QUERY_HEAP_TYPE translateTable[ BGS_ENUM_COUNT( QueryTypes ) ] = {

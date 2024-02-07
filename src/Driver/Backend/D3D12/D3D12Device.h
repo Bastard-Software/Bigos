@@ -75,7 +75,7 @@ namespace BIGOS
                 virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle ) override;
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle ) override;
                 virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset ) override;
-                virtual void   CopyBinding( const CopyBindingDesc& desc ) override;
+                virtual void   WriteBinding( const WriteBindingDesc& desc ) override;
 
                 virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) override;
                 virtual void   DestroyQueryPool( QueryPoolHandle* pHandle ) override;
@@ -109,6 +109,7 @@ namespace BIGOS
             private:
                 D3D12HeapProperties        m_heapProperties;
                 D3D12GlobalDescriptorHeaps m_descHeaps;
+                uint64_t                   m_bindingSizes[ BGS_ENUM_COUNT( BindingTypes ) ];
                 D3D12Factory*              m_pParent = nullptr;
             };
 
