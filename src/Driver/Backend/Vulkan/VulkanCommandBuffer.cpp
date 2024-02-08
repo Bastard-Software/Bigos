@@ -554,7 +554,16 @@ namespace BIGOS
 
             void VulkanCommandBuffer::SetBindings( const SetBindingsDesc& desc )
             {
-                desc;
+                BGS_ASSERT( desc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (handle) must be a valid handle." );
+                BGS_ASSERT( desc.setSpaceNdx < Config::Driver::Pipeline::MAX_BINDING_SET_COUNT,
+                            "Set space index (desc.setSpaceNdx) must be less than %d.", Config::Driver::Pipeline::MAX_BINDING_SET_COUNT );
+                BGS_ASSERT( desc.heapNdx < 2, "Binding heap index (desc.heapNdx) must be less than 2." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                m_pParent->GetDeviceAPI()->vkCmdSetDescriptorBufferOffsetsEXT(
+                    nativeCommandBuffer, MapBigosPipelineTypeToVulkanPipelineBindPoint( desc.type ), desc.hPipelineLayout.GetNativeHandle(),
+                    desc.setSpaceNdx, 1, &desc.heapNdx, &desc.baseBindingOffset );
             }
 
             void VulkanCommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )

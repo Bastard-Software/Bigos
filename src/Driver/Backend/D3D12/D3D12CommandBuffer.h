@@ -60,7 +60,9 @@ namespace BIGOS
             private:
                 D3D12_CPU_DESCRIPTOR_HANDLE m_boundColorRenderTargets[ Config::Driver::Pipeline::MAX_RENDER_TARGET_COUNT ];
                 D3D12_CPU_DESCRIPTOR_HANDLE m_boundDepthStencilTarget;
-                uint32_t                    m_colorRenderTargetCount;
+                ID3D12DescriptorHeap*       m_pBoundHeaps[ 2 ];
+                uint32_t                    m_heapCnt;
+                uint32_t                    m_colorRenderTargetCnt;
                 uint32_t                    m_rtvDescSize;
                 uint32_t                    m_dsvDescSize;
 

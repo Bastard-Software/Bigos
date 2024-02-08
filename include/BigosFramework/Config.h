@@ -52,6 +52,7 @@ namespace BIGOS
             namespace Pipeline
             {
                 constexpr uint32_t MAX_BINDING_SET_LAYOUT_COUNT = 16U;
+                constexpr uint32_t MAX_BINDING_SET_COUNT        = 16U;
                 constexpr uint32_t MAX_INPUT_BINDING_COUNT      = 16U;
                 constexpr uint32_t MAX_INPUT_ELEMENT_COUNT      = 16U;
                 constexpr uint32_t MAX_BLEND_STATE_COUNT        = 8U;

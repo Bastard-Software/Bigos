@@ -82,7 +82,7 @@ namespace BIGOS
                 virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle ) override;
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle ) override;
                 virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset ) override;
-                virtual void   CopyBinding( const CopyBindingDesc& desc ) override;
+                virtual void   WriteBinding( const WriteBindingDesc& desc ) override;
 
                 virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) override;
                 virtual void   DestroyQueryPool( QueryPoolHandle* pHandle ) override;
@@ -112,6 +112,7 @@ namespace BIGOS
                 RESULT CheckVkExtensionSupport( uint32_t extCount, const char* const* ppQueriedExts );
 
             private:
+                uint64_t              m_bindingSizes[ BGS_ENUM_COUNT( BindingTypes ) ];
                 VulkanQueueProperties m_queueProperties;
                 VulkanHeapProperties  m_heapProperties;
                 VulkanFactory*        m_pParent     = nullptr;

@@ -37,6 +37,7 @@ namespace BIGOS
             D3D12_SHADER_VISIBILITY     MapBigosShaderVisibilityToD3D12ShaderVisibility( SHADER_VISIBILITY vis );
             D3D12_DESCRIPTOR_RANGE_TYPE MapBigosBindingTypeToD3D12DescriptorRangeType( BINDING_TYPE type );
             D3D12_DESCRIPTOR_HEAP_TYPE  MapBigosBindingHeapTypeToD3D12DescriptorHeapType( BINDING_HEAP_TYPE type );
+            D3D12_DESCRIPTOR_HEAP_TYPE  MapBigosBindingTypeToD3D12DescriptorHeapType( BINDING_TYPE type );
             D3D12_QUERY_HEAP_TYPE       MapBigosQueryTypeToD3D12QueryHeapType( QUERY_TYPE type );
             D3D12_QUERY_TYPE            MapBigosQueryTypeToD3D12QueryType( QUERY_TYPE type );
             D3D12_BARRIER_SYNC          MapBigosPipelineStageFlagsToD3D12BarrierSync( PipelineStageFlags flags );

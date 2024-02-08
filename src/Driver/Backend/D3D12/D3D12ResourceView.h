@@ -11,9 +11,7 @@ namespace BIGOS::Driver::Backend
         {
             uint32_t rtvNdx;
             uint32_t dsvNdx;
-            uint32_t cbvNdx;
-            uint32_t srvNdx;
-            uint32_t uavNdx;
+            uint32_t cbvSrvUavNdx;
         };
         D3D12_DESCRIPTOR_TYPE type;
     };

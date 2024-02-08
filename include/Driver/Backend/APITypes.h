@@ -1135,14 +1135,22 @@ namespace BIGOS
                 uint32_t               bindingNdx;
             };
 
-            struct CopyBindingDesc
+            struct WriteBindingDesc
             {
+                // TODO: Pack them in union (think about those deleted default constructors)
+                ResourceViewHandle hResourceView;
+                SamplerHandle      hSampler;
+                BindingHeapHandle  hDstHeap;
+                uint64_t           dstOffset;
+                BINDING_TYPE       bindingType;
             };
 
             struct SetBindingsDesc
             {
                 PipelineLayoutHandle hPipelineLayout;
-                uint32_t             baseBindingOffset;
+                uint64_t             baseBindingOffset;
+                uint32_t             setSpaceNdx;
+                uint32_t             heapNdx;
                 PIPELINE_TYPE        type;
             };
 
