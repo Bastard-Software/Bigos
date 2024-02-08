@@ -25,6 +25,7 @@ add_subdirectory(${SAMPLES_DIR}/BackendAPI/SampleTemplate)
 add_subdirectory(${SAMPLES_DIR}/BackendAPI/VertexlessTriangle)
 add_subdirectory(${SAMPLES_DIR}/BackendAPI/Triangle)
 add_subdirectory(${SAMPLES_DIR}/BackendAPI/TexturedQuad)
+add_subdirectory(${SAMPLES_DIR}/BackendAPI/AnimatedTriangle)
 
 if(BGS_VULKAN_API)
     add_subdirectory(${THIRD_PARTY_DIR}/volk)

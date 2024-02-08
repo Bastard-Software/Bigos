@@ -5,6 +5,7 @@ namespace BIGOS::Driver::Backend
 {
     struct VulkanBindingHeap
     {
+        void*              pHost;
         VkDeviceMemory     memory;
         VkBuffer           buffer;
         VkDeviceAddress    address;

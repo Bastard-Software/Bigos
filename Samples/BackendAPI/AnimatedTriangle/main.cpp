@@ -1,5 +1,5 @@
 #include "Application.h"
-#include "TexturedQuad.h"
+#include "AnimatedTriangle.h"
 
 // Temporary solution
 extern "C"
@@ -15,6 +15,6 @@ extern "C"
 
 int main()
 {
-    TexturedQuad sample( BIGOS::Driver::Backend::APITypes::VULKAN, 1280, 720, "Textured quad" );
+    AnimatedTriangle sample( BIGOS::Driver::Backend::APITypes::D3D12, 1280, 720, "Animated Triangle" );
     return Application::Run( &sample );
 }
