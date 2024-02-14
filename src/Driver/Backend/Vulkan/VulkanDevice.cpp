@@ -727,9 +727,15 @@ namespace BIGOS
                     return Results::NO_MEMORY;
                 }
 
+                VkMemoryAllocateFlagsInfo allocFlags;
+                allocFlags.sType      = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+                allocFlags.pNext      = nullptr;
+                allocFlags.deviceMask = 0;
+                allocFlags.flags      = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+
                 VkMemoryAllocateInfo allocInfo;
                 allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-                allocInfo.pNext           = nullptr;
+                allocInfo.pNext           = &allocFlags;
                 allocInfo.allocationSize  = desc.size;
                 allocInfo.memoryTypeIndex = ndx;
 
@@ -1173,7 +1179,7 @@ namespace BIGOS
 
                         m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.storageTexelBufferBindingSize, pResView->pDescriptorData );
                     }
-                    else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::CONSTANT_BUFFER ) )
+                    else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::CONSTANT_BUFFER ) )
                     {
                         const BufferViewDesc& buffDesc  = static_cast<const BufferViewDesc&>( desc );
                         const uint32_t        blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.constantBufferBindingSize );
@@ -1204,7 +1210,7 @@ namespace BIGOS
 
                         m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.constantBufferBindingSize, pResView->pDescriptorData );
                     }
-                    else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) )
+                    else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::READ_ONLY_STORAGE_BUFFER ) )
                     {
                         const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
                         const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.readOnlyStorageBufferBindingSize );
@@ -1236,7 +1242,7 @@ namespace BIGOS
                         m_pDeviceAPI->vkGetDescriptorEXT( nativeDevice, &getInfo, m_limits.readOnlyStorageBufferBindingSize,
                                                           pResView->pDescriptorData );
                     }
-                    else if( desc.usage & BGS_FLAG( ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
+                    else if( desc.usage & BGS_FLAG( ResourceViewUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) )
                     {
                         const BufferViewDesc& buffDesc = static_cast<const BufferViewDesc&>( desc );
                         const uint32_t blockSize = static_cast<uint32_t>( sizeof( VulkanResourceView ) + m_limits.readWriteStorageBufferBindingSize );
@@ -2097,12 +2103,14 @@ namespace BIGOS
 
                 static const uint32_t qFamNdx[ 4 ] = { 0, 1, 2, 3 };
 
+                VkBufferUsageFlags nativeFlags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
                 VkBufferCreateInfo buffInfo;
                 buffInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
                 buffInfo.pNext                 = nullptr;
                 buffInfo.flags                 = 0; // TODO: Handle
                 buffInfo.size                  = desc.size.width;
-                buffInfo.usage                 = MapBigosResourceUsageToVulkanBufferUsageFlags( desc.resourceUsage );
+                buffInfo.usage                 = nativeFlags | MapBigosResourceUsageToVulkanBufferUsageFlags( desc.resourceUsage );
                 buffInfo.sharingMode           = MapBigosResourceSharingModeToVulkanSharingMode( desc.sharingMode );
                 buffInfo.queueFamilyIndexCount = static_cast<uint32_t>( m_queueProperties.size() );
                 buffInfo.pQueueFamilyIndices   = qFamNdx;

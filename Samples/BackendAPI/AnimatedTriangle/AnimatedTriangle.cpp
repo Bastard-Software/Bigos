@@ -1,21 +1,22 @@
-#include "TexturedQuad.h"
+#include "AnimatedTriangle.h"
 
 #include "Application.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/IShaderCompiler.h"
 #include "Platform/Window.h"
 
-TexturedQuad::TexturedQuad( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
+AnimatedTriangle::AnimatedTriangle( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )
     , m_pWindowSystem( nullptr )
+    , m_pRenderSystem( nullptr )
     , m_pWindow( nullptr )
     , m_pDevice( nullptr )
     , m_pAPIDevice( nullptr )
     , m_pQueue( nullptr )
+    , m_hVertexShader()
+    , m_hPixelShader()
     , m_pSwapchain( nullptr )
-    , m_hSamplerSetLayout()
     , m_hShaderResourceSetLayout()
-    , m_hSamplerHeap()
     , m_hShaderResourceHeap()
     , m_hPipelineLayout()
     , m_hPipeline()
@@ -23,32 +24,21 @@ TexturedQuad::TexturedQuad( APITypes APIType, uint32_t width, uint32_t height, c
     , m_pCommandBuffers()
     , m_hRTVs()
     , m_backBuffers()
-    , m_samplerOffset( BIGOS::MAX_UINT64 )
-    , m_textureOffset( BIGOS::MAX_UINT64 )
     , m_frameNdx( 0 )
-    , m_shaderSourceSize( 0 )
-    , m_pShaderSource( nullptr )
-    , m_hUploadBuffer()
-    , m_hUploadBufferMemory()
-    , m_hVertexShader()
-    , m_hPixelShader()
+    , m_cbvOffset( 0 )
     , m_hVertexBuffer()
-    , m_hIndexBuffer()
-    , m_hBufferMemory()
-    , m_hTexture()
-    , m_hTextureMemory()
-    , m_hSampledTextureView()
+    , m_hVertexBufferMemory()
+    , m_hConstantBuffer()
+    , m_hConstantBufferMemory()
+    , m_pConstantBufferHost( nullptr )
 {
+    BIGOS::Memory::Set( &m_constantBufferData, 0, sizeof( m_constantBufferData ) );
+    BIGOS::Memory::Set( &m_fenceValues, 0, sizeof( m_fenceValues ) );
 }
 
-BIGOS::RESULT TexturedQuad::OnInit()
+BIGOS::RESULT AnimatedTriangle::OnInit()
 {
     if( BGS_FAILED( InitDevice() ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    if( BGS_FAILED( LoadAssets() ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -68,20 +58,37 @@ BIGOS::RESULT TexturedQuad::OnInit()
         return BIGOS::Results::FAIL;
     }
 
-    if( BGS_FAILED( UploadResourceData() ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
     return BIGOS::Results::OK;
 }
 
-void TexturedQuad::OnUpdate()
+void AnimatedTriangle::OnUpdate()
 {
     m_pWindow->Update();
+
+    // Transform logic
+    const float translationSpeed = 0.005f;
+    const float offsetBounds     = 1.25f;
+
+    m_constantBufferData.offset[ 0 ] += translationSpeed;
+    if( m_constantBufferData.offset[ 0 ] > offsetBounds )
+    {
+        m_constantBufferData.offset[ 0 ] = -offsetBounds;
+    }
+
+    // Mapping constant buffer memory
+    BIGOS::Driver::Backend::MapResourceDesc mapConstant;
+    mapConstant.hResource          = m_hConstantBuffer;
+    mapConstant.bufferRange.size   = sizeof( m_constantBufferData );
+    mapConstant.bufferRange.offset = 0;
+
+    m_pAPIDevice->MapResource( mapConstant, &m_pConstantBufferHost );
+
+    BIGOS::Memory::Copy( &m_constantBufferData, sizeof( m_constantBufferData ), m_pConstantBufferHost, sizeof( m_constantBufferData ) );
+
+    m_pAPIDevice->UnmapResource( mapConstant );
 }
 
-void TexturedQuad::OnRender()
+void AnimatedTriangle::OnRender()
 {
     BIGOS::Driver::Backend::FrameInfo frameInfo;
     m_pSwapchain->GetNextFrame( &frameInfo );
@@ -141,21 +148,13 @@ void TexturedQuad::OnRender()
 
     BIGOS::Driver::Backend::BindingHeapHandle bindingHeaps[] = {
         m_hShaderResourceHeap,
-        m_hSamplerHeap,
     };
-    m_pCommandBuffers[ m_frameNdx ]->SetBindingHeaps( 2, bindingHeaps );
+    m_pCommandBuffers[ m_frameNdx ]->SetBindingHeaps( 1, bindingHeaps );
 
     BIGOS::Driver::Backend::SetBindingsDesc setBindingDesc;
-    setBindingDesc.baseBindingOffset = m_textureOffset;
+    setBindingDesc.baseBindingOffset = m_cbvOffset;
     setBindingDesc.heapNdx           = 0;
     setBindingDesc.setSpaceNdx       = 0;
-    setBindingDesc.hPipelineLayout   = m_hPipelineLayout;
-    setBindingDesc.type              = BIGOS::Driver::Backend::PipelineTypes::GRAPHICS;
-    m_pCommandBuffers[ m_frameNdx ]->SetBindings( setBindingDesc );
-
-    setBindingDesc.baseBindingOffset = m_samplerOffset;
-    setBindingDesc.heapNdx           = 1;
-    setBindingDesc.setSpaceNdx       = 1;
     setBindingDesc.hPipelineLayout   = m_hPipelineLayout;
     setBindingDesc.type              = BIGOS::Driver::Backend::PipelineTypes::GRAPHICS;
     m_pCommandBuffers[ m_frameNdx ]->SetBindings( setBindingDesc );
@@ -190,24 +189,18 @@ void TexturedQuad::OnRender()
     BIGOS::Driver::Backend::VertexBufferDesc vbBindDesc;
     vbBindDesc.hVertexBuffer = m_hVertexBuffer;
     vbBindDesc.offset        = 0;
-    vbBindDesc.size          = 4 * 6 * sizeof( float );
-    vbBindDesc.elementStride = 6 * sizeof( float );
+    vbBindDesc.size          = 3 * 8 * sizeof( float );
+    vbBindDesc.elementStride = 8 * sizeof( float );
     m_pCommandBuffers[ m_frameNdx ]->SetVertexBuffers( 0, 1, &vbBindDesc );
 
-    BIGOS::Driver::Backend::IndexBufferDesc ibBindDesc;
-    ibBindDesc.hIndexBuffer = m_hIndexBuffer;
-    ibBindDesc.indexType    = BIGOS::Driver::Backend::IndexTypes::UINT16;
-    ibBindDesc.offset       = 0;
-    m_pCommandBuffers[ m_frameNdx ]->SetIndexBuffer( ibBindDesc );
-
     BIGOS::Driver::Backend::DrawDesc drawDesc;
-    drawDesc.indexCount    = 6;
+    drawDesc.vertexCount   = 3;
     drawDesc.instanceCount = 1;
-    drawDesc.firstIndex    = 0;
+    drawDesc.firstVertex   = 0;
     drawDesc.firstInstance = 0;
     drawDesc.vertexOffset  = 0;
 
-    m_pCommandBuffers[ m_frameNdx ]->DrawIndexed( drawDesc );
+    m_pCommandBuffers[ m_frameNdx ]->Draw( drawDesc );
 
     m_pCommandBuffers[ m_frameNdx ]->EndRendering();
 
@@ -262,7 +255,7 @@ void TexturedQuad::OnRender()
     }
 }
 
-void TexturedQuad::OnDestroy()
+void AnimatedTriangle::OnDestroy()
 {
     BIGOS::Driver::Backend::WaitForFencesDesc waitDesc;
     waitDesc.fenceCount  = FRAME_COUNT;
@@ -273,22 +266,16 @@ void TexturedQuad::OnDestroy()
     {
         return;
     }
-    m_pAPIDevice->DestroyResource( &m_hUploadBuffer );
-    m_pAPIDevice->FreeMemory( &m_hUploadBufferMemory );
-    m_pAPIDevice->DestroySampler( &m_hSampler );
-    m_pAPIDevice->DestroyResourceView( &m_hSampledTextureView );
-    m_pAPIDevice->DestroyResource( &m_hTexture );
-    m_pAPIDevice->FreeMemory( &m_hTextureMemory );
     m_pAPIDevice->DestroyResource( &m_hVertexBuffer );
-    m_pAPIDevice->DestroyResource( &m_hIndexBuffer );
-    m_pAPIDevice->FreeMemory( &m_hBufferMemory );
+    m_pAPIDevice->FreeMemory( &m_hVertexBufferMemory );
+    m_pAPIDevice->DestroyResourceView( &m_hConstantBufferView );
+    m_pAPIDevice->DestroyResource( &m_hConstantBuffer );
+    m_pAPIDevice->FreeMemory( &m_hConstantBufferMemory );
     m_pAPIDevice->DestroyShader( &m_hVertexShader );
     m_pAPIDevice->DestroyShader( &m_hPixelShader );
-    m_pAPIDevice->DestroyBindingHeap( &m_hSamplerHeap );
-    m_pAPIDevice->DestroyBindingHeap( &m_hShaderResourceHeap );
     m_pAPIDevice->DestroyPipeline( &m_hPipeline );
     m_pAPIDevice->DestroyPipelineLayout( &m_hPipelineLayout );
-    m_pAPIDevice->DestroyBindingSetLayout( &m_hSamplerSetLayout );
+    m_pAPIDevice->DestroyBindingHeap( &m_hShaderResourceHeap );
     m_pAPIDevice->DestroyBindingSetLayout( &m_hShaderResourceSetLayout );
     for( uint32_t ndx = 0; ndx < FRAME_COUNT; ++ndx )
     {
@@ -302,7 +289,7 @@ void TexturedQuad::OnDestroy()
     m_pAPIDevice->DestroyQueue( &m_pQueue );
 }
 
-BIGOS::RESULT TexturedQuad::InitDevice()
+BIGOS::RESULT AnimatedTriangle::InitDevice()
 {
     BIGOS::Platform::WindowSystemDesc wndSystemDesc;
     if( BGS_FAILED( Application::GetFramework()->CreateWindowSystem( wndSystemDesc, &m_pWindowSystem ) ) )
@@ -381,94 +368,7 @@ BIGOS::RESULT TexturedQuad::InitDevice()
     return BIGOS::Results::OK;
 }
 
-BIGOS::RESULT TexturedQuad::LoadAssets()
-{
-    // Load shaders
-    if( BGS_FAILED( readDataFromFile( "../Samples/BackendAPI/TexturedQuad/shader.hlsl", &m_pShaderSource, &m_shaderSourceSize ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    // Generating texture data
-    void*    pTextureData = nullptr;
-    uint32_t textureSize  = 0;
-    if( BGS_FAILED( GenerateCheckerboardData( 256, 256, &pTextureData, &textureSize ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    // Creating upload buffer
-    // 512 is copy alignment for textures (native API limitation)
-    const uint32_t                       uploadBufferSize = 512 + 256 * 256 * 4;
-    BIGOS::Driver::Backend::ResourceDesc uploadBufferDesc;
-    uploadBufferDesc.size.width      = uploadBufferSize;
-    uploadBufferDesc.size.height     = 1;
-    uploadBufferDesc.size.depth      = 1;
-    uploadBufferDesc.format          = BIGOS::Driver::Backend::Formats::UNKNOWN;
-    uploadBufferDesc.mipLevelCount   = 1;
-    uploadBufferDesc.arrayLayerCount = 1;
-    uploadBufferDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::LINEAR;
-    uploadBufferDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::BUFFER;
-    uploadBufferDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
-    uploadBufferDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
-    uploadBufferDesc.resourceUsage   = BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::TRANSFER_SRC );
-    if( BGS_FAILED( m_pAPIDevice->CreateResource( uploadBufferDesc, &m_hUploadBuffer ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    // Allocating memory for upload buffer
-    BIGOS::Driver::Backend::ResourceAllocationInfo uploadBufferAllocInfo;
-    m_pAPIDevice->GetResourceAllocationInfo( m_hUploadBuffer, &uploadBufferAllocInfo );
-
-    BIGOS::Driver::Backend::AllocateMemoryDesc uploadAllocDesc;
-    uploadAllocDesc.size      = uploadBufferAllocInfo.size;
-    uploadAllocDesc.alignment = uploadBufferAllocInfo.alignment;
-    uploadAllocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::UPLOAD;
-    uploadAllocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::BUFFERS;
-    if( BGS_FAILED( m_pAPIDevice->AllocateMemory( uploadAllocDesc, &m_hUploadBufferMemory ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    // Binding upload buffer
-    BIGOS::Driver::Backend::BindResourceMemoryDesc bindMemDesc;
-    bindMemDesc.hMemory      = m_hUploadBufferMemory;
-    bindMemDesc.hResource    = m_hUploadBuffer;
-    bindMemDesc.memoryOffset = 0;
-    if( BGS_FAILED( m_pAPIDevice->BindResourceMemory( bindMemDesc ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    void*                                   pHostAccess = nullptr;
-    BIGOS::Driver::Backend::MapResourceDesc mapUpload;
-    mapUpload.hResource          = m_hUploadBuffer;
-    mapUpload.bufferRange.size   = uploadBufferSize;
-    mapUpload.bufferRange.offset = 0;
-    if( BGS_FAILED( m_pAPIDevice->MapResource( mapUpload, &pHostAccess ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-    BIGOS::byte_t* pCurr = static_cast<BIGOS::byte_t*>( pHostAccess );
-
-    BIGOS::Memory::Copy( VERTEX_DATA, sizeof( VERTEX_DATA ), pCurr, sizeof( VERTEX_DATA ) );
-    pCurr += sizeof( VERTEX_DATA );
-    BIGOS::Memory::Copy( INDEX_DATA, sizeof( INDEX_DATA ), pCurr, sizeof( INDEX_DATA ) );
-    pCurr = static_cast<BIGOS::byte_t*>( pHostAccess ) + 512;
-    BIGOS::Memory::Copy( pTextureData, textureSize, pCurr, textureSize );
-
-    if( BGS_FAILED( m_pAPIDevice->UnmapResource( mapUpload ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    delete[] pTextureData;
-
-    return BIGOS::RESULT();
-}
-
-BIGOS::RESULT TexturedQuad::CreateFrameResources()
+BIGOS::RESULT AnimatedTriangle::CreateFrameResources()
 {
     m_backBuffers = m_pSwapchain->GetBackBuffers();
 
@@ -517,163 +417,135 @@ BIGOS::RESULT TexturedQuad::CreateFrameResources()
     return BIGOS::Results::OK;
 }
 
-BIGOS::RESULT TexturedQuad::CreateApplicationResources()
+BIGOS::RESULT AnimatedTriangle::CreateApplicationResources()
 {
-    // Creating vertex index buffer
+    // Creating vertex buffer
     BIGOS::Driver::Backend::ResourceDesc vbDesc;
-    vbDesc.size.width      = 4 /* quad */ * 6 /* position (4) + texcoord (2) */ * sizeof( float );
-    vbDesc.size.height     = 1;
-    vbDesc.size.depth      = 1;
-    vbDesc.mipLevelCount   = 1;
     vbDesc.arrayLayerCount = 1;
     vbDesc.format          = BIGOS::Driver::Backend::Formats::UNKNOWN;
+    vbDesc.mipLevelCount   = 1;
     vbDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::LINEAR;
     vbDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::BUFFER;
+    vbDesc.resourceUsage   = BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::VERTEX_BUFFER );
     vbDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
     vbDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
-    vbDesc.resourceUsage   = BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::VERTEX_BUFFER ) |
-                           BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::TRANSFER_DST );
+    vbDesc.size.width      = 3 /* triangle */ * 8 /* position (4) + color (4) */ * sizeof( float );
+    vbDesc.size.height     = 1;
+    vbDesc.size.depth      = 1;
     if( BGS_FAILED( m_pAPIDevice->CreateResource( vbDesc, &m_hVertexBuffer ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    BIGOS::Driver::Backend::ResourceDesc ibDesc;
-    ibDesc.size.width      = 6 /* two triangles */ * sizeof( uint16_t );
-    ibDesc.size.height     = 1;
-    ibDesc.size.depth      = 1;
-    ibDesc.mipLevelCount   = 1;
-    ibDesc.arrayLayerCount = 1;
-    ibDesc.format          = BIGOS::Driver::Backend::Formats::UNKNOWN;
-    ibDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::LINEAR;
-    ibDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::BUFFER;
-    ibDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
-    ibDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
-    ibDesc.resourceUsage   = BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::INDEX_BUFFER ) |
-                           BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::TRANSFER_DST );
-    if( BGS_FAILED( m_pAPIDevice->CreateResource( ibDesc, &m_hIndexBuffer ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    // Allocating memory for buffers
     BIGOS::Driver::Backend::ResourceAllocationInfo vbAllocInfo;
     m_pAPIDevice->GetResourceAllocationInfo( m_hVertexBuffer, &vbAllocInfo );
-    BIGOS::Driver::Backend::ResourceAllocationInfo ibAllocInfo;
-    m_pAPIDevice->GetResourceAllocationInfo( m_hIndexBuffer, &ibAllocInfo );
 
-    BIGOS::Driver::Backend::AllocateMemoryDesc bufferAllocDesc;
-    bufferAllocDesc.size      = vbAllocInfo.size + ibAllocInfo.size;
-    bufferAllocDesc.alignment = vbAllocInfo.alignment;
-    bufferAllocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::DEFAULT;
-    bufferAllocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::BUFFERS;
-    if( BGS_FAILED( m_pAPIDevice->AllocateMemory( bufferAllocDesc, &m_hBufferMemory ) ) )
+    BIGOS::Driver::Backend::AllocateMemoryDesc allocDesc;
+    allocDesc.size      = vbAllocInfo.size;
+    allocDesc.alignment = vbAllocInfo.alignment;
+    allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::UPLOAD;
+    allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::BUFFERS;
+    if( BGS_FAILED( m_pAPIDevice->AllocateMemory( allocDesc, &m_hVertexBufferMemory ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Binding vertex and index buffer
-    BIGOS::Driver::Backend::BindResourceMemoryDesc bindMemDesc;
-    bindMemDesc.hMemory      = m_hBufferMemory;
-    bindMemDesc.hResource    = m_hVertexBuffer;
-    bindMemDesc.memoryOffset = 0;
-    if( BGS_FAILED( m_pAPIDevice->BindResourceMemory( bindMemDesc ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-    bindMemDesc.hResource    = m_hIndexBuffer;
-    bindMemDesc.memoryOffset = vbAllocInfo.size;
-    if( BGS_FAILED( m_pAPIDevice->BindResourceMemory( bindMemDesc ) ) )
+    BIGOS::Driver::Backend::BindResourceMemoryDesc bindVertexMemDesc;
+    bindVertexMemDesc.hMemory      = m_hVertexBufferMemory;
+    bindVertexMemDesc.hResource    = m_hVertexBuffer;
+    bindVertexMemDesc.memoryOffset = 0;
+    if( BGS_FAILED( m_pAPIDevice->BindResourceMemory( bindVertexMemDesc ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Creating texture
-    BIGOS::Driver::Backend::ResourceDesc textureDesc;
-    textureDesc.size.width      = 256;
-    textureDesc.size.height     = 256;
-    textureDesc.size.depth      = 1;
-    textureDesc.mipLevelCount   = 1;
-    textureDesc.arrayLayerCount = 1;
-    textureDesc.format          = BIGOS::Driver::Backend::Formats::R8G8B8A8_UNORM;
-    textureDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::LINEAR;
-    textureDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::TEXTURE_2D;
-    textureDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
-    textureDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
-    textureDesc.resourceUsage   = BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::SAMPLED_TEXTURE ) |
-                                BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::TRANSFER_DST );
-    if( BGS_FAILED( m_pAPIDevice->CreateResource( textureDesc, &m_hTexture ) ) )
+    void*                                   pHostAccess = nullptr;
+    BIGOS::Driver::Backend::MapResourceDesc mapVertex;
+    mapVertex.hResource          = m_hVertexBuffer;
+    mapVertex.bufferRange.size   = 3 * 8 * sizeof( float );
+    mapVertex.bufferRange.offset = 0;
+    if( BGS_FAILED( m_pAPIDevice->MapResource( mapVertex, &pHostAccess ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Allocating memory for textures
-    BIGOS::Driver::Backend::ResourceAllocationInfo texAllocInfo;
-    m_pAPIDevice->GetResourceAllocationInfo( m_hTexture, &texAllocInfo );
+    float vertexData[] = {
+        -0.5f, -0.5f, 0.0f, 1.0f /* POSITION */, 1.0f, 0.0f, 0.0f, 1.0f, /* COLOR */
+        0.5f,  -0.5f, 0.0f, 1.0f /* POSITION */, 0.0f, 1.0f, 0.0f, 1.0f, /* COLOR */
+        0.0f,  0.5f,  0.0f, 1.0f /* POSITION */, 0.0f, 0.0f, 1.0f, 1.0f, /* COLOR */
+    };
 
-    BIGOS::Driver::Backend::AllocateMemoryDesc texAllocDesc;
-    texAllocDesc.size      = texAllocInfo.size;
-    texAllocDesc.alignment = texAllocInfo.alignment;
-    texAllocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::DEFAULT;
-    texAllocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::TEXTURES;
-    if( BGS_FAILED( m_pAPIDevice->AllocateMemory( texAllocDesc, &m_hTextureMemory ) ) )
+    BIGOS::Memory::Copy( vertexData, sizeof( vertexData ), pHostAccess, sizeof( vertexData ) );
+
+    if( BGS_FAILED( m_pAPIDevice->UnmapResource( mapVertex ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Binding texture
-    bindMemDesc.hMemory      = m_hTextureMemory;
-    bindMemDesc.hResource    = m_hTexture;
-    bindMemDesc.memoryOffset = 0;
-    if( BGS_FAILED( m_pAPIDevice->BindResourceMemory( bindMemDesc ) ) )
+    // Creating constant buffer
+    BIGOS::Driver::Backend::ResourceDesc cbDesc;
+    cbDesc.arrayLayerCount = 1;
+    cbDesc.format          = BIGOS::Driver::Backend::Formats::UNKNOWN;
+    cbDesc.mipLevelCount   = 1;
+    cbDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::LINEAR;
+    cbDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::BUFFER;
+    cbDesc.resourceUsage   = BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::CONSTANT_BUFFER );
+    cbDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
+    cbDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
+    cbDesc.size.width      = sizeof( m_constantBufferData );
+    cbDesc.size.height     = 1;
+    cbDesc.size.depth      = 1;
+    if( BGS_FAILED( m_pAPIDevice->CreateResource( cbDesc, &m_hConstantBuffer ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Creating sampled texture view
-    BIGOS::Driver::Backend::TextureViewDesc texViewDesc;
-    texViewDesc.usage                 = BGS_FLAG( BIGOS::Driver::Backend::ResourceViewUsageFlagBits::SAMPLED_TEXTURE );
-    texViewDesc.format                = BIGOS::Driver::Backend::Formats::R8G8B8A8_UNORM;
-    texViewDesc.textureType           = BIGOS::Driver::Backend::TextureTypes::TEXTURE_2D;
-    texViewDesc.range.components      = BGS_FLAG( BIGOS::Driver::Backend::TextureComponentFlagBits::COLOR );
-    texViewDesc.range.mipLevel        = 0;
-    texViewDesc.range.mipLevelCount   = 1;
-    texViewDesc.range.arrayLayer      = 0;
-    texViewDesc.range.arrayLayerCount = 1;
-    texViewDesc.hResource             = m_hTexture;
+    BIGOS::Driver::Backend::ResourceAllocationInfo cbAllocInfo;
+    m_pAPIDevice->GetResourceAllocationInfo( m_hConstantBuffer, &cbAllocInfo );
 
-    if( BGS_FAILED( m_pAPIDevice->CreateResourceView( texViewDesc, &m_hSampledTextureView ) ) )
+    allocDesc.size      = cbAllocInfo.size;
+    allocDesc.alignment = cbAllocInfo.alignment;
+    allocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::UPLOAD;
+    allocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::BUFFERS;
+    if( BGS_FAILED( m_pAPIDevice->AllocateMemory( allocDesc, &m_hConstantBufferMemory ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Creating sampler
-    BIGOS::Driver::Backend::SamplerDesc samplerDesc;
-    samplerDesc.type                = BIGOS::Driver::Backend::SamplerTypes::NORMAL;
-    samplerDesc.minFilter           = BIGOS::Driver::Backend::FilterTypes::LINEAR;
-    samplerDesc.magFilter           = BIGOS::Driver::Backend::FilterTypes::LINEAR;
-    samplerDesc.mipMapFilter        = BIGOS::Driver::Backend::FilterTypes::LINEAR;
-    samplerDesc.addressU            = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
-    samplerDesc.addressV            = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
-    samplerDesc.addressW            = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
-    samplerDesc.anisotropyEnable    = BIGOS::BGS_FALSE;
-    samplerDesc.compareEnable       = BIGOS::BGS_FALSE;
-    samplerDesc.compareOperation    = BIGOS::Driver::Backend::CompareOperationTypes::NEVER;
-    samplerDesc.reductionMode       = BIGOS::Driver::Backend::SamplerReductionModes::WEIGHTED_AVERAGE;
-    samplerDesc.minLod              = 0;
-    samplerDesc.maxLod              = 0;
-    samplerDesc.mipLodBias          = 0;
-    samplerDesc.customBorderColor.r = 1.0f;
-    samplerDesc.customBorderColor.g = 1.0f;
-    samplerDesc.customBorderColor.b = 1.0f;
-    samplerDesc.customBorderColor.a = 1.0f;
-
-    if( BGS_FAILED( m_pAPIDevice->CreateSampler( samplerDesc, &m_hSampler ) ) )
+    // Binding constant buffer memory
+    BIGOS::Driver::Backend::BindResourceMemoryDesc bindConstantMemDesc;
+    bindConstantMemDesc.hMemory      = m_hConstantBufferMemory;
+    bindConstantMemDesc.hResource    = m_hConstantBuffer;
+    bindConstantMemDesc.memoryOffset = 0;
+    if( BGS_FAILED( m_pAPIDevice->BindResourceMemory( bindConstantMemDesc ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Creating shaders
+    // Creating constant buffer view
+    BIGOS::Driver::Backend::BufferViewDesc cbvDesc;
+    cbvDesc.hResource    = m_hConstantBuffer;
+    cbvDesc.usage        = BGS_FLAG( BIGOS::Driver::Backend::ResourceViewUsageFlagBits::CONSTANT_BUFFER );
+    cbvDesc.range.offset = 0;
+    cbvDesc.range.size   = sizeof( m_constantBufferData );
+    if( BGS_FAILED( m_pAPIDevice->CreateResourceView( cbvDesc, &m_hConstantBufferView ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    return BIGOS::Results::OK;
+}
+
+BIGOS::RESULT AnimatedTriangle::CreatePipeline()
+{
+    void*    pShader = nullptr;
+    uint32_t size    = 0;
+    // Allocates memory that needs to be freed
+    if( BGS_FAILED( readDataFromFile( "../Samples/BackendAPI/AnimatedTriangle/shader.hlsl", &pShader, &size ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
     BIGOS::Driver::Frontend::ShaderCompilerOutput* pVSBlob = nullptr;
     BIGOS::Driver::Frontend::ShaderCompilerOutput* pPSBlob = nullptr;
     BIGOS::Driver::Frontend::CompileShaderDesc     shaderDesc;
@@ -682,8 +554,8 @@ BIGOS::RESULT TexturedQuad::CreateApplicationResources()
     shaderDesc.outputFormat       = m_APIType == BIGOS::Driver::Backend::APITypes::D3D12 ? BIGOS::Driver::Frontend::ShaderFormats::DXIL
                                                                                          : BIGOS::Driver::Frontend::ShaderFormats::SPIRV;
     shaderDesc.model              = BIGOS::Driver::Frontend::ShaderModels::SHADER_MODEL_6_5;
-    shaderDesc.source.pSourceCode = m_pShaderSource;
-    shaderDesc.source.sourceSize  = m_shaderSourceSize;
+    shaderDesc.source.pSourceCode = pShader;
+    shaderDesc.source.sourceSize  = size;
     shaderDesc.type               = BIGOS::Driver::Backend::ShaderTypes::VERTEX;
     shaderDesc.pEntryPoint        = "VSMain";
     if( BGS_FAILED( m_pRenderSystem->GetDefaultCompiler()->Compile( shaderDesc, &pVSBlob ) ) )
@@ -715,145 +587,14 @@ BIGOS::RESULT TexturedQuad::CreateApplicationResources()
     m_pRenderSystem->GetDefaultCompiler()->DestroyOutput( &pVSBlob );
     m_pRenderSystem->GetDefaultCompiler()->DestroyOutput( &pPSBlob );
 
-    delete[] m_pShaderSource;
+    delete[] pShader;
 
-    return BIGOS::Results::OK;
-}
-
-BIGOS::RESULT TexturedQuad::UploadResourceData()
-{
-    BGS_ASSERT( m_pQueue );
-
-    BIGOS::Driver::Backend::CommandPoolHandle hCpyPool;
-    BIGOS::Driver::Backend::CommandPoolDesc   cpyPoolDesc;
-    cpyPoolDesc.pQueue = m_pQueue;
-    if( BGS_FAILED( m_pAPIDevice->CreateCommandPool( cpyPoolDesc, &hCpyPool ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    BIGOS::Driver::Backend::ICommandBuffer*   pCpyCmdBuffer = nullptr;
-    BIGOS::Driver::Backend::CommandBufferDesc cpyCmdBufferDesc;
-    cpyCmdBufferDesc.hCommandPool = hCpyPool;
-    cpyCmdBufferDesc.level        = BIGOS::Driver::Backend::CommandBufferLevels::PRIMARY;
-    cpyCmdBufferDesc.pQueue       = m_pQueue;
-    if( BGS_FAILED( m_pAPIDevice->CreateCommandBuffer( cpyCmdBufferDesc, &pCpyCmdBuffer ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    uint64_t                            fenceWaitValue = 1;
-    BIGOS::Driver::Backend::FenceHandle hUploadFence;
-    BIGOS::Driver::Backend::FenceDesc   uploadFenceDesc;
-    uploadFenceDesc.initialValue = 0;
-    if( BGS_FAILED( m_pAPIDevice->CreateFence( uploadFenceDesc, &hUploadFence ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    BIGOS::Driver::Backend::BeginCommandBufferDesc beginCmdBuffDesc;
-    pCpyCmdBuffer->Begin( beginCmdBuffDesc );
-
-    BIGOS::Driver::Backend::CopyBufferDesc cpyBuffDesc;
-    cpyBuffDesc.hSrcBuffer = m_hUploadBuffer;
-    cpyBuffDesc.hDstBuffer = m_hVertexBuffer;
-    cpyBuffDesc.srcOffset  = 0;
-    cpyBuffDesc.dstOffset  = 0;
-    cpyBuffDesc.size       = 4 * 6 * sizeof( float );
-    pCpyCmdBuffer->CopyBuffer( cpyBuffDesc );
-
-    cpyBuffDesc.hDstBuffer = m_hIndexBuffer;
-    cpyBuffDesc.srcOffset  = 4 * 6 * sizeof( float );
-    cpyBuffDesc.size       = 6 * sizeof( uint16_t );
-    pCpyCmdBuffer->CopyBuffer( cpyBuffDesc );
-
-    BIGOS::Driver::Backend::TextureBarrierDesc preCpyBarrier;
-    preCpyBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::NONE );
-    preCpyBarrier.srcAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::NONE );
-    preCpyBarrier.srcLayout    = BIGOS::Driver::Backend::TextureLayouts::UNDEFINED;
-    preCpyBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::TRANSFER );
-    preCpyBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::TRANSFER_DST );
-    preCpyBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::TRANSFER_DST;
-    preCpyBarrier.hResouce     = m_hTexture;
-    preCpyBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
-
-    BIGOS::Driver::Backend::BarierDesc barrier;
-    barrier.textureBarrierCount = 1;
-    barrier.pTextureBarriers    = &preCpyBarrier;
-    barrier.globalBarrierCount  = 0;
-    barrier.pGlobalBarriers     = nullptr;
-    barrier.bufferBarrierCount  = 0;
-    barrier.pBufferBarriers     = nullptr;
-    pCpyCmdBuffer->Barrier( barrier );
-
-    BIGOS::Driver::Backend::CopyBufferTextureDesc cpyBuffTexDesc;
-    cpyBuffTexDesc.hBuffer       = m_hUploadBuffer;
-    cpyBuffTexDesc.hTexture      = m_hTexture;
-    cpyBuffTexDesc.bufferOffset  = 512;
-    cpyBuffTexDesc.textureOffset = { 0, 0, 0 };
-    cpyBuffTexDesc.size          = { 256, 256, 1 };
-    cpyBuffTexDesc.textureFormat = BIGOS::Driver::Backend::Formats::R8G8B8A8_UNORM;
-    cpyBuffTexDesc.textureRange  = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
-    pCpyCmdBuffer->CopyBuferToTexture( cpyBuffTexDesc );
-
-    BIGOS::Driver::Backend::TextureBarrierDesc postCpyBarrier;
-    postCpyBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::TRANSFER );
-    postCpyBarrier.srcAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::TRANSFER_DST );
-    postCpyBarrier.srcLayout    = BIGOS::Driver::Backend::TextureLayouts::TRANSFER_DST;
-    postCpyBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::PIXEL_SHADING );
-    postCpyBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::SHADER_READ_ONLY );
-    postCpyBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::SHADER_READ_ONLY;
-    postCpyBarrier.hResouce     = m_hTexture;
-    postCpyBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
-
-    barrier.pTextureBarriers = &postCpyBarrier;
-    pCpyCmdBuffer->Barrier( barrier );
-
-    pCpyCmdBuffer->End();
-
-    BIGOS::Driver::Backend::QueueSubmitDesc submitDesc;
-    submitDesc.waitSemaphoreCount   = 0;
-    submitDesc.phWaitSemaphores     = nullptr;
-    submitDesc.waitFenceCount       = 0;
-    submitDesc.phWaitFences         = nullptr;
-    submitDesc.pWaitValues          = nullptr;
-    submitDesc.commandBufferCount   = 1;
-    submitDesc.ppCommandBuffers     = &pCpyCmdBuffer;
-    submitDesc.signalSemaphoreCount = 0;
-    submitDesc.phSignalSemaphores   = nullptr;
-    submitDesc.signalFenceCount     = 1;
-    submitDesc.phSignalFences       = &hUploadFence;
-    submitDesc.pSignalValues        = &fenceWaitValue;
-    if( BGS_FAILED( m_pQueue->Submit( submitDesc ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    BIGOS::Driver::Backend::WaitForFencesDesc waitForFenceDesc;
-    waitForFenceDesc.fenceCount  = 1;
-    waitForFenceDesc.pFences     = &hUploadFence;
-    waitForFenceDesc.pWaitValues = &fenceWaitValue;
-    waitForFenceDesc.waitAll     = BIGOS::BGS_FALSE;
-    if( BGS_FAILED( m_pAPIDevice->WaitForFences( waitForFenceDesc, UINT64_MAX ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
-    m_pAPIDevice->DestroyFence( &hUploadFence );
-    m_pAPIDevice->DestroyCommandBuffer( &pCpyCmdBuffer );
-    m_pAPIDevice->DestroyCommandPool( &hCpyPool );
-
-    return BIGOS::Results::OK;
-}
-
-BIGOS::RESULT TexturedQuad::CreatePipeline()
-{
-    // Binding heap layout
+    // Binding set layout
     BIGOS::Driver::Backend::BindingRangeDesc bindingRange;
     bindingRange.baseBindingSlot    = 0;
     bindingRange.baseShaderRegister = 0;
     bindingRange.bindingCount       = 1;
-    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLED_TEXTURE;
+    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::CONSTANT_BUFFER;
     BIGOS::Driver::Backend::BindingSetLayoutDesc bindingLayoutDesc;
     bindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
     bindingLayoutDesc.bindingRangeCount = 1;
@@ -862,56 +603,34 @@ BIGOS::RESULT TexturedQuad::CreatePipeline()
     {
         return BIGOS::Results::FAIL;
     }
-    bindingRange.baseBindingSlot    = 1;
-    bindingRange.baseShaderRegister = 1;
-    bindingRange.bindingCount       = 1;
-    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
-    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hSamplerSetLayout ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
 
-    // Binding heaps
+    // Binding heap
     BIGOS::Driver::Backend::BindingHeapDesc bindingHeapDesc;
     bindingHeapDesc.bindingCount = 1;
-    bindingHeapDesc.type         = BIGOS::Driver::Backend::BindingHeapTypes::SAMPLER;
-    if( BGS_FAILED( m_pAPIDevice->CreateBindingHeap( bindingHeapDesc, &m_hSamplerHeap ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-    bindingHeapDesc.type = BIGOS::Driver::Backend::BindingHeapTypes::SHADER_RESOURCE;
+    bindingHeapDesc.type         = BIGOS::Driver::Backend::BindingHeapTypes::SHADER_RESOURCE;
     if( BGS_FAILED( m_pAPIDevice->CreateBindingHeap( bindingHeapDesc, &m_hShaderResourceHeap ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    // Write bindings to heaps
+    // Write binding to heap
     BIGOS::Driver::Backend::GetBindingOffsetDesc getAddressDesc;
-    getAddressDesc.hBindingSetLayout = m_hSamplerSetLayout;
-    getAddressDesc.bindingNdx        = 0;
-    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_samplerOffset );
     getAddressDesc.hBindingSetLayout = m_hShaderResourceSetLayout;
-    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_textureOffset );
+    getAddressDesc.bindingNdx        = 0;
+    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_cbvOffset );
 
     BIGOS::Driver::Backend::WriteBindingDesc writeBindingDesc;
-    writeBindingDesc.bindingType   = BindingTypes::SAMPLED_TEXTURE;
+    writeBindingDesc.bindingType   = BindingTypes::CONSTANT_BUFFER;
     writeBindingDesc.hDstHeap      = m_hShaderResourceHeap;
-    writeBindingDesc.dstOffset     = m_textureOffset;
-    writeBindingDesc.hResourceView = m_hSampledTextureView;
-    m_pAPIDevice->WriteBinding( writeBindingDesc );
-
-    writeBindingDesc.bindingType = BindingTypes::SAMPLER;
-    writeBindingDesc.hDstHeap    = m_hSamplerHeap;
-    writeBindingDesc.dstOffset   = m_samplerOffset;
-    writeBindingDesc.hSampler    = m_hSampler;
+    writeBindingDesc.dstOffset     = m_cbvOffset;
+    writeBindingDesc.hResourceView = m_hConstantBufferView;
     m_pAPIDevice->WriteBinding( writeBindingDesc );
 
     // Pipeline layout
-    BIGOS::Driver::Backend::BindingSetLayoutHandle layouts[] = { m_hShaderResourceSetLayout, m_hSamplerSetLayout };
-    BIGOS::Driver::Backend::PipelineLayoutDesc     pipelineLayoutDesc;
+    BIGOS::Driver::Backend::PipelineLayoutDesc pipelineLayoutDesc;
     pipelineLayoutDesc.constantRangeCount    = 0;
-    pipelineLayoutDesc.bindingSetLayoutCount = 2;
-    pipelineLayoutDesc.phBindigSetLayouts    = layouts;
+    pipelineLayoutDesc.bindingSetLayoutCount = 1;
+    pipelineLayoutDesc.phBindigSetLayouts    = &m_hShaderResourceSetLayout;
     pipelineLayoutDesc.pConstantRanges       = nullptr;
     if( BGS_FAILED( m_pAPIDevice->CreatePipelineLayout( pipelineLayoutDesc, &m_hPipelineLayout ) ) )
     {
@@ -941,8 +660,8 @@ BIGOS::RESULT TexturedQuad::CreatePipeline()
     inputElements[ 0 ].location               = 0;
     inputElements[ 0 ].offset                 = 0 * sizeof( float );
     inputElements[ 1 ].binding                = 0;
-    inputElements[ 1 ].format                 = BIGOS::Driver::Backend::Formats::R32G32_FLOAT;
-    inputElements[ 1 ].pSemanticName          = "TEXCOORD";
+    inputElements[ 1 ].format                 = BIGOS::Driver::Backend::Formats::R32G32B32A32_FLOAT;
+    inputElements[ 1 ].pSemanticName          = "COLOR";
     inputElements[ 1 ].location               = 1;
     inputElements[ 1 ].offset                 = 4 * sizeof( float );
     pipelineDesc.inputState.inputBindingCount = 1;
