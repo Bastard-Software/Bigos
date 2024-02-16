@@ -341,8 +341,8 @@ namespace BIGOS
                 {
                     nativeFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
                 }
-                if( ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXEL_BUFFER ) ) &&
-                    ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXTURE ) ) &&
+                if( ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXEL_BUFFER ) ) ||
+                    ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::STORAGE_TEXTURE ) ) ||
                     ( flags & static_cast<uint32_t>( ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER ) ) )
                 {
                     nativeFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;

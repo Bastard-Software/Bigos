@@ -12,6 +12,7 @@
 #include "D3D12Factory.h"
 #include "D3D12Fence.h"
 #include "D3D12Pipeline.h"
+#include "D3D12PipelineLayout.h"
 #include "D3D12Queue.h"
 #include "D3D12Resource.h"
 #include "D3D12ResourceView.h"
@@ -261,6 +262,13 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
+                D3D12PipelineLayout* pPipelineLayout = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pPipelineLayout ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                Memory::Set( pPipelineLayout->pushConstantTable, MAX_UINT32, sizeof( pPipelineLayout->pushConstantTable ) );
+
                 // TODO: D3D12 feature support helper same as in vulkan
                 D3D12_ROOT_PARAMETER1
                 rootParameters[ Config::Driver::Pipeline::MAX_BINDING_SET_LAYOUT_COUNT +
@@ -304,13 +312,16 @@ namespace BIGOS
                     for( index_t ndx = 0; static_cast<uint32_t>( ndx ) < desc.constantRangeCount; ++ndx )
                     {
                         const PushConstantRangeDesc& currRange = desc.pConstantRanges[ ndx ];
-                        D3D12_ROOT_PARAMETER1&       param     = rootParameters[ rootParamCnt++ ];
+                        D3D12_ROOT_PARAMETER1&       param     = rootParameters[ rootParamCnt ];
+                        D3D12_SHADER_VISIBILITY      currVis   = MapBigosShaderVisibilityToD3D12ShaderVisibility( currRange.visibility );
 
                         param.ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
                         param.Constants.Num32BitValues = currRange.constantCount;
                         param.Constants.ShaderRegister = currRange.shaderRegister;
                         param.Constants.RegisterSpace  = 0; // TODO: Handle
-                        param.ShaderVisibility         = MapBigosShaderVisibilityToD3D12ShaderVisibility( currRange.visibility );
+                        param.ShaderVisibility         = currVis;
+
+                        pPipelineLayout->pushConstantTable[ BGS_ENUM_INDEX( currVis ) ] = rootParamCnt++;
                     }
 
                     createEmpty = BGS_FALSE;
@@ -339,6 +350,7 @@ namespace BIGOS
                     Core::Utils::String::Copy( pBuffer, static_cast<size_t>( pError->GetBufferSize() ),
                                                static_cast<const char*>( pError->GetBufferPointer() ) );
                     printf( "%s", buffer );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pPipelineLayout );
                     return Results::FAIL;
                 }
                 if( FAILED( pNativeDevice->CreateRootSignature( 0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(),
@@ -346,12 +358,15 @@ namespace BIGOS
                 {
                     RELEASE_COM_PTR( pSignature );
                     RELEASE_COM_PTR( pError );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pPipelineLayout );
                     return Results::FAIL;
                 }
                 RELEASE_COM_PTR( pSignature );
                 RELEASE_COM_PTR( pError );
 
-                *pHandle = PipelineLayoutHandle( pNativeRootSignature );
+                pPipelineLayout->pNativeRootSignature = pNativeRootSignature;
+
+                *pHandle = PipelineLayoutHandle( pPipelineLayout );
 
                 return Results::OK;
             }
@@ -362,9 +377,10 @@ namespace BIGOS
                 BGS_ASSERT( *pHandle != PipelineLayoutHandle(), "Pipeline layout (pHandle) must point to valid handle." );
                 if( ( pHandle != nullptr ) && ( *pHandle != PipelineLayoutHandle() ) )
                 {
-                    ID3D12RootSignature* pNativeRootSignature = pHandle->GetNativeHandle();
+                    D3D12PipelineLayout* pPipelineLayout = pHandle->GetNativeHandle();
 
-                    RELEASE_COM_PTR( pNativeRootSignature );
+                    RELEASE_COM_PTR( pPipelineLayout->pNativeRootSignature );
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pPipelineLayout );
 
                     *pHandle = PipelineLayoutHandle();
                 }
@@ -1396,7 +1412,7 @@ namespace BIGOS
                 D3D12_CACHED_PIPELINE_STATE cachedPipeline{};
 
                 // Pipeline desc
-                psoDesc.pRootSignature        = gpDesc.hPipelineLayout.GetNativeHandle();
+                psoDesc.pRootSignature        = gpDesc.hPipelineLayout.GetNativeHandle()->pNativeRootSignature;
                 psoDesc.InputLayout           = inputLayout;
                 psoDesc.PrimitiveTopologyType = MapBigosPrimitiveTopologyToD3D12PrimitiveTopologyType( gpDesc.inputAssemblerState.topology );
                 psoDesc.IBStripCutValue   = MapBigosIndexRestartValueToD3D12IndexBufferStripCutValue( gpDesc.inputAssemblerState.indexRestartValue );
@@ -1425,7 +1441,7 @@ namespace BIGOS
                 }
 
                 pPipeline->pPipeline      = pNativePipeline;
-                pPipeline->pRootSignature = gpDesc.hPipelineLayout.GetNativeHandle();
+                pPipeline->pRootSignature = gpDesc.hPipelineLayout.GetNativeHandle()->pNativeRootSignature;
 
                 *ppPipeline = pPipeline;
 
@@ -1451,7 +1467,7 @@ namespace BIGOS
                 }
 
                 // Pipeline desc
-                psoDesc.pRootSignature = cpDesc.hPipelineLayout.GetNativeHandle();
+                psoDesc.pRootSignature = cpDesc.hPipelineLayout.GetNativeHandle()->pNativeRootSignature;
                 psoDesc.CachedPSO      = cachedPipeline;
                 psoDesc.Flags          = D3D12_PIPELINE_STATE_FLAG_NONE;
                 psoDesc.NodeMask       = 0;
@@ -1471,7 +1487,7 @@ namespace BIGOS
                 }
 
                 pPipeline->pPipeline      = pNativePipeline;
-                pPipeline->pRootSignature = cpDesc.hPipelineLayout.GetNativeHandle();
+                pPipeline->pRootSignature = cpDesc.hPipelineLayout.GetNativeHandle()->pNativeRootSignature;
 
                 *ppPipeline = pPipeline;
 
@@ -1945,10 +1961,11 @@ namespace BIGOS
             uint32_t D3D12Device::CreateD3D12UAV( const BufferViewDesc& desc )
             {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc;
-                viewDesc.Format                     = DXGI_FORMAT_R32_TYPELESS;
-                viewDesc.ViewDimension              = D3D12_UAV_DIMENSION_BUFFER;
-                viewDesc.Buffer.Flags               = D3D12_BUFFER_UAV_FLAG_RAW;
-                viewDesc.Buffer.StructureByteStride = 0;
+                viewDesc.Format                      = DXGI_FORMAT_R32_TYPELESS;
+                viewDesc.ViewDimension               = D3D12_UAV_DIMENSION_BUFFER;
+                viewDesc.Buffer.Flags                = D3D12_BUFFER_UAV_FLAG_RAW;
+                viewDesc.Buffer.CounterOffsetInBytes = 0;
+                viewDesc.Buffer.StructureByteStride  = 0;
                 // 4 is size in bytes of DXGI_FORMAT_R32_TYPELESS
                 viewDesc.Buffer.FirstElement = desc.range.offset / 4;
                 viewDesc.Buffer.NumElements  = static_cast<uint32_t>( desc.range.size / 4 );
