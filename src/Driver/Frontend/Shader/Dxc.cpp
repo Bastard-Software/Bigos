@@ -103,8 +103,6 @@ namespace BIGOS
                 compArgs[ argCnt++ ] = L"-T";
                 compArgs[ argCnt++ ] = pTarget;
 
-                compArgs[ argCnt++ ] = DXC_ARG_WARNINGS_ARE_ERRORS;
-
 #if( BGS_SHADER_DEBUG )
                 if( desc.compileDebug == BGS_TRUE )
                 {
@@ -142,10 +140,10 @@ namespace BIGOS
                 srcBuff.Encoding = 0; // Means "non character text"
 
                 IDxcResult* pRes = nullptr;
+                // TODO: Better error handling
+                IDxcBlobUtf8* pErr = nullptr;
                 if( FAILED( m_pCompiler->Compile( &srcBuff, compArgs, argCnt, nullptr, IID_PPV_ARGS( &pRes ) ) ) )
                 {
-                    // TODO: Better error handling
-                    IDxcBlobUtf8* pErr = nullptr;
                     if( SUCCEEDED( pRes->GetOutput( DXC_OUT_ERRORS, IID_PPV_ARGS( &pErr ), nullptr ) ) )
                     {
                         if( ( pErr != nullptr ) && ( pErr->GetStringLength() > 0 ) )
@@ -155,10 +153,21 @@ namespace BIGOS
                             RELEASE_COM_PTR( pErr );
                         }
                     }
+
                     RELEASE_COM_PTR( pRes );
                     RELEASE_COM_PTR( pSrc );
 
                     return Results::FAIL;
+                }
+
+                if( SUCCEEDED( pRes->GetOutput( DXC_OUT_ERRORS, IID_PPV_ARGS( &pErr ), nullptr ) ) )
+                {
+                    if( ( pErr != nullptr ) && ( pErr->GetStringLength() > 0 ) )
+                    {
+                        // TODO: Log better way
+                        printf( "%s", static_cast<const char*>( pErr->GetStringPointer() ) );
+                        RELEASE_COM_PTR( pErr );
+                    }
                 }
 
                 IDxcBlob* pBlob = nullptr;

@@ -2077,7 +2077,7 @@ namespace BIGOS
                 VkComputePipelineCreateInfo pipelineInfo;
                 pipelineInfo.sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
                 pipelineInfo.pNext              = nullptr;
-                pipelineInfo.flags              = 0;
+                pipelineInfo.flags              = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
                 pipelineInfo.stage              = CreateShaderStage( cpDesc.computeShader, VK_SHADER_STAGE_COMPUTE_BIT );
                 pipelineInfo.layout             = cpDesc.hPipelineLayout.GetNativeHandle();
                 pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;

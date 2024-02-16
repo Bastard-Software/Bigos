@@ -685,6 +685,13 @@ namespace BIGOS
                 uint32_t firstInstance;
             };
 
+            struct DispatchDesc
+            {
+                uint32_t groupCountX;
+                uint32_t groupCountY;
+                uint32_t groupCountZ;
+            };
+
             enum class TextureComponentFlagBits : uint32_t
             {
                 DEPTH   = 0x00000001,
@@ -1151,6 +1158,16 @@ namespace BIGOS
                 uint64_t             baseBindingOffset;
                 uint32_t             setSpaceNdx;
                 uint32_t             heapNdx;
+                PIPELINE_TYPE        type;
+            };
+
+            struct PushConstantsDesc
+            {
+                PipelineLayoutHandle hPipelineLayout;
+                const void*          pData;
+                uint32_t             firstConstant;
+                uint32_t             constantCount;
+                SHADER_VISIBILITY    shaderVisibility;
                 PIPELINE_TYPE        type;
             };
 

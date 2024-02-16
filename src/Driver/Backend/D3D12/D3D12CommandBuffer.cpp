@@ -7,6 +7,7 @@
 #include "D3D12Common.h"
 #include "D3D12Device.h"
 #include "D3D12Pipeline.h"
+#include "D3D12PipelineLayout.h"
 #include "D3D12Resource.h"
 #include "D3D12ResourceView.h"
 
@@ -46,6 +47,24 @@ namespace BIGOS
                 SetGraphicsBindings,
                 SetComputeBindings,
                 SetComputeBindings,
+            };
+
+            static void SetGraphicsConstants( ID3D12GraphicsCommandList* pList, UINT RootParameterIndex, UINT Num32BitValuesToSet,
+                                              const void* pSrcData, UINT DestOffsetIn32BitValues )
+            {
+                pList->SetGraphicsRoot32BitConstants( RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues );
+            }
+
+            static void SetComputeConstants( ID3D12GraphicsCommandList* pList, UINT RootParameterIndex, UINT Num32BitValuesToSet,
+                                             const void* pSrcData, UINT DestOffsetIn32BitValues )
+            {
+                pList->SetComputeRoot32BitConstants( RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues );
+            }
+
+            void ( *pSetConstantsFn[] )( ID3D12GraphicsCommandList*, UINT, UINT, const void*, UINT ) = {
+                SetGraphicsConstants,
+                SetComputeConstants,
+                SetComputeConstants,
             };
 
             RESULT D3D12CommandBuffer::Create( const CommandBufferDesc& desc, D3D12Device* pDevice )
@@ -330,6 +349,13 @@ namespace BIGOS
                                                           desc.firstInstance );
             }
 
+            void D3D12CommandBuffer::Dispatch( const DispatchDesc& desc )
+            {
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->Dispatch( desc.groupCountX, desc.groupCountY, desc.groupCountZ );
+            }
+
             void D3D12CommandBuffer::Barrier( const BarierDesc& desc )
             {
                 BGS_ASSERT( desc.globalBarrierCount <= Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT,
@@ -563,9 +589,24 @@ namespace BIGOS
 
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
 
-                const D3D12_GPU_DESCRIPTOR_HANDLE handle{ m_pBoundHeaps[desc.heapNdx]->GetGPUDescriptorHandleForHeapStart().ptr + desc.baseBindingOffset };
+                const D3D12_GPU_DESCRIPTOR_HANDLE handle{ m_pBoundHeaps[ desc.heapNdx ]->GetGPUDescriptorHandleForHeapStart().ptr +
+                                                          desc.baseBindingOffset };
 
                 pSetBindingsFn[ BGS_ENUM_INDEX( desc.type ) ]( pNativeCommandList, desc.setSpaceNdx, handle );
+            }
+
+            void D3D12CommandBuffer::PushConstants( const PushConstantsDesc& desc )
+            {
+                BGS_ASSERT( desc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (desc.hPipelineLayout) must be a valid handle." );
+                BGS_ASSERT( desc.pData != nullptr, "Data (desc.pData) must be a valid pointer." );
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                D3D12_SHADER_VISIBILITY vis     = MapBigosShaderVisibilityToD3D12ShaderVisibility( desc.shaderVisibility );
+                const uint32_t          rootNdx = desc.hPipelineLayout.GetNativeHandle()->pushConstantTable[ BGS_ENUM_INDEX( vis ) ];
+                BGS_ASSERT( rootNdx != MAX_UINT32 );
+
+                pSetConstantsFn[ BGS_ENUM_INDEX( desc.type ) ]( pNativeCommandList, rootNdx, desc.constantCount, desc.pData, desc.firstConstant );
             }
 
             void D3D12CommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )

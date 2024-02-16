@@ -36,6 +36,8 @@ namespace BIGOS
                 virtual void Draw( const DrawDesc& desc ) override;
                 virtual void DrawIndexed( const DrawDesc& desc ) override;
 
+                virtual void Dispatch( const DispatchDesc& desc ) override;
+
                 virtual void Barrier( const BarierDesc& desc ) override;
 
                 virtual void CopyBuffer( const CopyBufferDesc& desc ) override;
@@ -46,6 +48,8 @@ namespace BIGOS
                 virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type ) override;
                 virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) override;
                 virtual void SetBindings( const SetBindingsDesc& desc ) override;
+
+                virtual void PushConstants( const PushConstantsDesc& desc ) override;
 
                 virtual void BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type ) override;
                 virtual void EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type ) override;

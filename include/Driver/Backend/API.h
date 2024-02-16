@@ -99,7 +99,7 @@ namespace BIGOS
                 virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )                = 0;
                 virtual void   DestroyBindingHeap( BindingHeapHandle* pHandle )                                            = 0;
                 virtual void   GetBindingOffset( const GetBindingOffsetDesc& desc, uint64_t* pOffset )                     = 0;
-                virtual void   WriteBinding( const WriteBindingDesc& desc )                                                = 0; // TODO: For now, writes only one binding at the time.
+                virtual void   WriteBinding( const WriteBindingDesc& desc ) = 0; // TODO: For now, writes only one binding at the time.
 
                 virtual RESULT CreateQueryPool( const QueryPoolDesc& desc, QueryPoolHandle* pHandle ) = 0;
                 virtual void   DestroyQueryPool( QueryPoolHandle* pHandle )                           = 0;
@@ -170,6 +170,8 @@ namespace BIGOS
                 virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) = 0;
                 virtual void SetBindings( const SetBindingsDesc& desc )                              = 0;
 
+                virtual void PushConstants( const PushConstantsDesc& desc ) = 0;
+
                 virtual void SetViewports( uint32_t viewportCount, const ViewportDesc* pViewports ) = 0;
                 virtual void SetScissors( uint32_t scissorCount, const ScissorDesc* pScissors )     = 0;
 
@@ -180,6 +182,8 @@ namespace BIGOS
 
                 virtual void Draw( const DrawDesc& desc )        = 0;
                 virtual void DrawIndexed( const DrawDesc& desc ) = 0;
+
+                virtual void Dispatch( const DispatchDesc& desc ) = 0;
 
                 virtual void Barrier( const BarierDesc& desc ) = 0;
 

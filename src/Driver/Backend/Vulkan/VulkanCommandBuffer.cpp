@@ -329,6 +329,13 @@ namespace BIGOS
                                                              desc.vertexOffset, desc.firstInstance );
             }
 
+            void VulkanCommandBuffer::Dispatch( const DispatchDesc& desc )
+            {
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                m_pParent->GetDeviceAPI()->vkCmdDispatch( nativeCommandBuffer, desc.groupCountX, desc.groupCountY, desc.groupCountZ );
+            }
+
             void VulkanCommandBuffer::Barrier( const BarierDesc& desc )
             {
                 BGS_ASSERT( desc.globalBarrierCount <= Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT,
@@ -564,6 +571,18 @@ namespace BIGOS
                 m_pParent->GetDeviceAPI()->vkCmdSetDescriptorBufferOffsetsEXT(
                     nativeCommandBuffer, MapBigosPipelineTypeToVulkanPipelineBindPoint( desc.type ), desc.hPipelineLayout.GetNativeHandle(),
                     desc.setSpaceNdx, 1, &desc.heapNdx, &desc.baseBindingOffset );
+            }
+
+            void VulkanCommandBuffer::PushConstants( const PushConstantsDesc& desc )
+            {
+                BGS_ASSERT( desc.hPipelineLayout != PipelineLayoutHandle(), "Pipeline layout (desc.hPipelineLayout) must be a valid handle." );
+                BGS_ASSERT( desc.pData != nullptr, "Data (desc.pData) must be a valid pointer." );
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                m_pParent->GetDeviceAPI()->vkCmdPushConstants( nativeCommandBuffer, desc.hPipelineLayout.GetNativeHandle(),
+                                                               MapBigosShaderVisibilityToVulkanShaderStageFlags( desc.shaderVisibility ),
+                                                               desc.firstConstant * 4, desc.constantCount * 4, desc.pData );
             }
 
             void VulkanCommandBuffer::BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )
