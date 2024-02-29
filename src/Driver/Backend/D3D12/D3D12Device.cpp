@@ -1662,6 +1662,7 @@ namespace BIGOS
             {
                 D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc;
                 viewDesc.Format = MapBigosFormatToD3D12Format( desc.format );
+                viewDesc.Flags  = D3D12_DSV_FLAG_NONE;
 
                 switch( desc.textureType )
                 {

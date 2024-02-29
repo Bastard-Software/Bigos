@@ -60,6 +60,7 @@ namespace BIGOS
                     m_dev12Features.bufferDeviceAddress                      = VK_TRUE; // Needed for descriptor buffer ext
                     m_dev12Features.descriptorIndexing                       = VK_TRUE; // Needed for descriptor buffer ext
                     m_dev12Features.descriptorBindingVariableDescriptorCount = VK_TRUE; // Needed for descriptor buffer ext
+                    m_dev12Features.separateDepthStencilLayouts              = VK_TRUE; // Depth or stencil test made on combined format
 
                     // Vulkan 1.3 features
                     m_dev13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -1956,8 +1957,9 @@ namespace BIGOS
                 depthStencilInfo.back.compareMask = gpDesc.depthStencilState.stencilReadMask;
                 depthStencilInfo.back.writeMask   = gpDesc.depthStencilState.stencilWriteMask;
                 // Stencil reference is ignored because of dynamic states
-                depthStencilInfo.maxDepthBounds = 0.0f; // Ignored because of dynamic states
-                depthStencilInfo.minDepthBounds = 0.0f; // Ignored because of dynamic states
+                depthStencilInfo.depthBoundsTestEnable = VK_FALSE; // TODO: Depth bound in d3d12 requires new pipelines
+                depthStencilInfo.maxDepthBounds        = 0.0f; // Ignored because of dynamic states
+                depthStencilInfo.minDepthBounds        = 0.0f; // Ignored because of dynamic states
 
                 // Blend state
                 BGS_ASSERT( gpDesc.blendState.renderTargetBlendDescCount <= Config::Driver::Pipeline::MAX_BLEND_STATE_COUNT );
