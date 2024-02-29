@@ -931,6 +931,11 @@ namespace BIGOS
 
             struct ResourceDesc
             {
+                union
+                {
+                    ColorValue        colorClrValue;        // Used only for render targets
+                    DepthStencilValue depthStencilClrValue; // Used only for depth stencil targets
+                };
                 Size3D                size;
                 SAMPLE_COUNT          sampleCount;
                 FORMAT                format;

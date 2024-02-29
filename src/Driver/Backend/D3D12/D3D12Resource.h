@@ -9,6 +9,7 @@ namespace BIGOS::Driver::Backend
     {
         ID3D12Resource*     pNativeResource;
         D3D12_RESOURCE_DESC desc;
+        D3D12_CLEAR_VALUE   clrVal;
     };
 
 } // namespace BIGOS::Driver::Backend
