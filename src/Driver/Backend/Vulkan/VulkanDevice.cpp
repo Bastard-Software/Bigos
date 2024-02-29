@@ -1956,8 +1956,9 @@ namespace BIGOS
                 depthStencilInfo.back.compareMask = gpDesc.depthStencilState.stencilReadMask;
                 depthStencilInfo.back.writeMask   = gpDesc.depthStencilState.stencilWriteMask;
                 // Stencil reference is ignored because of dynamic states
-                depthStencilInfo.maxDepthBounds = 0.0f; // Ignored because of dynamic states
-                depthStencilInfo.minDepthBounds = 0.0f; // Ignored because of dynamic states
+                depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+                depthStencilInfo.maxDepthBounds        = 0.0f; // Ignored because of dynamic states
+                depthStencilInfo.minDepthBounds        = 0.0f; // Ignored because of dynamic states
 
                 // Blend state
                 BGS_ASSERT( gpDesc.blendState.renderTargetBlendDescCount <= Config::Driver::Pipeline::MAX_BLEND_STATE_COUNT );

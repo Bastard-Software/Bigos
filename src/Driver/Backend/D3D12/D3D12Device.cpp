@@ -668,6 +668,20 @@ namespace BIGOS
                 {
                     nativeDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
                 }
+                if( desc.resourceUsage & BGS_FLAG( ResourceUsageFlagBits::COLOR_RENDER_TARGET ) )
+                {
+                    pResource->clrVal.Format     = MapBigosFormatToD3D12Format( desc.format );
+                    pResource->clrVal.Color[ 0 ] = desc.colorClrValue.r;
+                    pResource->clrVal.Color[ 1 ] = desc.colorClrValue.g;
+                    pResource->clrVal.Color[ 2 ] = desc.colorClrValue.b;
+                    pResource->clrVal.Color[ 3 ] = desc.colorClrValue.a;
+                }
+                else if( desc.resourceUsage & BGS_FLAG( ResourceUsageFlagBits::DEPTH_STENCIL_TARGET ) )
+                {
+                    pResource->clrVal.Format               = MapBigosFormatToD3D12Format( desc.format );
+                    pResource->clrVal.DepthStencil.Depth   = desc.depthStencilClrValue.depth;
+                    pResource->clrVal.DepthStencil.Stencil = desc.depthStencilClrValue.stencil;
+                }
 
                 pResource->pNativeResource = nullptr;
 
@@ -705,10 +719,18 @@ namespace BIGOS
                 }
 
                 // Creating D3D12 resource here.
-                ID3D12Device* pNativeDevice = m_handle.GetNativeHandle();
-                if( FAILED( pNativeDevice->CreatePlacedResource( desc.hMemory.GetNativeHandle(), desc.memoryOffset,
-                                                                 &desc.hResource.GetNativeHandle()->desc, D3D12_RESOURCE_STATE_COMMON, nullptr,
-                                                                 IID_PPV_ARGS( &desc.hResource.GetNativeHandle()->pNativeResource ) ) ) )
+                ID3D12Device*      pNativeDevice = m_handle.GetNativeHandle();
+                D3D12Resource*     pResource     = desc.hResource.GetNativeHandle();
+                D3D12_CLEAR_VALUE* pClrVal       = nullptr;
+                if( ( pResource->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) ||
+                    ( pResource->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) )
+                {
+                    pClrVal = &pResource->clrVal;
+                }
+
+                if( FAILED( pNativeDevice->CreatePlacedResource( desc.hMemory.GetNativeHandle(), desc.memoryOffset, &pResource->desc,
+                                                                 D3D12_RESOURCE_STATE_COMMON, pClrVal,
+                                                                 IID_PPV_ARGS( &pResource->pNativeResource ) ) ) )
                 {
                     return Results::FAIL;
                 }
@@ -1662,6 +1684,7 @@ namespace BIGOS
             {
                 D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc;
                 viewDesc.Format = MapBigosFormatToD3D12Format( desc.format );
+                viewDesc.Flags  = D3D12_DSV_FLAG_NONE;
 
                 switch( desc.textureType )
                 {
