@@ -25,6 +25,7 @@ add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
     ${INCLUDE_DIR}
+    ${THIRD_PARTY_DIR}/glm/
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
