@@ -2163,7 +2163,7 @@ namespace BIGOS
 
                 uint32_t familyCount = 0;
                 vkGetPhysicalDeviceQueueFamilyProperties( nativeAdapter, &familyCount, nullptr );
-                VkQueueFamilyProperties nativeProps[ 5 ]; // Max number of queue families is 5 for current hardware
+                VkQueueFamilyProperties nativeProps[ 6 ]; // Max number of queue families is 6 for current hardware
                 vkGetPhysicalDeviceQueueFamilyProperties( nativeAdapter, &familyCount, nativeProps );
                 m_queueProperties.resize( familyCount );
 
