@@ -11,6 +11,7 @@
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
 #include "VulkanFactory.h"
+#include "VulkanQueue.h"
 #include "VulkanResource.h"
 
 namespace BIGOS
@@ -187,6 +188,8 @@ namespace BIGOS
 #    error
 #endif // ( BGS_WINDOWS )
 
+                const uint32_t queueFamilyNdx = static_cast<VulkanQueue*>( m_desc.pQueue )->GetFamilyIndex();
+
                 VkSwapchainCreateInfoKHR scInfo;
                 scInfo.sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
                 scInfo.pNext                 = nullptr;
@@ -201,7 +204,7 @@ namespace BIGOS
                 scInfo.imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
                 scInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
                 scInfo.queueFamilyIndexCount = 1;
-                scInfo.pQueueFamilyIndices   = nullptr;
+                scInfo.pQueueFamilyIndices   = &queueFamilyNdx;
                 scInfo.preTransform          = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
                 scInfo.compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
                 scInfo.presentMode           = m_desc.vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
