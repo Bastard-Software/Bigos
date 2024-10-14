@@ -692,6 +692,16 @@ namespace BIGOS
                 uint32_t groupCountZ;
             };
 
+            struct ExecuteIndirectDesc
+            {
+                CommandLayoutHandle hCommandLayout;
+                ResourceHandle      hIndirectBuffer;
+                ResourceHandle      hCountBuffer;
+                uint64_t            indirectBufferOffset;
+                uint64_t            countBufferOffset;
+                uint32_t            maxCommandCount;
+            };
+
             enum class TextureComponentFlagBits : uint32_t
             {
                 DEPTH   = 0x00000001,
@@ -1091,6 +1101,22 @@ namespace BIGOS
                 SAMPLER_TYPE           type;
             };
 
+            enum class IndirectCommandTypes : uint8_t
+            {
+                DRAW,
+                DRAW_INDEXED,
+                DISPATCH,
+                // TODO: Add more if possible
+                _MAX_ENUM,
+            };
+            using INDIRECT_COMMAND_TYPE = IndirectCommandTypes;
+
+            struct CommandLayoutDesc
+            {
+                uint32_t              stride;
+                INDIRECT_COMMAND_TYPE type;
+            };
+
             enum class BindingTypes : uint8_t
             {
                 SAMPLER,
@@ -1230,6 +1256,30 @@ namespace BIGOS
                 uint32_t        firstQuery;
                 uint32_t        queryCount;
                 QUERY_TYPE      type;
+            };
+
+            struct DrawIndirectArguments
+            {
+                uint32_t vertexCount;
+                uint32_t instanceCount;
+                uint32_t firstVertex;
+                uint32_t firstInstance;
+            };
+
+            struct DrawIndexedIndirectArguments
+            {
+                uint32_t indexCount;
+                uint32_t instanceCount;
+                uint32_t firstIndex;
+                int32_t  vertexOffset;
+                uint32_t firstInstance;
+            };
+
+            struct DispatchIndirectArguments
+            {
+                uint32_t threadGroupCountX;
+                uint32_t threadGroupCountY;
+                uint32_t threadGroupCountZ;
             };
 
         } // namespace Backend

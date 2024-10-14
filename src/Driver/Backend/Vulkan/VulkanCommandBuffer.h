@@ -38,6 +38,8 @@ namespace BIGOS
 
                 virtual void Dispatch( const DispatchDesc& desc ) override;
 
+                virtual void ExecuteIndirect( const ExecuteIndirectDesc& desc ) override;
+
                 virtual void Barrier( const BarierDesc& barrier ) override;
 
                 virtual void CopyBuffer( const CopyBufferDesc& desc ) override;

@@ -3,6 +3,7 @@
 #include "VulkanCommandBuffer.h"
 
 #include "VulkanBindingHeap.h"
+#include "VulkanCommandLayout.h"
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
 #include "VulkanResource.h"
@@ -334,6 +335,66 @@ namespace BIGOS
                 VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
 
                 m_pParent->GetDeviceAPI()->vkCmdDispatch( nativeCommandBuffer, desc.groupCountX, desc.groupCountY, desc.groupCountZ );
+            }
+
+            void VulkanCommandBuffer::ExecuteIndirect( const ExecuteIndirectDesc& desc )
+            {
+                BGS_ASSERT( desc.hCommandLayout != CommandLayoutHandle(), "Command Layout (desc.hCOmmandLayout) must be a valid handle." );
+                BGS_ASSERT( desc.hIndirectBuffer != ResourceHandle(), "Buffer (desc.hIndirectBuffer) must be a valid handle." );
+
+                VkCommandBuffer      nativeCommandBuffer = m_handle.GetNativeHandle();
+                VulkanCommandLayout* pCommandLayout      = desc.hCommandLayout.GetNativeHandle();
+
+                // TODO: Refactor after proper execute indirects
+                switch( pCommandLayout->type )
+                {
+                    case IndirectCommandTypes::DRAW:
+                    {
+                        if( desc.hCountBuffer == ResourceHandle() )
+                        {
+                            m_pParent->GetDeviceAPI()->vkCmdDrawIndirect( nativeCommandBuffer, desc.hIndirectBuffer.GetNativeHandle()->buffer,
+                                                                          desc.indirectBufferOffset, desc.maxCommandCount, pCommandLayout->stride );
+                        }
+                        else
+                        {
+                            m_pParent->GetDeviceAPI()->vkCmdDrawIndirectCount( nativeCommandBuffer, desc.hIndirectBuffer.GetNativeHandle()->buffer,
+                                                                               desc.indirectBufferOffset, desc.hCountBuffer.GetNativeHandle()->buffer,
+                                                                               desc.countBufferOffset, desc.maxCommandCount, pCommandLayout->stride );
+                        }
+
+                        break;
+                    }
+                    case IndirectCommandTypes::DRAW_INDEXED:
+                    {
+                        if( desc.hCountBuffer == ResourceHandle() )
+                        {
+                            m_pParent->GetDeviceAPI()->vkCmdDrawIndexedIndirect( nativeCommandBuffer, desc.hIndirectBuffer.GetNativeHandle()->buffer,
+                                                                                 desc.indirectBufferOffset, desc.maxCommandCount,
+                                                                                 pCommandLayout->stride );
+                        }
+                        else
+                        {
+                            m_pParent->GetDeviceAPI()->vkCmdDrawIndexedIndirectCount(
+                                nativeCommandBuffer, desc.hIndirectBuffer.GetNativeHandle()->buffer, desc.indirectBufferOffset,
+                                desc.hCountBuffer.GetNativeHandle()->buffer, desc.countBufferOffset, desc.maxCommandCount, pCommandLayout->stride );
+                        }
+
+                        break;
+                    }
+                    case IndirectCommandTypes::DISPATCH:
+                    {
+
+                        m_pParent->GetDeviceAPI()->vkCmdDispatchIndirect( nativeCommandBuffer, desc.hIndirectBuffer.GetNativeHandle()->buffer,
+                                                                          desc.indirectBufferOffset );
+
+                        break;
+                    }
+                    default:
+                    {
+
+                        break;
+                    }
+                }
             }
 
             void VulkanCommandBuffer::Barrier( const BarierDesc& desc )

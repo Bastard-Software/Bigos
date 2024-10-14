@@ -9,6 +9,7 @@
 #include "Driver/Frontend/RenderSystem.h"
 #include "VulkanBindingHeap.h"
 #include "VulkanCommandBuffer.h"
+#include "VulkanCommandLayout.h"
 #include "VulkanCommon.h"
 #include "VulkanFactory.h"
 #include "VulkanMemory.h"
@@ -1409,6 +1410,37 @@ namespace BIGOS
                     Memory::Free( m_pParent->GetParent()->GetDefaultAllocator(), &pSampler );
 
                     *pHandle = SamplerHandle();
+                }
+            }
+
+            RESULT VulkanDevice::CreateCommandLayout( const CommandLayoutDesc& desc, CommandLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command layout (pHandle) must be a valid address." );
+                VulkanCommandLayout* pNativeLayout = nullptr;
+                if( BGS_FAILED( Core::Memory::AllocateObject( m_pParent->GetParent()->GetDefaultAllocator(), &pNativeLayout ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                pNativeLayout->stride = desc.stride;
+                pNativeLayout->type   = desc.type;
+
+                ( *pHandle ) = CommandLayoutHandle( pNativeLayout );
+
+                return Results::OK;
+            }
+
+            void VulkanDevice::DestroyCommandLayout( CommandLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command layout (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != CommandLayoutHandle(), "Command layout (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != CommandLayoutHandle() ) )
+                {
+                    VulkanCommandLayout* pLayout = pHandle->GetNativeHandle();
+
+                    Memory::FreeObject( m_pParent->GetParent()->GetDefaultAllocator(), &pLayout );
+
+                    *pHandle = CommandLayoutHandle();
                 }
             }
 

@@ -94,6 +94,9 @@ namespace BIGOS
                 virtual RESULT CreateSampler( const SamplerDesc& desc, SamplerHandle* pHandle )                = 0;
                 virtual void   DestroySampler( SamplerHandle* pHandle )                                        = 0;
 
+                virtual RESULT CreateCommandLayout( const CommandLayoutDesc& desc, CommandLayoutHandle* pHandle ) = 0;
+                virtual void   DestroyCommandLayout( CommandLayoutHandle* pHandle )                               = 0;
+
                 virtual RESULT CreateBindingSetLayout( const BindingSetLayoutDesc& desc, BindingSetLayoutHandle* pHandle ) = 0;
                 virtual void   DestroyBindingSetLayout( BindingSetLayoutHandle* pHandle )                                  = 0;
                 virtual RESULT CreateBindingHeap( const BindingHeapDesc& desc, BindingHeapHandle* pHandle )                = 0;
@@ -184,6 +187,8 @@ namespace BIGOS
                 virtual void DrawIndexed( const DrawDesc& desc ) = 0;
 
                 virtual void Dispatch( const DispatchDesc& desc ) = 0;
+
+                virtual void ExecuteIndirect( const ExecuteIndirectDesc& desc ) = 0;
 
                 virtual void Barrier( const BarierDesc& desc ) = 0;
 

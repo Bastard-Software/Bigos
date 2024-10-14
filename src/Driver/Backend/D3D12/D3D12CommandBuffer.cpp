@@ -356,6 +356,21 @@ namespace BIGOS
                 pNativeCommandList->Dispatch( desc.groupCountX, desc.groupCountY, desc.groupCountZ );
             }
 
+            void D3D12CommandBuffer::ExecuteIndirect( const ExecuteIndirectDesc& desc )
+            {
+                BGS_ASSERT( desc.hCommandLayout != CommandLayoutHandle(), "Command Layout (desc.hCOmmandLayout) must be a valid handle." );
+                BGS_ASSERT( desc.hIndirectBuffer != ResourceHandle(), "Buffer (desc.hIndirectBuffer) must be a valid handle." );
+
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                ID3D12Resource* pNativeCntBuffer =
+                    desc.hCountBuffer == ResourceHandle() ? nullptr : desc.hCountBuffer.GetNativeHandle()->pNativeResource;
+
+                pNativeCommandList->ExecuteIndirect( desc.hCommandLayout.GetNativeHandle(), desc.maxCommandCount,
+                                                     desc.hIndirectBuffer.GetNativeHandle()->pNativeResource, desc.indirectBufferOffset,
+                                                     pNativeCntBuffer, desc.countBufferOffset );
+            }
+
             void D3D12CommandBuffer::Barrier( const BarierDesc& desc )
             {
                 BGS_ASSERT( desc.globalBarrierCount <= Config::Driver::Synchronization::MAX_GLOBAL_BARRIER_COUNT,
