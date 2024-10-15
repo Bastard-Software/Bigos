@@ -1001,6 +1001,47 @@ namespace BIGOS
                 }
             }
 
+            RESULT D3D12Device::CreateCommandLayout( const CommandLayoutDesc& desc, CommandLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command layout (pHandle) must be a valid address." );
+
+                ID3D12Device*           pNativeDevice = m_handle.GetNativeHandle();
+                ID3D12CommandSignature* pNativeLayout = nullptr;
+
+                // TODO: Needs refactoring to implement all d3d12 execute indirects
+                D3D12_INDIRECT_ARGUMENT_DESC argDesc;
+                argDesc.Type = MapBigosIndirectCommandTypeToD3D12IndirectArgumentType( desc.type );
+
+                D3D12_COMMAND_SIGNATURE_DESC nativeDesc;
+                nativeDesc.ByteStride       = desc.stride;
+                nativeDesc.NumArgumentDescs = 1;
+                nativeDesc.pArgumentDescs   = &argDesc;
+                nativeDesc.NodeMask         = 0;
+
+                if( FAILED( pNativeDevice->CreateCommandSignature( &nativeDesc, nullptr, IID_PPV_ARGS( &pNativeLayout ) ) ) )
+                {
+                    return Results::FAIL;
+                }
+
+                ( *pHandle ) = CommandLayoutHandle( pNativeLayout );
+
+                return Results::OK;
+            }
+
+            void D3D12Device::DestroyCommandLayout( CommandLayoutHandle* pHandle )
+            {
+                BGS_ASSERT( pHandle != nullptr, "Command layout (pHandle) must be a valid address." );
+                BGS_ASSERT( *pHandle != CommandLayoutHandle(), "Command layout (pHandle) must point to valid handle." );
+                if( ( pHandle != nullptr ) && ( *pHandle != CommandLayoutHandle() ) )
+                {
+                    ID3D12CommandSignature* pNativeLayout = pHandle->GetNativeHandle();
+
+                    RELEASE_COM_PTR( pNativeLayout );
+
+                    *pHandle = CommandLayoutHandle();
+                }
+            }
+
             RESULT D3D12Device::CreateBindingSetLayout( const BindingSetLayoutDesc& desc, BindingSetLayoutHandle* pHandle )
             {
                 BGS_ASSERT( pHandle != nullptr, "Binding heap layout (pHandle) must be a valid address." );

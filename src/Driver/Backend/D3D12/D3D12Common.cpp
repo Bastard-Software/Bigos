@@ -647,6 +647,17 @@ namespace BIGOS
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
             }
 
+            D3D12_INDIRECT_ARGUMENT_TYPE MapBigosIndirectCommandTypeToD3D12IndirectArgumentType( INDIRECT_COMMAND_TYPE type )
+            {
+                static const D3D12_INDIRECT_ARGUMENT_TYPE translateTable[ BGS_ENUM_COUNT( IndirectCommandTypes ) ] = {
+                    D3D12_INDIRECT_ARGUMENT_TYPE_DRAW,         // DRAW
+                    D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED, // DRAW_INDEXED
+                    D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH,     // DISPATCH
+                };
+
+                return translateTable[ BGS_ENUM_INDEX( type ) ];
+            }
+
         } // namespace Backend
     }     // namespace Driver
 } // namespace BIGOS

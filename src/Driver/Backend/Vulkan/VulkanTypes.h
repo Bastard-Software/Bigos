@@ -10,6 +10,7 @@ namespace BIGOS::Driver::Backend
     struct VulkanResource;
     struct VulkanResourceView;
     struct VulkanSampler;
+    struct VulkanCommandLayout;
 } // namespace BIGOS::Driver::Backend
 
 #if BGS_USE_VULKAN_HANDLES
@@ -39,6 +40,7 @@ BGS_DECLARE_VULKAN_HANDLE( Sampler, BIGOS::Driver::Backend::VulkanSampler* );
 BGS_DECLARE_VULKAN_HANDLE( BindingSetLayout, VkDescriptorSetLayout );
 BGS_DECLARE_VULKAN_HANDLE( BindingHeap, BIGOS::Driver::Backend::VulkanBindingHeap* );
 BGS_DECLARE_VULKAN_HANDLE( QueryPool, VkQueryPool );
+BGS_DECLARE_VULKAN_HANDLE( CommandLayout, BIGOS::Driver::Backend::VulkanCommandLayout* );
 
 #endif
 

@@ -47,6 +47,7 @@ BGS_DECLARE_D3D12_HANDLE( Sampler, BIGOS::Driver::Backend::D3D12Sampler* )
 BGS_DECLARE_D3D12_HANDLE( BindingSetLayout, BIGOS::Driver::Backend::D3D12BindingSetLayout* )
 BGS_DECLARE_D3D12_HANDLE( BindingHeap, ID3D12DescriptorHeap* )
 BGS_DECLARE_D3D12_HANDLE( QueryPool, ID3D12QueryHeap* )
+BGS_DECLARE_D3D12_HANDLE( CommandLayout, ID3D12CommandSignature* )
 
 #endif
 
