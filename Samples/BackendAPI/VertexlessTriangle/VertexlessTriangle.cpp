@@ -8,6 +8,7 @@
 VertexlessTriangle::VertexlessTriangle( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )
     , m_pWindowSystem( nullptr )
+    , m_pRenderSystem( nullptr )
     , m_pWindow( nullptr )
     , m_pDevice( nullptr )
     , m_pAPIDevice( nullptr )
@@ -24,6 +25,7 @@ VertexlessTriangle::VertexlessTriangle( APITypes APIType, uint32_t width, uint32
     , m_backBuffers()
     , m_frameNdx( 0 )
 {
+    BIGOS::Memory::Set( &m_fenceValues, 0, sizeof( m_fenceValues ) );
 }
 
 BIGOS::RESULT VertexlessTriangle::OnInit()
@@ -55,7 +57,7 @@ void VertexlessTriangle::OnRender()
 {
     BIGOS::Driver::Backend::FrameInfo frameInfo;
     m_pSwapchain->GetNextFrame( &frameInfo );
-    m_frameNdx = frameInfo.swapChainBackBufferIndex;
+    const uint32_t bufferNdx = frameInfo.swapChainBackBufferIndex;
 
     BIGOS::Driver::Backend::WaitForFencesDesc waitDesc;
     waitDesc.fenceCount  = 1;
@@ -68,14 +70,14 @@ void VertexlessTriangle::OnRender()
     }
     m_fenceValues[ m_frameNdx ]++;
 
-    if( BGS_FAILED( m_pAPIDevice->ResetCommandPool( m_hCommandPools[ m_frameNdx ] ) ) )
+    if( BGS_FAILED( m_pAPIDevice->ResetCommandPool( m_hCommandPools[ bufferNdx ] ) ) )
     {
         return;
     }
 
     // Render commands
     BIGOS::Driver::Backend::BeginCommandBufferDesc beginDesc;
-    m_pCommandBuffers[ m_frameNdx ]->Begin( beginDesc );
+    m_pCommandBuffers[ bufferNdx ]->Begin( beginDesc );
 
     BIGOS::Driver::Backend::TextureBarrierDesc preTexBarrier;
     preTexBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::RENDER_TARGET );
@@ -84,7 +86,7 @@ void VertexlessTriangle::OnRender()
     preTexBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::RENDER_TARGET );
     preTexBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::RENDER_TARGET );
     preTexBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::RENDER_TARGET;
-    preTexBarrier.hResouce     = m_backBuffers[ m_frameNdx ].hBackBuffer;
+    preTexBarrier.hResouce     = m_backBuffers[ bufferNdx ].hBackBuffer;
     preTexBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
 
     BIGOS::Driver::Backend::BarierDesc preBarrier;
@@ -95,19 +97,19 @@ void VertexlessTriangle::OnRender()
     preBarrier.bufferBarrierCount  = 0;
     preBarrier.pBufferBarriers     = nullptr;
 
-    m_pCommandBuffers[ m_frameNdx ]->Barrier( preBarrier );
+    m_pCommandBuffers[ bufferNdx ]->Barrier( preBarrier );
 
     BIGOS::Driver::Backend::BeginRenderingDesc renderingDesc;
     renderingDesc.colorRenderTargetCount   = 1;
-    renderingDesc.phColorRenderTargetViews = &m_hRTVs[ m_frameNdx ];
+    renderingDesc.phColorRenderTargetViews = &m_hRTVs[ bufferNdx ];
     renderingDesc.hDepthStencilTargetView  = BIGOS::Driver::Backend::ResourceViewHandle();
     renderingDesc.renderArea.offset        = { 0, 0 };
     renderingDesc.renderArea.size          = { m_width, m_height };
-    m_pCommandBuffers[ m_frameNdx ]->BeginRendering( renderingDesc );
+    m_pCommandBuffers[ bufferNdx ]->BeginRendering( renderingDesc );
 
-    m_pCommandBuffers[ m_frameNdx ]->SetPipeline( m_hPipeline, BIGOS::Driver::Backend::PipelineTypes::GRAPHICS );
+    m_pCommandBuffers[ bufferNdx ]->SetPipeline( m_hPipeline, BIGOS::Driver::Backend::PipelineTypes::GRAPHICS );
 
-    m_pCommandBuffers[ m_frameNdx ]->SetPrimitiveTopology( BIGOS::Driver::Backend::PrimitiveTopologies::TRIANGLE_LIST );
+    m_pCommandBuffers[ bufferNdx ]->SetPrimitiveTopology( BIGOS::Driver::Backend::PrimitiveTopologies::TRIANGLE_LIST );
 
     BIGOS::Driver::Backend::ViewportDesc vp;
     vp.upperLeftX = 0.0f;
@@ -116,14 +118,14 @@ void VertexlessTriangle::OnRender()
     vp.height     = static_cast<float>( m_height );
     vp.minDepth   = 0.0f;
     vp.maxDepth   = 1.0f;
-    m_pCommandBuffers[ m_frameNdx ]->SetViewports( 1, &vp );
+    m_pCommandBuffers[ bufferNdx ]->SetViewports( 1, &vp );
 
     BIGOS::Driver::Backend::ScissorDesc sr;
     sr.upperLeftX = 0;
     sr.upperLeftY = 0;
     sr.width      = m_width;
     sr.height     = m_height;
-    m_pCommandBuffers[ m_frameNdx ]->SetScissors( 1, &sr );
+    m_pCommandBuffers[ bufferNdx ]->SetScissors( 1, &sr );
 
     BIGOS::Driver::Backend::ColorValue clrColor;
     clrColor.r = 0.0f;
@@ -134,7 +136,7 @@ void VertexlessTriangle::OnRender()
     BIGOS::Core::Rect2D clrRect;
     clrRect.offset = { 0, 0 };
     clrRect.size   = { m_width, m_height };
-    m_pCommandBuffers[ m_frameNdx ]->ClearBoundColorRenderTarget( 0, clrColor, 1, &clrRect );
+    m_pCommandBuffers[ bufferNdx ]->ClearBoundColorRenderTarget( 0, clrColor, 1, &clrRect );
 
     BIGOS::Driver::Backend::DrawDesc drawDesc;
     drawDesc.vertexCount   = 3;
@@ -143,9 +145,9 @@ void VertexlessTriangle::OnRender()
     drawDesc.firstInstance = 0;
     drawDesc.vertexOffset  = 0;
 
-    m_pCommandBuffers[ m_frameNdx ]->Draw( drawDesc );
+    m_pCommandBuffers[ bufferNdx ]->Draw( drawDesc );
 
-    m_pCommandBuffers[ m_frameNdx ]->EndRendering();
+    m_pCommandBuffers[ bufferNdx ]->EndRendering();
 
     BIGOS::Driver::Backend::TextureBarrierDesc postTexBarrier;
     postTexBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::RENDER_TARGET );
@@ -154,7 +156,7 @@ void VertexlessTriangle::OnRender()
     postTexBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::RENDER_TARGET );
     postTexBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::GENERAL );
     postTexBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::PRESENT;
-    postTexBarrier.hResouce     = m_backBuffers[ m_frameNdx ].hBackBuffer;
+    postTexBarrier.hResouce     = m_backBuffers[ bufferNdx ].hBackBuffer;
     postTexBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
 
     BIGOS::Driver::Backend::BarierDesc postBarrier;
@@ -165,9 +167,9 @@ void VertexlessTriangle::OnRender()
     postBarrier.bufferBarrierCount  = 0;
     postBarrier.pBufferBarriers     = nullptr;
 
-    m_pCommandBuffers[ m_frameNdx ]->Barrier( postBarrier );
+    m_pCommandBuffers[ bufferNdx ]->Barrier( postBarrier );
 
-    m_pCommandBuffers[ m_frameNdx ]->End();
+    m_pCommandBuffers[ bufferNdx ]->End();
 
     // Execute commands
     BIGOS::Driver::Backend::QueueSubmitDesc submitDesc;
@@ -177,7 +179,7 @@ void VertexlessTriangle::OnRender()
     submitDesc.phWaitFences         = nullptr;
     submitDesc.pWaitValues          = nullptr;
     submitDesc.commandBufferCount   = 1;
-    submitDesc.ppCommandBuffers     = &m_pCommandBuffers[ m_frameNdx ];
+    submitDesc.ppCommandBuffers     = &m_pCommandBuffers[ bufferNdx ];
     submitDesc.signalSemaphoreCount = 1;
     submitDesc.phSignalSemaphores   = &m_hFrameFinishedSemaphores[ m_frameNdx ];
     submitDesc.signalFenceCount     = 1;
@@ -196,6 +198,8 @@ void VertexlessTriangle::OnRender()
     {
         return;
     }
+
+    m_frameNdx = ( m_frameNdx + 1 ) % FRAME_COUNT;
 }
 
 void VertexlessTriangle::OnDestroy()
@@ -214,13 +218,16 @@ void VertexlessTriangle::OnDestroy()
     m_pAPIDevice->DestroyPipeline( &m_hPipeline );
     m_pAPIDevice->DestroyPipelineLayout( &m_hPipelineLayout );
     m_pAPIDevice->DestroyBindingSetLayout( &m_hBindingSetLayout );
+    for( uint32_t ndx = 0; ndx < BACK_BUFFER_COUNT; ++ndx )
+    {
+        m_pAPIDevice->DestroyCommandBuffer( &m_pCommandBuffers[ ndx ] );
+        m_pAPIDevice->DestroyCommandPool( &m_hCommandPools[ ndx ] );
+        m_pAPIDevice->DestroyResourceView( &m_hRTVs[ ndx ] );
+    }
     for( uint32_t ndx = 0; ndx < FRAME_COUNT; ++ndx )
     {
         m_pAPIDevice->DestroyFence( &m_hFences[ ndx ] );
         m_pAPIDevice->DestroySemaphore( &m_hFrameFinishedSemaphores[ ndx ] );
-        m_pAPIDevice->DestroyCommandBuffer( &m_pCommandBuffers[ ndx ] );
-        m_pAPIDevice->DestroyCommandPool( &m_hCommandPools[ ndx ] );
-        m_pAPIDevice->DestroyResourceView( &m_hRTVs[ ndx ] );
     }
     m_pAPIDevice->DestroySwapchain( &m_pSwapchain );
     m_pAPIDevice->DestroyQueue( &m_pQueue );
@@ -294,7 +301,7 @@ BIGOS::RESULT VertexlessTriangle::InitDevice()
     swapDesc.pQueue          = m_pQueue;
     swapDesc.pWindow         = m_pWindow;
     swapDesc.vSync           = BIGOS::Core::BGS_TRUE;
-    swapDesc.backBufferCount = FRAME_COUNT;
+    swapDesc.backBufferCount = BACK_BUFFER_COUNT;
     swapDesc.format          = BIGOS::Driver::Backend::Formats::B8G8R8A8_UNORM;
 
     if( BGS_FAILED( m_pAPIDevice->CreateSwapchain( swapDesc, &m_pSwapchain ) ) )
@@ -316,7 +323,7 @@ BIGOS::RESULT VertexlessTriangle::CreateFrameResources()
     rtRange.arrayLayer      = 0;
     rtRange.arrayLayerCount = 1;
 
-    for( uint32_t ndx = 0; ndx < FRAME_COUNT; ++ndx )
+    for( uint32_t ndx = 0; ndx < BACK_BUFFER_COUNT; ++ndx )
     {
         BIGOS::Driver::Backend::TextureViewDesc rtvDesc;
         rtvDesc.usage                 = BGS_FLAG( BIGOS::Driver::Backend::ResourceViewUsageFlagBits::COLOR_RENDER_TARGET );
