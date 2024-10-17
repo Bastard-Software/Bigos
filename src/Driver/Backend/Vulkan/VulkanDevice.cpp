@@ -1202,6 +1202,7 @@ namespace BIGOS
                         buffInfo.pNext   = nullptr;
                         buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
+                        buffInfo.format  = VK_FORMAT_UNDEFINED;
 
                         VkDescriptorGetInfoEXT getInfo;
                         getInfo.sType               = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
@@ -1233,6 +1234,7 @@ namespace BIGOS
                         buffInfo.pNext   = nullptr;
                         buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
+                        buffInfo.format  = VK_FORMAT_UNDEFINED;
 
                         VkDescriptorGetInfoEXT getInfo;
                         getInfo.sType               = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
@@ -1265,6 +1267,7 @@ namespace BIGOS
                         buffInfo.pNext   = nullptr;
                         buffInfo.address = m_pDeviceAPI->vkGetBufferDeviceAddress( nativeDevice, &addressInfo ) + buffDesc.range.offset;
                         buffInfo.range   = buffDesc.range.size;
+                        buffInfo.format  = VK_FORMAT_UNDEFINED;
 
                         VkDescriptorGetInfoEXT getInfo;
                         getInfo.sType               = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;

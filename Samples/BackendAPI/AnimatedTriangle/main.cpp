@@ -1,5 +1,5 @@
-#include "Application.h"
 #include "AnimatedTriangle.h"
+#include "Application.h"
 
 // Temporary solution
 extern "C"
