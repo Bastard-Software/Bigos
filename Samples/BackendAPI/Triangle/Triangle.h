@@ -8,6 +8,8 @@ using namespace BIGOS::Driver;
 
 constexpr uint32_t FRAME_COUNT = 2;
 
+constexpr uint32_t BACK_BUFFER_COUNT = 3;
+
 class Triangle : public Sample
 {
 public:
@@ -39,9 +41,9 @@ private:
     Backend::BindingSetLayoutHandle m_hBindingSetLayout;
     Backend::PipelineLayoutHandle   m_hPipelineLayout;
     Backend::PipelineHandle         m_hPipeline;
-    Backend::CommandPoolHandle      m_hCommandPools[ FRAME_COUNT ];
-    Backend::ICommandBuffer*        m_pCommandBuffers[ FRAME_COUNT ];
-    Backend::ResourceViewHandle     m_hRTVs[ FRAME_COUNT ];
+    Backend::CommandPoolHandle      m_hCommandPools[ BACK_BUFFER_COUNT ];
+    Backend::ICommandBuffer*        m_pCommandBuffers[ BACK_BUFFER_COUNT ];
+    Backend::ResourceViewHandle     m_hRTVs[ BACK_BUFFER_COUNT ];
     Backend::BackBufferArray        m_backBuffers;
     uint32_t                        m_frameNdx;
 
