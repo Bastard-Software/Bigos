@@ -6,13 +6,19 @@
 	typedef const char* LPCSTR;
 	typedef struct HINSTANCE__* HINSTANCE;
 	typedef HINSTANCE HMODULE;
-	#ifdef _WIN64
+	#if defined(_MINWINDEF_)
+		/* minwindef.h defines FARPROC, and attempting to redefine it may conflict with -Wstrict-prototypes */
+	#elif defined(_WIN64)
 		typedef __int64 (__stdcall* FARPROC)(void);
 	#else
 		typedef int (__stdcall* FARPROC)(void);
 	#endif
 #else
 #	include <dlfcn.h>
+#endif
+
+#ifdef __APPLE__
+#	include <stdlib.h>
 #endif
 
 #ifdef __cplusplus
@@ -22,8 +28,21 @@ extern "C" {
 #ifdef _WIN32
 __declspec(dllimport) HMODULE __stdcall LoadLibraryA(LPCSTR);
 __declspec(dllimport) FARPROC __stdcall GetProcAddress(HMODULE, LPCSTR);
+__declspec(dllimport) int __stdcall FreeLibrary(HMODULE);
 #endif
 
+#if defined(__GNUC__)
+#    define VOLK_DISABLE_GCC_PEDANTIC_WARNINGS \
+		_Pragma("GCC diagnostic push") \
+		_Pragma("GCC diagnostic ignored \"-Wpedantic\"")
+#    define VOLK_RESTORE_GCC_PEDANTIC_WARNINGS \
+		_Pragma("GCC diagnostic pop")
+#else
+#    define VOLK_DISABLE_GCC_PEDANTIC_WARNINGS
+#    define VOLK_RESTORE_GCC_PEDANTIC_WARNINGS
+#endif
+
+static void* loadedModule = NULL;
 static VkInstance loadedInstance = VK_NULL_HANDLE;
 static VkDevice loadedDevice = VK_NULL_HANDLE;
 
@@ -42,6 +61,13 @@ static PFN_vkVoidFunction vkGetDeviceProcAddrStub(void* context, const char* nam
 	return vkGetDeviceProcAddr((VkDevice)context, name);
 }
 
+static PFN_vkVoidFunction nullProcAddrStub(void* context, const char* name)
+{
+	(void)context;
+	(void)name;
+	return NULL;
+}
+
 VkResult volkInitialize(void)
 {
 #if defined(_WIN32)
@@ -57,6 +83,16 @@ VkResult volkInitialize(void)
 		module = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
 	if (!module)
 		module = dlopen("libMoltenVK.dylib", RTLD_NOW | RTLD_LOCAL);
+    // Add support for using Vulkan and MoltenVK in a Framework. App store rules for iOS
+    // strictly enforce no .dylib's. If they aren't found it just falls through
+    if (!module)
+        module = dlopen("vulkan.framework/vulkan", RTLD_NOW | RTLD_LOCAL);
+    if (!module)
+        module = dlopen("MoltenVK.framework/MoltenVK", RTLD_NOW | RTLD_LOCAL);
+	// modern versions of macOS don't search /usr/local/lib automatically contrary to what man dlopen says
+	// Vulkan SDK uses this as the system-wide installation location, so we're going to fallback to this if all else fails
+	if (!module && getenv("DYLD_FALLBACK_LIBRARY_PATH") == NULL)
+		module = dlopen("/usr/local/lib/libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
 	if (!module)
 		return VK_ERROR_INITIALIZATION_FAILED;
 
@@ -67,10 +103,12 @@ VkResult volkInitialize(void)
 		module = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
 	if (!module)
 		return VK_ERROR_INITIALIZATION_FAILED;
-
+	VOLK_DISABLE_GCC_PEDANTIC_WARNINGS
 	vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)dlsym(module, "vkGetInstanceProcAddr");
+	VOLK_RESTORE_GCC_PEDANTIC_WARNINGS
 #endif
 
+	loadedModule = module;
 	volkGenLoadLoader(NULL, vkGetInstanceProcAddrStub);
 
 	return VK_SUCCESS;
@@ -80,7 +118,29 @@ void volkInitializeCustom(PFN_vkGetInstanceProcAddr handler)
 {
 	vkGetInstanceProcAddr = handler;
 
+	loadedModule = NULL;
 	volkGenLoadLoader(NULL, vkGetInstanceProcAddrStub);
+}
+
+void volkFinalize(void)
+{
+	if (loadedModule)
+	{
+#if defined(_WIN32)
+		FreeLibrary((HMODULE)loadedModule);
+#else
+		dlclose(loadedModule);
+#endif
+	}
+
+	vkGetInstanceProcAddr = NULL;
+	volkGenLoadLoader(NULL, nullProcAddrStub);
+	volkGenLoadInstance(NULL, nullProcAddrStub);
+	volkGenLoadDevice(NULL, nullProcAddrStub);
+
+	loadedModule = NULL;
+	loadedInstance = VK_NULL_HANDLE;
+	loadedDevice = VK_NULL_HANDLE;
 }
 
 uint32_t volkGetInstanceVersion(void)
@@ -106,11 +166,11 @@ void volkLoadInstance(VkInstance instance)
 
 void volkLoadInstanceOnly(VkInstance instance)
 {
-    loadedInstance = instance;
-    volkGenLoadInstance(instance, vkGetInstanceProcAddrStub);
+	loadedInstance = instance;
+	volkGenLoadInstance(instance, vkGetInstanceProcAddrStub);
 }
 
-VkInstance volkGetLoadedInstance()
+VkInstance volkGetLoadedInstance(void)
 {
 	return loadedInstance;
 }
@@ -121,7 +181,7 @@ void volkLoadDevice(VkDevice device)
 	volkGenLoadDevice(device, vkGetDeviceProcAddrStub);
 }
 
-VkDevice volkGetLoadedDevice()
+VkDevice volkGetLoadedDevice(void)
 {
 	return loadedDevice;
 }
@@ -242,6 +302,9 @@ static void volkGenLoadInstance(void* context, PFN_vkVoidFunction (*load)(void*,
 #if defined(VK_KHR_android_surface)
 	vkCreateAndroidSurfaceKHR = (PFN_vkCreateAndroidSurfaceKHR)load(context, "vkCreateAndroidSurfaceKHR");
 #endif /* defined(VK_KHR_android_surface) */
+#if defined(VK_KHR_calibrated_timestamps)
+	vkGetPhysicalDeviceCalibrateableTimeDomainsKHR = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR)load(context, "vkGetPhysicalDeviceCalibrateableTimeDomainsKHR");
+#endif /* defined(VK_KHR_calibrated_timestamps) */
 #if defined(VK_KHR_cooperative_matrix)
 	vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR = (PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR)load(context, "vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR");
 #endif /* defined(VK_KHR_cooperative_matrix) */
@@ -288,9 +351,6 @@ static void volkGenLoadInstance(void* context, PFN_vkVoidFunction (*load)(void*,
 	vkGetPhysicalDeviceSurfaceCapabilities2KHR = (PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR)load(context, "vkGetPhysicalDeviceSurfaceCapabilities2KHR");
 	vkGetPhysicalDeviceSurfaceFormats2KHR = (PFN_vkGetPhysicalDeviceSurfaceFormats2KHR)load(context, "vkGetPhysicalDeviceSurfaceFormats2KHR");
 #endif /* defined(VK_KHR_get_surface_capabilities2) */
-#if defined(VK_KHR_object_refresh)
-	vkGetPhysicalDeviceRefreshableObjectTypesKHR = (PFN_vkGetPhysicalDeviceRefreshableObjectTypesKHR)load(context, "vkGetPhysicalDeviceRefreshableObjectTypesKHR");
-#endif /* defined(VK_KHR_object_refresh) */
 #if defined(VK_KHR_performance_query)
 	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR = (PFN_vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR)load(context, "vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR");
 	vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR = (PFN_vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR)load(context, "vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR");
@@ -347,10 +407,6 @@ static void volkGenLoadInstance(void* context, PFN_vkVoidFunction (*load)(void*,
 #if defined(VK_NV_external_memory_capabilities)
 	vkGetPhysicalDeviceExternalImageFormatPropertiesNV = (PFN_vkGetPhysicalDeviceExternalImageFormatPropertiesNV)load(context, "vkGetPhysicalDeviceExternalImageFormatPropertiesNV");
 #endif /* defined(VK_NV_external_memory_capabilities) */
-#if defined(VK_NV_external_memory_sci_buf)
-	vkGetPhysicalDeviceExternalMemorySciBufPropertiesNV = (PFN_vkGetPhysicalDeviceExternalMemorySciBufPropertiesNV)load(context, "vkGetPhysicalDeviceExternalMemorySciBufPropertiesNV");
-	vkGetPhysicalDeviceSciBufAttributesNV = (PFN_vkGetPhysicalDeviceSciBufAttributesNV)load(context, "vkGetPhysicalDeviceSciBufAttributesNV");
-#endif /* defined(VK_NV_external_memory_sci_buf) */
 #if defined(VK_NV_optical_flow)
 	vkGetPhysicalDeviceOpticalFlowImageFormatsNV = (PFN_vkGetPhysicalDeviceOpticalFlowImageFormatsNV)load(context, "vkGetPhysicalDeviceOpticalFlowImageFormatsNV");
 #endif /* defined(VK_NV_optical_flow) */
@@ -358,12 +414,9 @@ static void volkGenLoadInstance(void* context, PFN_vkVoidFunction (*load)(void*,
 	vkCreateScreenSurfaceQNX = (PFN_vkCreateScreenSurfaceQNX)load(context, "vkCreateScreenSurfaceQNX");
 	vkGetPhysicalDeviceScreenPresentationSupportQNX = (PFN_vkGetPhysicalDeviceScreenPresentationSupportQNX)load(context, "vkGetPhysicalDeviceScreenPresentationSupportQNX");
 #endif /* defined(VK_QNX_screen_surface) */
-#if (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain))
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
 	vkGetPhysicalDevicePresentRectanglesKHR = (PFN_vkGetPhysicalDevicePresentRectanglesKHR)load(context, "vkGetPhysicalDevicePresentRectanglesKHR");
-#endif /* (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain)) */
-#if (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2))
-	vkGetPhysicalDeviceSciSyncAttributesNV = (PFN_vkGetPhysicalDeviceSciSyncAttributesNV)load(context, "vkGetPhysicalDeviceSciSyncAttributesNV");
-#endif /* (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2)) */
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
 	/* VOLK_GENERATE_LOAD_INSTANCE */
 }
 
@@ -563,10 +616,6 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkQueueSubmit2 = (PFN_vkQueueSubmit2)load(context, "vkQueueSubmit2");
 	vkSetPrivateData = (PFN_vkSetPrivateData)load(context, "vkSetPrivateData");
 #endif /* defined(VK_VERSION_1_3) */
-#if defined(VKSC_VERSION_1_0)
-	vkGetCommandPoolMemoryConsumption = (PFN_vkGetCommandPoolMemoryConsumption)load(context, "vkGetCommandPoolMemoryConsumption");
-	vkGetFaultData = (PFN_vkGetFaultData)load(context, "vkGetFaultData");
-#endif /* defined(VKSC_VERSION_1_0) */
 #if defined(VK_AMDX_shader_enqueue)
 	vkCmdDispatchGraphAMDX = (PFN_vkCmdDispatchGraphAMDX)load(context, "vkCmdDispatchGraphAMDX");
 	vkCmdDispatchGraphIndirectAMDX = (PFN_vkCmdDispatchGraphIndirectAMDX)load(context, "vkCmdDispatchGraphIndirectAMDX");
@@ -576,6 +625,9 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkGetExecutionGraphPipelineNodeIndexAMDX = (PFN_vkGetExecutionGraphPipelineNodeIndexAMDX)load(context, "vkGetExecutionGraphPipelineNodeIndexAMDX");
 	vkGetExecutionGraphPipelineScratchSizeAMDX = (PFN_vkGetExecutionGraphPipelineScratchSizeAMDX)load(context, "vkGetExecutionGraphPipelineScratchSizeAMDX");
 #endif /* defined(VK_AMDX_shader_enqueue) */
+#if defined(VK_AMD_anti_lag)
+	vkAntiLagUpdateAMD = (PFN_vkAntiLagUpdateAMD)load(context, "vkAntiLagUpdateAMD");
+#endif /* defined(VK_AMD_anti_lag) */
 #if defined(VK_AMD_buffer_marker)
 	vkCmdWriteBufferMarkerAMD = (PFN_vkCmdWriteBufferMarkerAMD)load(context, "vkCmdWriteBufferMarkerAMD");
 #endif /* defined(VK_AMD_buffer_marker) */
@@ -623,7 +675,6 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkCmdBindDescriptorBufferEmbeddedSamplersEXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT)load(context, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
 	vkCmdBindDescriptorBuffersEXT = (PFN_vkCmdBindDescriptorBuffersEXT)load(context, "vkCmdBindDescriptorBuffersEXT");
 	vkCmdSetDescriptorBufferOffsetsEXT = (PFN_vkCmdSetDescriptorBufferOffsetsEXT)load(context, "vkCmdSetDescriptorBufferOffsetsEXT");
-	vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT = (PFN_vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT)load(context, "vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT");
 	vkGetBufferOpaqueCaptureDescriptorDataEXT = (PFN_vkGetBufferOpaqueCaptureDescriptorDataEXT)load(context, "vkGetBufferOpaqueCaptureDescriptorDataEXT");
 	vkGetDescriptorEXT = (PFN_vkGetDescriptorEXT)load(context, "vkGetDescriptorEXT");
 	vkGetDescriptorSetLayoutBindingOffsetEXT = (PFN_vkGetDescriptorSetLayoutBindingOffsetEXT)load(context, "vkGetDescriptorSetLayoutBindingOffsetEXT");
@@ -632,14 +683,30 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkGetImageViewOpaqueCaptureDescriptorDataEXT = (PFN_vkGetImageViewOpaqueCaptureDescriptorDataEXT)load(context, "vkGetImageViewOpaqueCaptureDescriptorDataEXT");
 	vkGetSamplerOpaqueCaptureDescriptorDataEXT = (PFN_vkGetSamplerOpaqueCaptureDescriptorDataEXT)load(context, "vkGetSamplerOpaqueCaptureDescriptorDataEXT");
 #endif /* defined(VK_EXT_descriptor_buffer) */
+#if defined(VK_EXT_descriptor_buffer) && (defined(VK_KHR_acceleration_structure) || defined(VK_NV_ray_tracing))
+	vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT = (PFN_vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT)load(context, "vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT");
+#endif /* defined(VK_EXT_descriptor_buffer) && (defined(VK_KHR_acceleration_structure) || defined(VK_NV_ray_tracing)) */
 #if defined(VK_EXT_device_fault)
 	vkGetDeviceFaultInfoEXT = (PFN_vkGetDeviceFaultInfoEXT)load(context, "vkGetDeviceFaultInfoEXT");
 #endif /* defined(VK_EXT_device_fault) */
+#if defined(VK_EXT_device_generated_commands)
+	vkCmdExecuteGeneratedCommandsEXT = (PFN_vkCmdExecuteGeneratedCommandsEXT)load(context, "vkCmdExecuteGeneratedCommandsEXT");
+	vkCmdPreprocessGeneratedCommandsEXT = (PFN_vkCmdPreprocessGeneratedCommandsEXT)load(context, "vkCmdPreprocessGeneratedCommandsEXT");
+	vkCreateIndirectCommandsLayoutEXT = (PFN_vkCreateIndirectCommandsLayoutEXT)load(context, "vkCreateIndirectCommandsLayoutEXT");
+	vkCreateIndirectExecutionSetEXT = (PFN_vkCreateIndirectExecutionSetEXT)load(context, "vkCreateIndirectExecutionSetEXT");
+	vkDestroyIndirectCommandsLayoutEXT = (PFN_vkDestroyIndirectCommandsLayoutEXT)load(context, "vkDestroyIndirectCommandsLayoutEXT");
+	vkDestroyIndirectExecutionSetEXT = (PFN_vkDestroyIndirectExecutionSetEXT)load(context, "vkDestroyIndirectExecutionSetEXT");
+	vkGetGeneratedCommandsMemoryRequirementsEXT = (PFN_vkGetGeneratedCommandsMemoryRequirementsEXT)load(context, "vkGetGeneratedCommandsMemoryRequirementsEXT");
+	vkUpdateIndirectExecutionSetPipelineEXT = (PFN_vkUpdateIndirectExecutionSetPipelineEXT)load(context, "vkUpdateIndirectExecutionSetPipelineEXT");
+	vkUpdateIndirectExecutionSetShaderEXT = (PFN_vkUpdateIndirectExecutionSetShaderEXT)load(context, "vkUpdateIndirectExecutionSetShaderEXT");
+#endif /* defined(VK_EXT_device_generated_commands) */
 #if defined(VK_EXT_discard_rectangles)
 	vkCmdSetDiscardRectangleEXT = (PFN_vkCmdSetDiscardRectangleEXT)load(context, "vkCmdSetDiscardRectangleEXT");
+#endif /* defined(VK_EXT_discard_rectangles) */
+#if defined(VK_EXT_discard_rectangles) && VK_EXT_DISCARD_RECTANGLES_SPEC_VERSION >= 2
 	vkCmdSetDiscardRectangleEnableEXT = (PFN_vkCmdSetDiscardRectangleEnableEXT)load(context, "vkCmdSetDiscardRectangleEnableEXT");
 	vkCmdSetDiscardRectangleModeEXT = (PFN_vkCmdSetDiscardRectangleModeEXT)load(context, "vkCmdSetDiscardRectangleModeEXT");
-#endif /* defined(VK_EXT_discard_rectangles) */
+#endif /* defined(VK_EXT_discard_rectangles) && VK_EXT_DISCARD_RECTANGLES_SPEC_VERSION >= 2 */
 #if defined(VK_EXT_display_control)
 	vkDisplayPowerControlEXT = (PFN_vkDisplayPowerControlEXT)load(context, "vkDisplayPowerControlEXT");
 	vkGetSwapchainCounterEXT = (PFN_vkGetSwapchainCounterEXT)load(context, "vkGetSwapchainCounterEXT");
@@ -653,6 +720,9 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkAcquireFullScreenExclusiveModeEXT = (PFN_vkAcquireFullScreenExclusiveModeEXT)load(context, "vkAcquireFullScreenExclusiveModeEXT");
 	vkReleaseFullScreenExclusiveModeEXT = (PFN_vkReleaseFullScreenExclusiveModeEXT)load(context, "vkReleaseFullScreenExclusiveModeEXT");
 #endif /* defined(VK_EXT_full_screen_exclusive) */
+#if defined(VK_EXT_full_screen_exclusive) && (defined(VK_KHR_device_group) || defined(VK_VERSION_1_1))
+	vkGetDeviceGroupSurfacePresentModes2EXT = (PFN_vkGetDeviceGroupSurfacePresentModes2EXT)load(context, "vkGetDeviceGroupSurfacePresentModes2EXT");
+#endif /* defined(VK_EXT_full_screen_exclusive) && (defined(VK_KHR_device_group) || defined(VK_VERSION_1_1)) */
 #if defined(VK_EXT_hdr_metadata)
 	vkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)load(context, "vkSetHdrMetadataEXT");
 #endif /* defined(VK_EXT_hdr_metadata) */
@@ -767,9 +837,11 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 #if defined(VK_HUAWEI_invocation_mask)
 	vkCmdBindInvocationMaskHUAWEI = (PFN_vkCmdBindInvocationMaskHUAWEI)load(context, "vkCmdBindInvocationMaskHUAWEI");
 #endif /* defined(VK_HUAWEI_invocation_mask) */
+#if defined(VK_HUAWEI_subpass_shading) && VK_HUAWEI_SUBPASS_SHADING_SPEC_VERSION >= 2
+	vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI = (PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI)load(context, "vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI");
+#endif /* defined(VK_HUAWEI_subpass_shading) && VK_HUAWEI_SUBPASS_SHADING_SPEC_VERSION >= 2 */
 #if defined(VK_HUAWEI_subpass_shading)
 	vkCmdSubpassShadingHUAWEI = (PFN_vkCmdSubpassShadingHUAWEI)load(context, "vkCmdSubpassShadingHUAWEI");
-	vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI = (PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI)load(context, "vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI");
 #endif /* defined(VK_HUAWEI_subpass_shading) */
 #if defined(VK_INTEL_performance_query)
 	vkAcquirePerformanceConfigurationINTEL = (PFN_vkAcquirePerformanceConfigurationINTEL)load(context, "vkAcquirePerformanceConfigurationINTEL");
@@ -809,6 +881,9 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkGetBufferOpaqueCaptureAddressKHR = (PFN_vkGetBufferOpaqueCaptureAddressKHR)load(context, "vkGetBufferOpaqueCaptureAddressKHR");
 	vkGetDeviceMemoryOpaqueCaptureAddressKHR = (PFN_vkGetDeviceMemoryOpaqueCaptureAddressKHR)load(context, "vkGetDeviceMemoryOpaqueCaptureAddressKHR");
 #endif /* defined(VK_KHR_buffer_device_address) */
+#if defined(VK_KHR_calibrated_timestamps)
+	vkGetCalibratedTimestampsKHR = (PFN_vkGetCalibratedTimestampsKHR)load(context, "vkGetCalibratedTimestampsKHR");
+#endif /* defined(VK_KHR_calibrated_timestamps) */
 #if defined(VK_KHR_copy_commands2)
 	vkCmdBlitImage2KHR = (PFN_vkCmdBlitImage2KHR)load(context, "vkCmdBlitImage2KHR");
 	vkCmdCopyBuffer2KHR = (PFN_vkCmdCopyBuffer2KHR)load(context, "vkCmdCopyBuffer2KHR");
@@ -851,6 +926,10 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)load(context, "vkCmdBeginRenderingKHR");
 	vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)load(context, "vkCmdEndRenderingKHR");
 #endif /* defined(VK_KHR_dynamic_rendering) */
+#if defined(VK_KHR_dynamic_rendering_local_read)
+	vkCmdSetRenderingAttachmentLocationsKHR = (PFN_vkCmdSetRenderingAttachmentLocationsKHR)load(context, "vkCmdSetRenderingAttachmentLocationsKHR");
+	vkCmdSetRenderingInputAttachmentIndicesKHR = (PFN_vkCmdSetRenderingInputAttachmentIndicesKHR)load(context, "vkCmdSetRenderingInputAttachmentIndicesKHR");
+#endif /* defined(VK_KHR_dynamic_rendering_local_read) */
 #if defined(VK_KHR_external_fence_fd)
 	vkGetFenceFdKHR = (PFN_vkGetFenceFdKHR)load(context, "vkGetFenceFdKHR");
 	vkImportFenceFdKHR = (PFN_vkImportFenceFdKHR)load(context, "vkImportFenceFdKHR");
@@ -883,6 +962,9 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkGetImageMemoryRequirements2KHR = (PFN_vkGetImageMemoryRequirements2KHR)load(context, "vkGetImageMemoryRequirements2KHR");
 	vkGetImageSparseMemoryRequirements2KHR = (PFN_vkGetImageSparseMemoryRequirements2KHR)load(context, "vkGetImageSparseMemoryRequirements2KHR");
 #endif /* defined(VK_KHR_get_memory_requirements2) */
+#if defined(VK_KHR_line_rasterization)
+	vkCmdSetLineStippleKHR = (PFN_vkCmdSetLineStippleKHR)load(context, "vkCmdSetLineStippleKHR");
+#endif /* defined(VK_KHR_line_rasterization) */
 #if defined(VK_KHR_maintenance1)
 	vkTrimCommandPoolKHR = (PFN_vkTrimCommandPoolKHR)load(context, "vkTrimCommandPoolKHR");
 #endif /* defined(VK_KHR_maintenance1) */
@@ -900,17 +982,33 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkGetImageSubresourceLayout2KHR = (PFN_vkGetImageSubresourceLayout2KHR)load(context, "vkGetImageSubresourceLayout2KHR");
 	vkGetRenderingAreaGranularityKHR = (PFN_vkGetRenderingAreaGranularityKHR)load(context, "vkGetRenderingAreaGranularityKHR");
 #endif /* defined(VK_KHR_maintenance5) */
+#if defined(VK_KHR_maintenance6)
+	vkCmdBindDescriptorSets2KHR = (PFN_vkCmdBindDescriptorSets2KHR)load(context, "vkCmdBindDescriptorSets2KHR");
+	vkCmdPushConstants2KHR = (PFN_vkCmdPushConstants2KHR)load(context, "vkCmdPushConstants2KHR");
+#endif /* defined(VK_KHR_maintenance6) */
+#if defined(VK_KHR_maintenance6) && defined(VK_KHR_push_descriptor)
+	vkCmdPushDescriptorSet2KHR = (PFN_vkCmdPushDescriptorSet2KHR)load(context, "vkCmdPushDescriptorSet2KHR");
+	vkCmdPushDescriptorSetWithTemplate2KHR = (PFN_vkCmdPushDescriptorSetWithTemplate2KHR)load(context, "vkCmdPushDescriptorSetWithTemplate2KHR");
+#endif /* defined(VK_KHR_maintenance6) && defined(VK_KHR_push_descriptor) */
+#if defined(VK_KHR_maintenance6) && defined(VK_EXT_descriptor_buffer)
+	vkCmdBindDescriptorBufferEmbeddedSamplers2EXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplers2EXT)load(context, "vkCmdBindDescriptorBufferEmbeddedSamplers2EXT");
+	vkCmdSetDescriptorBufferOffsets2EXT = (PFN_vkCmdSetDescriptorBufferOffsets2EXT)load(context, "vkCmdSetDescriptorBufferOffsets2EXT");
+#endif /* defined(VK_KHR_maintenance6) && defined(VK_EXT_descriptor_buffer) */
 #if defined(VK_KHR_map_memory2)
 	vkMapMemory2KHR = (PFN_vkMapMemory2KHR)load(context, "vkMapMemory2KHR");
 	vkUnmapMemory2KHR = (PFN_vkUnmapMemory2KHR)load(context, "vkUnmapMemory2KHR");
 #endif /* defined(VK_KHR_map_memory2) */
-#if defined(VK_KHR_object_refresh)
-	vkCmdRefreshObjectsKHR = (PFN_vkCmdRefreshObjectsKHR)load(context, "vkCmdRefreshObjectsKHR");
-#endif /* defined(VK_KHR_object_refresh) */
 #if defined(VK_KHR_performance_query)
 	vkAcquireProfilingLockKHR = (PFN_vkAcquireProfilingLockKHR)load(context, "vkAcquireProfilingLockKHR");
 	vkReleaseProfilingLockKHR = (PFN_vkReleaseProfilingLockKHR)load(context, "vkReleaseProfilingLockKHR");
 #endif /* defined(VK_KHR_performance_query) */
+#if defined(VK_KHR_pipeline_binary)
+	vkCreatePipelineBinariesKHR = (PFN_vkCreatePipelineBinariesKHR)load(context, "vkCreatePipelineBinariesKHR");
+	vkDestroyPipelineBinaryKHR = (PFN_vkDestroyPipelineBinaryKHR)load(context, "vkDestroyPipelineBinaryKHR");
+	vkGetPipelineBinaryDataKHR = (PFN_vkGetPipelineBinaryDataKHR)load(context, "vkGetPipelineBinaryDataKHR");
+	vkGetPipelineKeyKHR = (PFN_vkGetPipelineKeyKHR)load(context, "vkGetPipelineKeyKHR");
+	vkReleaseCapturedPipelineDataKHR = (PFN_vkReleaseCapturedPipelineDataKHR)load(context, "vkReleaseCapturedPipelineDataKHR");
+#endif /* defined(VK_KHR_pipeline_binary) */
 #if defined(VK_KHR_pipeline_executable_properties)
 	vkGetPipelineExecutableInternalRepresentationsKHR = (PFN_vkGetPipelineExecutableInternalRepresentationsKHR)load(context, "vkGetPipelineExecutableInternalRepresentationsKHR");
 	vkGetPipelineExecutablePropertiesKHR = (PFN_vkGetPipelineExecutablePropertiesKHR)load(context, "vkGetPipelineExecutablePropertiesKHR");
@@ -922,9 +1020,9 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 #if defined(VK_KHR_push_descriptor)
 	vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)load(context, "vkCmdPushDescriptorSetKHR");
 #endif /* defined(VK_KHR_push_descriptor) */
-#if defined(VK_KHR_ray_tracing_maintenance1)
+#if defined(VK_KHR_ray_tracing_maintenance1) && defined(VK_KHR_ray_tracing_pipeline)
 	vkCmdTraceRaysIndirect2KHR = (PFN_vkCmdTraceRaysIndirect2KHR)load(context, "vkCmdTraceRaysIndirect2KHR");
-#endif /* defined(VK_KHR_ray_tracing_maintenance1) */
+#endif /* defined(VK_KHR_ray_tracing_maintenance1) && defined(VK_KHR_ray_tracing_pipeline) */
 #if defined(VK_KHR_ray_tracing_pipeline)
 	vkCmdSetRayTracingPipelineStackSizeKHR = (PFN_vkCmdSetRayTracingPipelineStackSizeKHR)load(context, "vkCmdSetRayTracingPipelineStackSizeKHR");
 	vkCmdTraceRaysIndirectKHR = (PFN_vkCmdTraceRaysIndirectKHR)load(context, "vkCmdTraceRaysIndirectKHR");
@@ -953,11 +1051,15 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkCmdResetEvent2KHR = (PFN_vkCmdResetEvent2KHR)load(context, "vkCmdResetEvent2KHR");
 	vkCmdSetEvent2KHR = (PFN_vkCmdSetEvent2KHR)load(context, "vkCmdSetEvent2KHR");
 	vkCmdWaitEvents2KHR = (PFN_vkCmdWaitEvents2KHR)load(context, "vkCmdWaitEvents2KHR");
-	vkCmdWriteBufferMarker2AMD = (PFN_vkCmdWriteBufferMarker2AMD)load(context, "vkCmdWriteBufferMarker2AMD");
 	vkCmdWriteTimestamp2KHR = (PFN_vkCmdWriteTimestamp2KHR)load(context, "vkCmdWriteTimestamp2KHR");
-	vkGetQueueCheckpointData2NV = (PFN_vkGetQueueCheckpointData2NV)load(context, "vkGetQueueCheckpointData2NV");
 	vkQueueSubmit2KHR = (PFN_vkQueueSubmit2KHR)load(context, "vkQueueSubmit2KHR");
 #endif /* defined(VK_KHR_synchronization2) */
+#if defined(VK_KHR_synchronization2) && defined(VK_AMD_buffer_marker)
+	vkCmdWriteBufferMarker2AMD = (PFN_vkCmdWriteBufferMarker2AMD)load(context, "vkCmdWriteBufferMarker2AMD");
+#endif /* defined(VK_KHR_synchronization2) && defined(VK_AMD_buffer_marker) */
+#if defined(VK_KHR_synchronization2) && defined(VK_NV_device_diagnostic_checkpoints)
+	vkGetQueueCheckpointData2NV = (PFN_vkGetQueueCheckpointData2NV)load(context, "vkGetQueueCheckpointData2NV");
+#endif /* defined(VK_KHR_synchronization2) && defined(VK_NV_device_diagnostic_checkpoints) */
 #if defined(VK_KHR_timeline_semaphore)
 	vkGetSemaphoreCounterValueKHR = (PFN_vkGetSemaphoreCounterValueKHR)load(context, "vkGetSemaphoreCounterValueKHR");
 	vkSignalSemaphoreKHR = (PFN_vkSignalSemaphoreKHR)load(context, "vkSignalSemaphoreKHR");
@@ -990,9 +1092,11 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkDestroyCuModuleNVX = (PFN_vkDestroyCuModuleNVX)load(context, "vkDestroyCuModuleNVX");
 #endif /* defined(VK_NVX_binary_import) */
 #if defined(VK_NVX_image_view_handle)
-	vkGetImageViewAddressNVX = (PFN_vkGetImageViewAddressNVX)load(context, "vkGetImageViewAddressNVX");
 	vkGetImageViewHandleNVX = (PFN_vkGetImageViewHandleNVX)load(context, "vkGetImageViewHandleNVX");
 #endif /* defined(VK_NVX_image_view_handle) */
+#if defined(VK_NVX_image_view_handle) && VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION >= 2
+	vkGetImageViewAddressNVX = (PFN_vkGetImageViewAddressNVX)load(context, "vkGetImageViewAddressNVX");
+#endif /* defined(VK_NVX_image_view_handle) && VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION >= 2 */
 #if defined(VK_NV_clip_space_w_scaling)
 	vkCmdSetViewportWScalingNV = (PFN_vkCmdSetViewportWScalingNV)load(context, "vkCmdSetViewportWScalingNV");
 #endif /* defined(VK_NV_clip_space_w_scaling) */
@@ -1000,6 +1104,14 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkCmdCopyMemoryIndirectNV = (PFN_vkCmdCopyMemoryIndirectNV)load(context, "vkCmdCopyMemoryIndirectNV");
 	vkCmdCopyMemoryToImageIndirectNV = (PFN_vkCmdCopyMemoryToImageIndirectNV)load(context, "vkCmdCopyMemoryToImageIndirectNV");
 #endif /* defined(VK_NV_copy_memory_indirect) */
+#if defined(VK_NV_cuda_kernel_launch)
+	vkCmdCudaLaunchKernelNV = (PFN_vkCmdCudaLaunchKernelNV)load(context, "vkCmdCudaLaunchKernelNV");
+	vkCreateCudaFunctionNV = (PFN_vkCreateCudaFunctionNV)load(context, "vkCreateCudaFunctionNV");
+	vkCreateCudaModuleNV = (PFN_vkCreateCudaModuleNV)load(context, "vkCreateCudaModuleNV");
+	vkDestroyCudaFunctionNV = (PFN_vkDestroyCudaFunctionNV)load(context, "vkDestroyCudaFunctionNV");
+	vkDestroyCudaModuleNV = (PFN_vkDestroyCudaModuleNV)load(context, "vkDestroyCudaModuleNV");
+	vkGetCudaModuleCacheNV = (PFN_vkGetCudaModuleCacheNV)load(context, "vkGetCudaModuleCacheNV");
+#endif /* defined(VK_NV_cuda_kernel_launch) */
 #if defined(VK_NV_device_diagnostic_checkpoints)
 	vkCmdSetCheckpointNV = (PFN_vkCmdSetCheckpointNV)load(context, "vkCmdSetCheckpointNV");
 	vkGetQueueCheckpointDataNV = (PFN_vkGetQueueCheckpointDataNV)load(context, "vkGetQueueCheckpointDataNV");
@@ -1020,23 +1132,19 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 #if defined(VK_NV_external_memory_rdma)
 	vkGetMemoryRemoteAddressNV = (PFN_vkGetMemoryRemoteAddressNV)load(context, "vkGetMemoryRemoteAddressNV");
 #endif /* defined(VK_NV_external_memory_rdma) */
-#if defined(VK_NV_external_memory_sci_buf)
-	vkGetMemorySciBufNV = (PFN_vkGetMemorySciBufNV)load(context, "vkGetMemorySciBufNV");
-#endif /* defined(VK_NV_external_memory_sci_buf) */
 #if defined(VK_NV_external_memory_win32)
 	vkGetMemoryWin32HandleNV = (PFN_vkGetMemoryWin32HandleNV)load(context, "vkGetMemoryWin32HandleNV");
 #endif /* defined(VK_NV_external_memory_win32) */
-#if defined(VK_NV_external_sci_sync)
-	vkGetSemaphoreSciSyncObjNV = (PFN_vkGetSemaphoreSciSyncObjNV)load(context, "vkGetSemaphoreSciSyncObjNV");
-	vkImportSemaphoreSciSyncObjNV = (PFN_vkImportSemaphoreSciSyncObjNV)load(context, "vkImportSemaphoreSciSyncObjNV");
-#endif /* defined(VK_NV_external_sci_sync) */
-#if defined(VK_NV_external_sci_sync2)
-	vkCreateSemaphoreSciSyncPoolNV = (PFN_vkCreateSemaphoreSciSyncPoolNV)load(context, "vkCreateSemaphoreSciSyncPoolNV");
-	vkDestroySemaphoreSciSyncPoolNV = (PFN_vkDestroySemaphoreSciSyncPoolNV)load(context, "vkDestroySemaphoreSciSyncPoolNV");
-#endif /* defined(VK_NV_external_sci_sync2) */
 #if defined(VK_NV_fragment_shading_rate_enums)
 	vkCmdSetFragmentShadingRateEnumNV = (PFN_vkCmdSetFragmentShadingRateEnumNV)load(context, "vkCmdSetFragmentShadingRateEnumNV");
 #endif /* defined(VK_NV_fragment_shading_rate_enums) */
+#if defined(VK_NV_low_latency2)
+	vkGetLatencyTimingsNV = (PFN_vkGetLatencyTimingsNV)load(context, "vkGetLatencyTimingsNV");
+	vkLatencySleepNV = (PFN_vkLatencySleepNV)load(context, "vkLatencySleepNV");
+	vkQueueNotifyOutOfBandNV = (PFN_vkQueueNotifyOutOfBandNV)load(context, "vkQueueNotifyOutOfBandNV");
+	vkSetLatencyMarkerNV = (PFN_vkSetLatencyMarkerNV)load(context, "vkSetLatencyMarkerNV");
+	vkSetLatencySleepModeNV = (PFN_vkSetLatencySleepModeNV)load(context, "vkSetLatencySleepModeNV");
+#endif /* defined(VK_NV_low_latency2) */
 #if defined(VK_NV_memory_decompression)
 	vkCmdDecompressMemoryIndirectCountNV = (PFN_vkCmdDecompressMemoryIndirectCountNV)load(context, "vkCmdDecompressMemoryIndirectCountNV");
 	vkCmdDecompressMemoryNV = (PFN_vkCmdDecompressMemoryNV)load(context, "vkCmdDecompressMemoryNV");
@@ -1066,8 +1174,10 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkGetAccelerationStructureMemoryRequirementsNV = (PFN_vkGetAccelerationStructureMemoryRequirementsNV)load(context, "vkGetAccelerationStructureMemoryRequirementsNV");
 	vkGetRayTracingShaderGroupHandlesNV = (PFN_vkGetRayTracingShaderGroupHandlesNV)load(context, "vkGetRayTracingShaderGroupHandlesNV");
 #endif /* defined(VK_NV_ray_tracing) */
-#if defined(VK_NV_scissor_exclusive)
+#if defined(VK_NV_scissor_exclusive) && VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION >= 2
 	vkCmdSetExclusiveScissorEnableNV = (PFN_vkCmdSetExclusiveScissorEnableNV)load(context, "vkCmdSetExclusiveScissorEnableNV");
+#endif /* defined(VK_NV_scissor_exclusive) && VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION >= 2 */
+#if defined(VK_NV_scissor_exclusive)
 	vkCmdSetExclusiveScissorNV = (PFN_vkCmdSetExclusiveScissorNV)load(context, "vkCmdSetExclusiveScissorNV");
 #endif /* defined(VK_NV_scissor_exclusive) */
 #if defined(VK_NV_shading_rate_image)
@@ -1086,6 +1196,9 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 	vkGetDescriptorSetHostMappingVALVE = (PFN_vkGetDescriptorSetHostMappingVALVE)load(context, "vkGetDescriptorSetHostMappingVALVE");
 	vkGetDescriptorSetLayoutHostMappingInfoVALVE = (PFN_vkGetDescriptorSetLayoutHostMappingInfoVALVE)load(context, "vkGetDescriptorSetLayoutHostMappingInfoVALVE");
 #endif /* defined(VK_VALVE_descriptor_set_host_mapping) */
+#if (defined(VK_EXT_depth_clamp_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clamp_control))
+	vkCmdSetDepthClampRangeEXT = (PFN_vkCmdSetDepthClampRangeEXT)load(context, "vkCmdSetDepthClampRangeEXT");
+#endif /* (defined(VK_EXT_depth_clamp_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clamp_control)) */
 #if (defined(VK_EXT_extended_dynamic_state)) || (defined(VK_EXT_shader_object))
 	vkCmdBindVertexBuffers2EXT = (PFN_vkCmdBindVertexBuffers2EXT)load(context, "vkCmdBindVertexBuffers2EXT");
 	vkCmdSetCullModeEXT = (PFN_vkCmdSetCullModeEXT)load(context, "vkCmdSetCullModeEXT");
@@ -1110,59 +1223,84 @@ static void volkGenLoadDevice(void* context, PFN_vkVoidFunction (*load)(void*, c
 #if (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object))
 	vkCmdSetAlphaToCoverageEnableEXT = (PFN_vkCmdSetAlphaToCoverageEnableEXT)load(context, "vkCmdSetAlphaToCoverageEnableEXT");
 	vkCmdSetAlphaToOneEnableEXT = (PFN_vkCmdSetAlphaToOneEnableEXT)load(context, "vkCmdSetAlphaToOneEnableEXT");
-	vkCmdSetColorBlendAdvancedEXT = (PFN_vkCmdSetColorBlendAdvancedEXT)load(context, "vkCmdSetColorBlendAdvancedEXT");
 	vkCmdSetColorBlendEnableEXT = (PFN_vkCmdSetColorBlendEnableEXT)load(context, "vkCmdSetColorBlendEnableEXT");
 	vkCmdSetColorBlendEquationEXT = (PFN_vkCmdSetColorBlendEquationEXT)load(context, "vkCmdSetColorBlendEquationEXT");
 	vkCmdSetColorWriteMaskEXT = (PFN_vkCmdSetColorWriteMaskEXT)load(context, "vkCmdSetColorWriteMaskEXT");
+	vkCmdSetDepthClampEnableEXT = (PFN_vkCmdSetDepthClampEnableEXT)load(context, "vkCmdSetDepthClampEnableEXT");
+	vkCmdSetLogicOpEnableEXT = (PFN_vkCmdSetLogicOpEnableEXT)load(context, "vkCmdSetLogicOpEnableEXT");
+	vkCmdSetPolygonModeEXT = (PFN_vkCmdSetPolygonModeEXT)load(context, "vkCmdSetPolygonModeEXT");
+	vkCmdSetRasterizationSamplesEXT = (PFN_vkCmdSetRasterizationSamplesEXT)load(context, "vkCmdSetRasterizationSamplesEXT");
+	vkCmdSetSampleMaskEXT = (PFN_vkCmdSetSampleMaskEXT)load(context, "vkCmdSetSampleMaskEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && (defined(VK_KHR_maintenance2) || defined(VK_VERSION_1_1))) || (defined(VK_EXT_shader_object))
+	vkCmdSetTessellationDomainOriginEXT = (PFN_vkCmdSetTessellationDomainOriginEXT)load(context, "vkCmdSetTessellationDomainOriginEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && (defined(VK_KHR_maintenance2) || defined(VK_VERSION_1_1))) || (defined(VK_EXT_shader_object)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_transform_feedback)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_transform_feedback))
+	vkCmdSetRasterizationStreamEXT = (PFN_vkCmdSetRasterizationStreamEXT)load(context, "vkCmdSetRasterizationStreamEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_transform_feedback)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_transform_feedback)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_conservative_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_conservative_rasterization))
 	vkCmdSetConservativeRasterizationModeEXT = (PFN_vkCmdSetConservativeRasterizationModeEXT)load(context, "vkCmdSetConservativeRasterizationModeEXT");
+	vkCmdSetExtraPrimitiveOverestimationSizeEXT = (PFN_vkCmdSetExtraPrimitiveOverestimationSizeEXT)load(context, "vkCmdSetExtraPrimitiveOverestimationSizeEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_conservative_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_conservative_rasterization)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_enable)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_enable))
+	vkCmdSetDepthClipEnableEXT = (PFN_vkCmdSetDepthClipEnableEXT)load(context, "vkCmdSetDepthClipEnableEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_enable)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_enable)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_sample_locations)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_sample_locations))
+	vkCmdSetSampleLocationsEnableEXT = (PFN_vkCmdSetSampleLocationsEnableEXT)load(context, "vkCmdSetSampleLocationsEnableEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_sample_locations)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_sample_locations)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_blend_operation_advanced)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_blend_operation_advanced))
+	vkCmdSetColorBlendAdvancedEXT = (PFN_vkCmdSetColorBlendAdvancedEXT)load(context, "vkCmdSetColorBlendAdvancedEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_blend_operation_advanced)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_blend_operation_advanced)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_provoking_vertex)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_provoking_vertex))
+	vkCmdSetProvokingVertexModeEXT = (PFN_vkCmdSetProvokingVertexModeEXT)load(context, "vkCmdSetProvokingVertexModeEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_provoking_vertex)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_provoking_vertex)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_line_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_line_rasterization))
+	vkCmdSetLineRasterizationModeEXT = (PFN_vkCmdSetLineRasterizationModeEXT)load(context, "vkCmdSetLineRasterizationModeEXT");
+	vkCmdSetLineStippleEnableEXT = (PFN_vkCmdSetLineStippleEnableEXT)load(context, "vkCmdSetLineStippleEnableEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_line_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_line_rasterization)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_control))
+	vkCmdSetDepthClipNegativeOneToOneEXT = (PFN_vkCmdSetDepthClipNegativeOneToOneEXT)load(context, "vkCmdSetDepthClipNegativeOneToOneEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_control)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_clip_space_w_scaling)) || (defined(VK_EXT_shader_object) && defined(VK_NV_clip_space_w_scaling))
+	vkCmdSetViewportWScalingEnableNV = (PFN_vkCmdSetViewportWScalingEnableNV)load(context, "vkCmdSetViewportWScalingEnableNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_clip_space_w_scaling)) || (defined(VK_EXT_shader_object) && defined(VK_NV_clip_space_w_scaling)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_viewport_swizzle)) || (defined(VK_EXT_shader_object) && defined(VK_NV_viewport_swizzle))
+	vkCmdSetViewportSwizzleNV = (PFN_vkCmdSetViewportSwizzleNV)load(context, "vkCmdSetViewportSwizzleNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_viewport_swizzle)) || (defined(VK_EXT_shader_object) && defined(VK_NV_viewport_swizzle)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_fragment_coverage_to_color)) || (defined(VK_EXT_shader_object) && defined(VK_NV_fragment_coverage_to_color))
+	vkCmdSetCoverageToColorEnableNV = (PFN_vkCmdSetCoverageToColorEnableNV)load(context, "vkCmdSetCoverageToColorEnableNV");
+	vkCmdSetCoverageToColorLocationNV = (PFN_vkCmdSetCoverageToColorLocationNV)load(context, "vkCmdSetCoverageToColorLocationNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_fragment_coverage_to_color)) || (defined(VK_EXT_shader_object) && defined(VK_NV_fragment_coverage_to_color)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_framebuffer_mixed_samples)) || (defined(VK_EXT_shader_object) && defined(VK_NV_framebuffer_mixed_samples))
 	vkCmdSetCoverageModulationModeNV = (PFN_vkCmdSetCoverageModulationModeNV)load(context, "vkCmdSetCoverageModulationModeNV");
 	vkCmdSetCoverageModulationTableEnableNV = (PFN_vkCmdSetCoverageModulationTableEnableNV)load(context, "vkCmdSetCoverageModulationTableEnableNV");
 	vkCmdSetCoverageModulationTableNV = (PFN_vkCmdSetCoverageModulationTableNV)load(context, "vkCmdSetCoverageModulationTableNV");
-	vkCmdSetCoverageReductionModeNV = (PFN_vkCmdSetCoverageReductionModeNV)load(context, "vkCmdSetCoverageReductionModeNV");
-	vkCmdSetCoverageToColorEnableNV = (PFN_vkCmdSetCoverageToColorEnableNV)load(context, "vkCmdSetCoverageToColorEnableNV");
-	vkCmdSetCoverageToColorLocationNV = (PFN_vkCmdSetCoverageToColorLocationNV)load(context, "vkCmdSetCoverageToColorLocationNV");
-	vkCmdSetDepthClampEnableEXT = (PFN_vkCmdSetDepthClampEnableEXT)load(context, "vkCmdSetDepthClampEnableEXT");
-	vkCmdSetDepthClipEnableEXT = (PFN_vkCmdSetDepthClipEnableEXT)load(context, "vkCmdSetDepthClipEnableEXT");
-	vkCmdSetDepthClipNegativeOneToOneEXT = (PFN_vkCmdSetDepthClipNegativeOneToOneEXT)load(context, "vkCmdSetDepthClipNegativeOneToOneEXT");
-	vkCmdSetExtraPrimitiveOverestimationSizeEXT = (PFN_vkCmdSetExtraPrimitiveOverestimationSizeEXT)load(context, "vkCmdSetExtraPrimitiveOverestimationSizeEXT");
-	vkCmdSetLineRasterizationModeEXT = (PFN_vkCmdSetLineRasterizationModeEXT)load(context, "vkCmdSetLineRasterizationModeEXT");
-	vkCmdSetLineStippleEnableEXT = (PFN_vkCmdSetLineStippleEnableEXT)load(context, "vkCmdSetLineStippleEnableEXT");
-	vkCmdSetLogicOpEnableEXT = (PFN_vkCmdSetLogicOpEnableEXT)load(context, "vkCmdSetLogicOpEnableEXT");
-	vkCmdSetPolygonModeEXT = (PFN_vkCmdSetPolygonModeEXT)load(context, "vkCmdSetPolygonModeEXT");
-	vkCmdSetProvokingVertexModeEXT = (PFN_vkCmdSetProvokingVertexModeEXT)load(context, "vkCmdSetProvokingVertexModeEXT");
-	vkCmdSetRasterizationSamplesEXT = (PFN_vkCmdSetRasterizationSamplesEXT)load(context, "vkCmdSetRasterizationSamplesEXT");
-	vkCmdSetRasterizationStreamEXT = (PFN_vkCmdSetRasterizationStreamEXT)load(context, "vkCmdSetRasterizationStreamEXT");
-	vkCmdSetRepresentativeFragmentTestEnableNV = (PFN_vkCmdSetRepresentativeFragmentTestEnableNV)load(context, "vkCmdSetRepresentativeFragmentTestEnableNV");
-	vkCmdSetSampleLocationsEnableEXT = (PFN_vkCmdSetSampleLocationsEnableEXT)load(context, "vkCmdSetSampleLocationsEnableEXT");
-	vkCmdSetSampleMaskEXT = (PFN_vkCmdSetSampleMaskEXT)load(context, "vkCmdSetSampleMaskEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_framebuffer_mixed_samples)) || (defined(VK_EXT_shader_object) && defined(VK_NV_framebuffer_mixed_samples)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_shading_rate_image)) || (defined(VK_EXT_shader_object) && defined(VK_NV_shading_rate_image))
 	vkCmdSetShadingRateImageEnableNV = (PFN_vkCmdSetShadingRateImageEnableNV)load(context, "vkCmdSetShadingRateImageEnableNV");
-	vkCmdSetTessellationDomainOriginEXT = (PFN_vkCmdSetTessellationDomainOriginEXT)load(context, "vkCmdSetTessellationDomainOriginEXT");
-	vkCmdSetViewportSwizzleNV = (PFN_vkCmdSetViewportSwizzleNV)load(context, "vkCmdSetViewportSwizzleNV");
-	vkCmdSetViewportWScalingEnableNV = (PFN_vkCmdSetViewportWScalingEnableNV)load(context, "vkCmdSetViewportWScalingEnableNV");
-#endif /* (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object)) */
-#if (defined(VK_EXT_full_screen_exclusive)) || (defined(VK_EXT_full_screen_exclusive))
-	vkGetDeviceGroupSurfacePresentModes2EXT = (PFN_vkGetDeviceGroupSurfacePresentModes2EXT)load(context, "vkGetDeviceGroupSurfacePresentModes2EXT");
-#endif /* (defined(VK_EXT_full_screen_exclusive)) || (defined(VK_EXT_full_screen_exclusive)) */
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_shading_rate_image)) || (defined(VK_EXT_shader_object) && defined(VK_NV_shading_rate_image)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_representative_fragment_test)) || (defined(VK_EXT_shader_object) && defined(VK_NV_representative_fragment_test))
+	vkCmdSetRepresentativeFragmentTestEnableNV = (PFN_vkCmdSetRepresentativeFragmentTestEnableNV)load(context, "vkCmdSetRepresentativeFragmentTestEnableNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_representative_fragment_test)) || (defined(VK_EXT_shader_object) && defined(VK_NV_representative_fragment_test)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_coverage_reduction_mode)) || (defined(VK_EXT_shader_object) && defined(VK_NV_coverage_reduction_mode))
+	vkCmdSetCoverageReductionModeNV = (PFN_vkCmdSetCoverageReductionModeNV)load(context, "vkCmdSetCoverageReductionModeNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_coverage_reduction_mode)) || (defined(VK_EXT_shader_object) && defined(VK_NV_coverage_reduction_mode)) */
 #if (defined(VK_EXT_host_image_copy)) || (defined(VK_EXT_image_compression_control))
 	vkGetImageSubresourceLayout2EXT = (PFN_vkGetImageSubresourceLayout2EXT)load(context, "vkGetImageSubresourceLayout2EXT");
 #endif /* (defined(VK_EXT_host_image_copy)) || (defined(VK_EXT_image_compression_control)) */
 #if (defined(VK_EXT_shader_object)) || (defined(VK_EXT_vertex_input_dynamic_state))
 	vkCmdSetVertexInputEXT = (PFN_vkCmdSetVertexInputEXT)load(context, "vkCmdSetVertexInputEXT");
 #endif /* (defined(VK_EXT_shader_object)) || (defined(VK_EXT_vertex_input_dynamic_state)) */
-#if (defined(VK_KHR_descriptor_update_template)) || (defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor))
+#if (defined(VK_KHR_descriptor_update_template) && defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor) && (defined(VK_VERSION_1_1) || defined(VK_KHR_descriptor_update_template)))
 	vkCmdPushDescriptorSetWithTemplateKHR = (PFN_vkCmdPushDescriptorSetWithTemplateKHR)load(context, "vkCmdPushDescriptorSetWithTemplateKHR");
-#endif /* (defined(VK_KHR_descriptor_update_template)) || (defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor)) */
-#if (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain))
-	vkAcquireNextImage2KHR = (PFN_vkAcquireNextImage2KHR)load(context, "vkAcquireNextImage2KHR");
+#endif /* (defined(VK_KHR_descriptor_update_template) && defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor) && (defined(VK_VERSION_1_1) || defined(VK_KHR_descriptor_update_template))) */
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
 	vkGetDeviceGroupPresentCapabilitiesKHR = (PFN_vkGetDeviceGroupPresentCapabilitiesKHR)load(context, "vkGetDeviceGroupPresentCapabilitiesKHR");
 	vkGetDeviceGroupSurfacePresentModesKHR = (PFN_vkGetDeviceGroupSurfacePresentModesKHR)load(context, "vkGetDeviceGroupSurfacePresentModesKHR");
-#endif /* (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain)) */
-#if (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2))
-	vkGetFenceSciSyncFenceNV = (PFN_vkGetFenceSciSyncFenceNV)load(context, "vkGetFenceSciSyncFenceNV");
-	vkGetFenceSciSyncObjNV = (PFN_vkGetFenceSciSyncObjNV)load(context, "vkGetFenceSciSyncObjNV");
-	vkImportFenceSciSyncFenceNV = (PFN_vkImportFenceSciSyncFenceNV)load(context, "vkImportFenceSciSyncFenceNV");
-	vkImportFenceSciSyncObjNV = (PFN_vkImportFenceSciSyncObjNV)load(context, "vkImportFenceSciSyncObjNV");
-#endif /* (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2)) */
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_swapchain)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
+	vkAcquireNextImage2KHR = (PFN_vkAcquireNextImage2KHR)load(context, "vkAcquireNextImage2KHR");
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_swapchain)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
 	/* VOLK_GENERATE_LOAD_DEVICE */
 }
 
@@ -1362,10 +1500,6 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkQueueSubmit2 = (PFN_vkQueueSubmit2)load(context, "vkQueueSubmit2");
 	table->vkSetPrivateData = (PFN_vkSetPrivateData)load(context, "vkSetPrivateData");
 #endif /* defined(VK_VERSION_1_3) */
-#if defined(VKSC_VERSION_1_0)
-	table->vkGetCommandPoolMemoryConsumption = (PFN_vkGetCommandPoolMemoryConsumption)load(context, "vkGetCommandPoolMemoryConsumption");
-	table->vkGetFaultData = (PFN_vkGetFaultData)load(context, "vkGetFaultData");
-#endif /* defined(VKSC_VERSION_1_0) */
 #if defined(VK_AMDX_shader_enqueue)
 	table->vkCmdDispatchGraphAMDX = (PFN_vkCmdDispatchGraphAMDX)load(context, "vkCmdDispatchGraphAMDX");
 	table->vkCmdDispatchGraphIndirectAMDX = (PFN_vkCmdDispatchGraphIndirectAMDX)load(context, "vkCmdDispatchGraphIndirectAMDX");
@@ -1375,6 +1509,9 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkGetExecutionGraphPipelineNodeIndexAMDX = (PFN_vkGetExecutionGraphPipelineNodeIndexAMDX)load(context, "vkGetExecutionGraphPipelineNodeIndexAMDX");
 	table->vkGetExecutionGraphPipelineScratchSizeAMDX = (PFN_vkGetExecutionGraphPipelineScratchSizeAMDX)load(context, "vkGetExecutionGraphPipelineScratchSizeAMDX");
 #endif /* defined(VK_AMDX_shader_enqueue) */
+#if defined(VK_AMD_anti_lag)
+	table->vkAntiLagUpdateAMD = (PFN_vkAntiLagUpdateAMD)load(context, "vkAntiLagUpdateAMD");
+#endif /* defined(VK_AMD_anti_lag) */
 #if defined(VK_AMD_buffer_marker)
 	table->vkCmdWriteBufferMarkerAMD = (PFN_vkCmdWriteBufferMarkerAMD)load(context, "vkCmdWriteBufferMarkerAMD");
 #endif /* defined(VK_AMD_buffer_marker) */
@@ -1422,7 +1559,6 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkCmdBindDescriptorBufferEmbeddedSamplersEXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT)load(context, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
 	table->vkCmdBindDescriptorBuffersEXT = (PFN_vkCmdBindDescriptorBuffersEXT)load(context, "vkCmdBindDescriptorBuffersEXT");
 	table->vkCmdSetDescriptorBufferOffsetsEXT = (PFN_vkCmdSetDescriptorBufferOffsetsEXT)load(context, "vkCmdSetDescriptorBufferOffsetsEXT");
-	table->vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT = (PFN_vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT)load(context, "vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT");
 	table->vkGetBufferOpaqueCaptureDescriptorDataEXT = (PFN_vkGetBufferOpaqueCaptureDescriptorDataEXT)load(context, "vkGetBufferOpaqueCaptureDescriptorDataEXT");
 	table->vkGetDescriptorEXT = (PFN_vkGetDescriptorEXT)load(context, "vkGetDescriptorEXT");
 	table->vkGetDescriptorSetLayoutBindingOffsetEXT = (PFN_vkGetDescriptorSetLayoutBindingOffsetEXT)load(context, "vkGetDescriptorSetLayoutBindingOffsetEXT");
@@ -1431,14 +1567,30 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkGetImageViewOpaqueCaptureDescriptorDataEXT = (PFN_vkGetImageViewOpaqueCaptureDescriptorDataEXT)load(context, "vkGetImageViewOpaqueCaptureDescriptorDataEXT");
 	table->vkGetSamplerOpaqueCaptureDescriptorDataEXT = (PFN_vkGetSamplerOpaqueCaptureDescriptorDataEXT)load(context, "vkGetSamplerOpaqueCaptureDescriptorDataEXT");
 #endif /* defined(VK_EXT_descriptor_buffer) */
+#if defined(VK_EXT_descriptor_buffer) && (defined(VK_KHR_acceleration_structure) || defined(VK_NV_ray_tracing))
+	table->vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT = (PFN_vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT)load(context, "vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT");
+#endif /* defined(VK_EXT_descriptor_buffer) && (defined(VK_KHR_acceleration_structure) || defined(VK_NV_ray_tracing)) */
 #if defined(VK_EXT_device_fault)
 	table->vkGetDeviceFaultInfoEXT = (PFN_vkGetDeviceFaultInfoEXT)load(context, "vkGetDeviceFaultInfoEXT");
 #endif /* defined(VK_EXT_device_fault) */
+#if defined(VK_EXT_device_generated_commands)
+	table->vkCmdExecuteGeneratedCommandsEXT = (PFN_vkCmdExecuteGeneratedCommandsEXT)load(context, "vkCmdExecuteGeneratedCommandsEXT");
+	table->vkCmdPreprocessGeneratedCommandsEXT = (PFN_vkCmdPreprocessGeneratedCommandsEXT)load(context, "vkCmdPreprocessGeneratedCommandsEXT");
+	table->vkCreateIndirectCommandsLayoutEXT = (PFN_vkCreateIndirectCommandsLayoutEXT)load(context, "vkCreateIndirectCommandsLayoutEXT");
+	table->vkCreateIndirectExecutionSetEXT = (PFN_vkCreateIndirectExecutionSetEXT)load(context, "vkCreateIndirectExecutionSetEXT");
+	table->vkDestroyIndirectCommandsLayoutEXT = (PFN_vkDestroyIndirectCommandsLayoutEXT)load(context, "vkDestroyIndirectCommandsLayoutEXT");
+	table->vkDestroyIndirectExecutionSetEXT = (PFN_vkDestroyIndirectExecutionSetEXT)load(context, "vkDestroyIndirectExecutionSetEXT");
+	table->vkGetGeneratedCommandsMemoryRequirementsEXT = (PFN_vkGetGeneratedCommandsMemoryRequirementsEXT)load(context, "vkGetGeneratedCommandsMemoryRequirementsEXT");
+	table->vkUpdateIndirectExecutionSetPipelineEXT = (PFN_vkUpdateIndirectExecutionSetPipelineEXT)load(context, "vkUpdateIndirectExecutionSetPipelineEXT");
+	table->vkUpdateIndirectExecutionSetShaderEXT = (PFN_vkUpdateIndirectExecutionSetShaderEXT)load(context, "vkUpdateIndirectExecutionSetShaderEXT");
+#endif /* defined(VK_EXT_device_generated_commands) */
 #if defined(VK_EXT_discard_rectangles)
 	table->vkCmdSetDiscardRectangleEXT = (PFN_vkCmdSetDiscardRectangleEXT)load(context, "vkCmdSetDiscardRectangleEXT");
+#endif /* defined(VK_EXT_discard_rectangles) */
+#if defined(VK_EXT_discard_rectangles) && VK_EXT_DISCARD_RECTANGLES_SPEC_VERSION >= 2
 	table->vkCmdSetDiscardRectangleEnableEXT = (PFN_vkCmdSetDiscardRectangleEnableEXT)load(context, "vkCmdSetDiscardRectangleEnableEXT");
 	table->vkCmdSetDiscardRectangleModeEXT = (PFN_vkCmdSetDiscardRectangleModeEXT)load(context, "vkCmdSetDiscardRectangleModeEXT");
-#endif /* defined(VK_EXT_discard_rectangles) */
+#endif /* defined(VK_EXT_discard_rectangles) && VK_EXT_DISCARD_RECTANGLES_SPEC_VERSION >= 2 */
 #if defined(VK_EXT_display_control)
 	table->vkDisplayPowerControlEXT = (PFN_vkDisplayPowerControlEXT)load(context, "vkDisplayPowerControlEXT");
 	table->vkGetSwapchainCounterEXT = (PFN_vkGetSwapchainCounterEXT)load(context, "vkGetSwapchainCounterEXT");
@@ -1452,6 +1604,9 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkAcquireFullScreenExclusiveModeEXT = (PFN_vkAcquireFullScreenExclusiveModeEXT)load(context, "vkAcquireFullScreenExclusiveModeEXT");
 	table->vkReleaseFullScreenExclusiveModeEXT = (PFN_vkReleaseFullScreenExclusiveModeEXT)load(context, "vkReleaseFullScreenExclusiveModeEXT");
 #endif /* defined(VK_EXT_full_screen_exclusive) */
+#if defined(VK_EXT_full_screen_exclusive) && (defined(VK_KHR_device_group) || defined(VK_VERSION_1_1))
+	table->vkGetDeviceGroupSurfacePresentModes2EXT = (PFN_vkGetDeviceGroupSurfacePresentModes2EXT)load(context, "vkGetDeviceGroupSurfacePresentModes2EXT");
+#endif /* defined(VK_EXT_full_screen_exclusive) && (defined(VK_KHR_device_group) || defined(VK_VERSION_1_1)) */
 #if defined(VK_EXT_hdr_metadata)
 	table->vkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)load(context, "vkSetHdrMetadataEXT");
 #endif /* defined(VK_EXT_hdr_metadata) */
@@ -1566,9 +1721,11 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 #if defined(VK_HUAWEI_invocation_mask)
 	table->vkCmdBindInvocationMaskHUAWEI = (PFN_vkCmdBindInvocationMaskHUAWEI)load(context, "vkCmdBindInvocationMaskHUAWEI");
 #endif /* defined(VK_HUAWEI_invocation_mask) */
+#if defined(VK_HUAWEI_subpass_shading) && VK_HUAWEI_SUBPASS_SHADING_SPEC_VERSION >= 2
+	table->vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI = (PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI)load(context, "vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI");
+#endif /* defined(VK_HUAWEI_subpass_shading) && VK_HUAWEI_SUBPASS_SHADING_SPEC_VERSION >= 2 */
 #if defined(VK_HUAWEI_subpass_shading)
 	table->vkCmdSubpassShadingHUAWEI = (PFN_vkCmdSubpassShadingHUAWEI)load(context, "vkCmdSubpassShadingHUAWEI");
-	table->vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI = (PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI)load(context, "vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI");
 #endif /* defined(VK_HUAWEI_subpass_shading) */
 #if defined(VK_INTEL_performance_query)
 	table->vkAcquirePerformanceConfigurationINTEL = (PFN_vkAcquirePerformanceConfigurationINTEL)load(context, "vkAcquirePerformanceConfigurationINTEL");
@@ -1608,6 +1765,9 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkGetBufferOpaqueCaptureAddressKHR = (PFN_vkGetBufferOpaqueCaptureAddressKHR)load(context, "vkGetBufferOpaqueCaptureAddressKHR");
 	table->vkGetDeviceMemoryOpaqueCaptureAddressKHR = (PFN_vkGetDeviceMemoryOpaqueCaptureAddressKHR)load(context, "vkGetDeviceMemoryOpaqueCaptureAddressKHR");
 #endif /* defined(VK_KHR_buffer_device_address) */
+#if defined(VK_KHR_calibrated_timestamps)
+	table->vkGetCalibratedTimestampsKHR = (PFN_vkGetCalibratedTimestampsKHR)load(context, "vkGetCalibratedTimestampsKHR");
+#endif /* defined(VK_KHR_calibrated_timestamps) */
 #if defined(VK_KHR_copy_commands2)
 	table->vkCmdBlitImage2KHR = (PFN_vkCmdBlitImage2KHR)load(context, "vkCmdBlitImage2KHR");
 	table->vkCmdCopyBuffer2KHR = (PFN_vkCmdCopyBuffer2KHR)load(context, "vkCmdCopyBuffer2KHR");
@@ -1650,6 +1810,10 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)load(context, "vkCmdBeginRenderingKHR");
 	table->vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)load(context, "vkCmdEndRenderingKHR");
 #endif /* defined(VK_KHR_dynamic_rendering) */
+#if defined(VK_KHR_dynamic_rendering_local_read)
+	table->vkCmdSetRenderingAttachmentLocationsKHR = (PFN_vkCmdSetRenderingAttachmentLocationsKHR)load(context, "vkCmdSetRenderingAttachmentLocationsKHR");
+	table->vkCmdSetRenderingInputAttachmentIndicesKHR = (PFN_vkCmdSetRenderingInputAttachmentIndicesKHR)load(context, "vkCmdSetRenderingInputAttachmentIndicesKHR");
+#endif /* defined(VK_KHR_dynamic_rendering_local_read) */
 #if defined(VK_KHR_external_fence_fd)
 	table->vkGetFenceFdKHR = (PFN_vkGetFenceFdKHR)load(context, "vkGetFenceFdKHR");
 	table->vkImportFenceFdKHR = (PFN_vkImportFenceFdKHR)load(context, "vkImportFenceFdKHR");
@@ -1682,6 +1846,9 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkGetImageMemoryRequirements2KHR = (PFN_vkGetImageMemoryRequirements2KHR)load(context, "vkGetImageMemoryRequirements2KHR");
 	table->vkGetImageSparseMemoryRequirements2KHR = (PFN_vkGetImageSparseMemoryRequirements2KHR)load(context, "vkGetImageSparseMemoryRequirements2KHR");
 #endif /* defined(VK_KHR_get_memory_requirements2) */
+#if defined(VK_KHR_line_rasterization)
+	table->vkCmdSetLineStippleKHR = (PFN_vkCmdSetLineStippleKHR)load(context, "vkCmdSetLineStippleKHR");
+#endif /* defined(VK_KHR_line_rasterization) */
 #if defined(VK_KHR_maintenance1)
 	table->vkTrimCommandPoolKHR = (PFN_vkTrimCommandPoolKHR)load(context, "vkTrimCommandPoolKHR");
 #endif /* defined(VK_KHR_maintenance1) */
@@ -1699,17 +1866,33 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkGetImageSubresourceLayout2KHR = (PFN_vkGetImageSubresourceLayout2KHR)load(context, "vkGetImageSubresourceLayout2KHR");
 	table->vkGetRenderingAreaGranularityKHR = (PFN_vkGetRenderingAreaGranularityKHR)load(context, "vkGetRenderingAreaGranularityKHR");
 #endif /* defined(VK_KHR_maintenance5) */
+#if defined(VK_KHR_maintenance6)
+	table->vkCmdBindDescriptorSets2KHR = (PFN_vkCmdBindDescriptorSets2KHR)load(context, "vkCmdBindDescriptorSets2KHR");
+	table->vkCmdPushConstants2KHR = (PFN_vkCmdPushConstants2KHR)load(context, "vkCmdPushConstants2KHR");
+#endif /* defined(VK_KHR_maintenance6) */
+#if defined(VK_KHR_maintenance6) && defined(VK_KHR_push_descriptor)
+	table->vkCmdPushDescriptorSet2KHR = (PFN_vkCmdPushDescriptorSet2KHR)load(context, "vkCmdPushDescriptorSet2KHR");
+	table->vkCmdPushDescriptorSetWithTemplate2KHR = (PFN_vkCmdPushDescriptorSetWithTemplate2KHR)load(context, "vkCmdPushDescriptorSetWithTemplate2KHR");
+#endif /* defined(VK_KHR_maintenance6) && defined(VK_KHR_push_descriptor) */
+#if defined(VK_KHR_maintenance6) && defined(VK_EXT_descriptor_buffer)
+	table->vkCmdBindDescriptorBufferEmbeddedSamplers2EXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplers2EXT)load(context, "vkCmdBindDescriptorBufferEmbeddedSamplers2EXT");
+	table->vkCmdSetDescriptorBufferOffsets2EXT = (PFN_vkCmdSetDescriptorBufferOffsets2EXT)load(context, "vkCmdSetDescriptorBufferOffsets2EXT");
+#endif /* defined(VK_KHR_maintenance6) && defined(VK_EXT_descriptor_buffer) */
 #if defined(VK_KHR_map_memory2)
 	table->vkMapMemory2KHR = (PFN_vkMapMemory2KHR)load(context, "vkMapMemory2KHR");
 	table->vkUnmapMemory2KHR = (PFN_vkUnmapMemory2KHR)load(context, "vkUnmapMemory2KHR");
 #endif /* defined(VK_KHR_map_memory2) */
-#if defined(VK_KHR_object_refresh)
-	table->vkCmdRefreshObjectsKHR = (PFN_vkCmdRefreshObjectsKHR)load(context, "vkCmdRefreshObjectsKHR");
-#endif /* defined(VK_KHR_object_refresh) */
 #if defined(VK_KHR_performance_query)
 	table->vkAcquireProfilingLockKHR = (PFN_vkAcquireProfilingLockKHR)load(context, "vkAcquireProfilingLockKHR");
 	table->vkReleaseProfilingLockKHR = (PFN_vkReleaseProfilingLockKHR)load(context, "vkReleaseProfilingLockKHR");
 #endif /* defined(VK_KHR_performance_query) */
+#if defined(VK_KHR_pipeline_binary)
+	table->vkCreatePipelineBinariesKHR = (PFN_vkCreatePipelineBinariesKHR)load(context, "vkCreatePipelineBinariesKHR");
+	table->vkDestroyPipelineBinaryKHR = (PFN_vkDestroyPipelineBinaryKHR)load(context, "vkDestroyPipelineBinaryKHR");
+	table->vkGetPipelineBinaryDataKHR = (PFN_vkGetPipelineBinaryDataKHR)load(context, "vkGetPipelineBinaryDataKHR");
+	table->vkGetPipelineKeyKHR = (PFN_vkGetPipelineKeyKHR)load(context, "vkGetPipelineKeyKHR");
+	table->vkReleaseCapturedPipelineDataKHR = (PFN_vkReleaseCapturedPipelineDataKHR)load(context, "vkReleaseCapturedPipelineDataKHR");
+#endif /* defined(VK_KHR_pipeline_binary) */
 #if defined(VK_KHR_pipeline_executable_properties)
 	table->vkGetPipelineExecutableInternalRepresentationsKHR = (PFN_vkGetPipelineExecutableInternalRepresentationsKHR)load(context, "vkGetPipelineExecutableInternalRepresentationsKHR");
 	table->vkGetPipelineExecutablePropertiesKHR = (PFN_vkGetPipelineExecutablePropertiesKHR)load(context, "vkGetPipelineExecutablePropertiesKHR");
@@ -1721,9 +1904,9 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 #if defined(VK_KHR_push_descriptor)
 	table->vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)load(context, "vkCmdPushDescriptorSetKHR");
 #endif /* defined(VK_KHR_push_descriptor) */
-#if defined(VK_KHR_ray_tracing_maintenance1)
+#if defined(VK_KHR_ray_tracing_maintenance1) && defined(VK_KHR_ray_tracing_pipeline)
 	table->vkCmdTraceRaysIndirect2KHR = (PFN_vkCmdTraceRaysIndirect2KHR)load(context, "vkCmdTraceRaysIndirect2KHR");
-#endif /* defined(VK_KHR_ray_tracing_maintenance1) */
+#endif /* defined(VK_KHR_ray_tracing_maintenance1) && defined(VK_KHR_ray_tracing_pipeline) */
 #if defined(VK_KHR_ray_tracing_pipeline)
 	table->vkCmdSetRayTracingPipelineStackSizeKHR = (PFN_vkCmdSetRayTracingPipelineStackSizeKHR)load(context, "vkCmdSetRayTracingPipelineStackSizeKHR");
 	table->vkCmdTraceRaysIndirectKHR = (PFN_vkCmdTraceRaysIndirectKHR)load(context, "vkCmdTraceRaysIndirectKHR");
@@ -1752,11 +1935,15 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkCmdResetEvent2KHR = (PFN_vkCmdResetEvent2KHR)load(context, "vkCmdResetEvent2KHR");
 	table->vkCmdSetEvent2KHR = (PFN_vkCmdSetEvent2KHR)load(context, "vkCmdSetEvent2KHR");
 	table->vkCmdWaitEvents2KHR = (PFN_vkCmdWaitEvents2KHR)load(context, "vkCmdWaitEvents2KHR");
-	table->vkCmdWriteBufferMarker2AMD = (PFN_vkCmdWriteBufferMarker2AMD)load(context, "vkCmdWriteBufferMarker2AMD");
 	table->vkCmdWriteTimestamp2KHR = (PFN_vkCmdWriteTimestamp2KHR)load(context, "vkCmdWriteTimestamp2KHR");
-	table->vkGetQueueCheckpointData2NV = (PFN_vkGetQueueCheckpointData2NV)load(context, "vkGetQueueCheckpointData2NV");
 	table->vkQueueSubmit2KHR = (PFN_vkQueueSubmit2KHR)load(context, "vkQueueSubmit2KHR");
 #endif /* defined(VK_KHR_synchronization2) */
+#if defined(VK_KHR_synchronization2) && defined(VK_AMD_buffer_marker)
+	table->vkCmdWriteBufferMarker2AMD = (PFN_vkCmdWriteBufferMarker2AMD)load(context, "vkCmdWriteBufferMarker2AMD");
+#endif /* defined(VK_KHR_synchronization2) && defined(VK_AMD_buffer_marker) */
+#if defined(VK_KHR_synchronization2) && defined(VK_NV_device_diagnostic_checkpoints)
+	table->vkGetQueueCheckpointData2NV = (PFN_vkGetQueueCheckpointData2NV)load(context, "vkGetQueueCheckpointData2NV");
+#endif /* defined(VK_KHR_synchronization2) && defined(VK_NV_device_diagnostic_checkpoints) */
 #if defined(VK_KHR_timeline_semaphore)
 	table->vkGetSemaphoreCounterValueKHR = (PFN_vkGetSemaphoreCounterValueKHR)load(context, "vkGetSemaphoreCounterValueKHR");
 	table->vkSignalSemaphoreKHR = (PFN_vkSignalSemaphoreKHR)load(context, "vkSignalSemaphoreKHR");
@@ -1789,9 +1976,11 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkDestroyCuModuleNVX = (PFN_vkDestroyCuModuleNVX)load(context, "vkDestroyCuModuleNVX");
 #endif /* defined(VK_NVX_binary_import) */
 #if defined(VK_NVX_image_view_handle)
-	table->vkGetImageViewAddressNVX = (PFN_vkGetImageViewAddressNVX)load(context, "vkGetImageViewAddressNVX");
 	table->vkGetImageViewHandleNVX = (PFN_vkGetImageViewHandleNVX)load(context, "vkGetImageViewHandleNVX");
 #endif /* defined(VK_NVX_image_view_handle) */
+#if defined(VK_NVX_image_view_handle) && VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION >= 2
+	table->vkGetImageViewAddressNVX = (PFN_vkGetImageViewAddressNVX)load(context, "vkGetImageViewAddressNVX");
+#endif /* defined(VK_NVX_image_view_handle) && VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION >= 2 */
 #if defined(VK_NV_clip_space_w_scaling)
 	table->vkCmdSetViewportWScalingNV = (PFN_vkCmdSetViewportWScalingNV)load(context, "vkCmdSetViewportWScalingNV");
 #endif /* defined(VK_NV_clip_space_w_scaling) */
@@ -1799,6 +1988,14 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkCmdCopyMemoryIndirectNV = (PFN_vkCmdCopyMemoryIndirectNV)load(context, "vkCmdCopyMemoryIndirectNV");
 	table->vkCmdCopyMemoryToImageIndirectNV = (PFN_vkCmdCopyMemoryToImageIndirectNV)load(context, "vkCmdCopyMemoryToImageIndirectNV");
 #endif /* defined(VK_NV_copy_memory_indirect) */
+#if defined(VK_NV_cuda_kernel_launch)
+	table->vkCmdCudaLaunchKernelNV = (PFN_vkCmdCudaLaunchKernelNV)load(context, "vkCmdCudaLaunchKernelNV");
+	table->vkCreateCudaFunctionNV = (PFN_vkCreateCudaFunctionNV)load(context, "vkCreateCudaFunctionNV");
+	table->vkCreateCudaModuleNV = (PFN_vkCreateCudaModuleNV)load(context, "vkCreateCudaModuleNV");
+	table->vkDestroyCudaFunctionNV = (PFN_vkDestroyCudaFunctionNV)load(context, "vkDestroyCudaFunctionNV");
+	table->vkDestroyCudaModuleNV = (PFN_vkDestroyCudaModuleNV)load(context, "vkDestroyCudaModuleNV");
+	table->vkGetCudaModuleCacheNV = (PFN_vkGetCudaModuleCacheNV)load(context, "vkGetCudaModuleCacheNV");
+#endif /* defined(VK_NV_cuda_kernel_launch) */
 #if defined(VK_NV_device_diagnostic_checkpoints)
 	table->vkCmdSetCheckpointNV = (PFN_vkCmdSetCheckpointNV)load(context, "vkCmdSetCheckpointNV");
 	table->vkGetQueueCheckpointDataNV = (PFN_vkGetQueueCheckpointDataNV)load(context, "vkGetQueueCheckpointDataNV");
@@ -1819,23 +2016,19 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 #if defined(VK_NV_external_memory_rdma)
 	table->vkGetMemoryRemoteAddressNV = (PFN_vkGetMemoryRemoteAddressNV)load(context, "vkGetMemoryRemoteAddressNV");
 #endif /* defined(VK_NV_external_memory_rdma) */
-#if defined(VK_NV_external_memory_sci_buf)
-	table->vkGetMemorySciBufNV = (PFN_vkGetMemorySciBufNV)load(context, "vkGetMemorySciBufNV");
-#endif /* defined(VK_NV_external_memory_sci_buf) */
 #if defined(VK_NV_external_memory_win32)
 	table->vkGetMemoryWin32HandleNV = (PFN_vkGetMemoryWin32HandleNV)load(context, "vkGetMemoryWin32HandleNV");
 #endif /* defined(VK_NV_external_memory_win32) */
-#if defined(VK_NV_external_sci_sync)
-	table->vkGetSemaphoreSciSyncObjNV = (PFN_vkGetSemaphoreSciSyncObjNV)load(context, "vkGetSemaphoreSciSyncObjNV");
-	table->vkImportSemaphoreSciSyncObjNV = (PFN_vkImportSemaphoreSciSyncObjNV)load(context, "vkImportSemaphoreSciSyncObjNV");
-#endif /* defined(VK_NV_external_sci_sync) */
-#if defined(VK_NV_external_sci_sync2)
-	table->vkCreateSemaphoreSciSyncPoolNV = (PFN_vkCreateSemaphoreSciSyncPoolNV)load(context, "vkCreateSemaphoreSciSyncPoolNV");
-	table->vkDestroySemaphoreSciSyncPoolNV = (PFN_vkDestroySemaphoreSciSyncPoolNV)load(context, "vkDestroySemaphoreSciSyncPoolNV");
-#endif /* defined(VK_NV_external_sci_sync2) */
 #if defined(VK_NV_fragment_shading_rate_enums)
 	table->vkCmdSetFragmentShadingRateEnumNV = (PFN_vkCmdSetFragmentShadingRateEnumNV)load(context, "vkCmdSetFragmentShadingRateEnumNV");
 #endif /* defined(VK_NV_fragment_shading_rate_enums) */
+#if defined(VK_NV_low_latency2)
+	table->vkGetLatencyTimingsNV = (PFN_vkGetLatencyTimingsNV)load(context, "vkGetLatencyTimingsNV");
+	table->vkLatencySleepNV = (PFN_vkLatencySleepNV)load(context, "vkLatencySleepNV");
+	table->vkQueueNotifyOutOfBandNV = (PFN_vkQueueNotifyOutOfBandNV)load(context, "vkQueueNotifyOutOfBandNV");
+	table->vkSetLatencyMarkerNV = (PFN_vkSetLatencyMarkerNV)load(context, "vkSetLatencyMarkerNV");
+	table->vkSetLatencySleepModeNV = (PFN_vkSetLatencySleepModeNV)load(context, "vkSetLatencySleepModeNV");
+#endif /* defined(VK_NV_low_latency2) */
 #if defined(VK_NV_memory_decompression)
 	table->vkCmdDecompressMemoryIndirectCountNV = (PFN_vkCmdDecompressMemoryIndirectCountNV)load(context, "vkCmdDecompressMemoryIndirectCountNV");
 	table->vkCmdDecompressMemoryNV = (PFN_vkCmdDecompressMemoryNV)load(context, "vkCmdDecompressMemoryNV");
@@ -1865,8 +2058,10 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkGetAccelerationStructureMemoryRequirementsNV = (PFN_vkGetAccelerationStructureMemoryRequirementsNV)load(context, "vkGetAccelerationStructureMemoryRequirementsNV");
 	table->vkGetRayTracingShaderGroupHandlesNV = (PFN_vkGetRayTracingShaderGroupHandlesNV)load(context, "vkGetRayTracingShaderGroupHandlesNV");
 #endif /* defined(VK_NV_ray_tracing) */
-#if defined(VK_NV_scissor_exclusive)
+#if defined(VK_NV_scissor_exclusive) && VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION >= 2
 	table->vkCmdSetExclusiveScissorEnableNV = (PFN_vkCmdSetExclusiveScissorEnableNV)load(context, "vkCmdSetExclusiveScissorEnableNV");
+#endif /* defined(VK_NV_scissor_exclusive) && VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION >= 2 */
+#if defined(VK_NV_scissor_exclusive)
 	table->vkCmdSetExclusiveScissorNV = (PFN_vkCmdSetExclusiveScissorNV)load(context, "vkCmdSetExclusiveScissorNV");
 #endif /* defined(VK_NV_scissor_exclusive) */
 #if defined(VK_NV_shading_rate_image)
@@ -1885,6 +2080,9 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 	table->vkGetDescriptorSetHostMappingVALVE = (PFN_vkGetDescriptorSetHostMappingVALVE)load(context, "vkGetDescriptorSetHostMappingVALVE");
 	table->vkGetDescriptorSetLayoutHostMappingInfoVALVE = (PFN_vkGetDescriptorSetLayoutHostMappingInfoVALVE)load(context, "vkGetDescriptorSetLayoutHostMappingInfoVALVE");
 #endif /* defined(VK_VALVE_descriptor_set_host_mapping) */
+#if (defined(VK_EXT_depth_clamp_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clamp_control))
+	table->vkCmdSetDepthClampRangeEXT = (PFN_vkCmdSetDepthClampRangeEXT)load(context, "vkCmdSetDepthClampRangeEXT");
+#endif /* (defined(VK_EXT_depth_clamp_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clamp_control)) */
 #if (defined(VK_EXT_extended_dynamic_state)) || (defined(VK_EXT_shader_object))
 	table->vkCmdBindVertexBuffers2EXT = (PFN_vkCmdBindVertexBuffers2EXT)load(context, "vkCmdBindVertexBuffers2EXT");
 	table->vkCmdSetCullModeEXT = (PFN_vkCmdSetCullModeEXT)load(context, "vkCmdSetCullModeEXT");
@@ -1909,59 +2107,84 @@ static void volkGenLoadDeviceTable(struct VolkDeviceTable* table, void* context,
 #if (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object))
 	table->vkCmdSetAlphaToCoverageEnableEXT = (PFN_vkCmdSetAlphaToCoverageEnableEXT)load(context, "vkCmdSetAlphaToCoverageEnableEXT");
 	table->vkCmdSetAlphaToOneEnableEXT = (PFN_vkCmdSetAlphaToOneEnableEXT)load(context, "vkCmdSetAlphaToOneEnableEXT");
-	table->vkCmdSetColorBlendAdvancedEXT = (PFN_vkCmdSetColorBlendAdvancedEXT)load(context, "vkCmdSetColorBlendAdvancedEXT");
 	table->vkCmdSetColorBlendEnableEXT = (PFN_vkCmdSetColorBlendEnableEXT)load(context, "vkCmdSetColorBlendEnableEXT");
 	table->vkCmdSetColorBlendEquationEXT = (PFN_vkCmdSetColorBlendEquationEXT)load(context, "vkCmdSetColorBlendEquationEXT");
 	table->vkCmdSetColorWriteMaskEXT = (PFN_vkCmdSetColorWriteMaskEXT)load(context, "vkCmdSetColorWriteMaskEXT");
+	table->vkCmdSetDepthClampEnableEXT = (PFN_vkCmdSetDepthClampEnableEXT)load(context, "vkCmdSetDepthClampEnableEXT");
+	table->vkCmdSetLogicOpEnableEXT = (PFN_vkCmdSetLogicOpEnableEXT)load(context, "vkCmdSetLogicOpEnableEXT");
+	table->vkCmdSetPolygonModeEXT = (PFN_vkCmdSetPolygonModeEXT)load(context, "vkCmdSetPolygonModeEXT");
+	table->vkCmdSetRasterizationSamplesEXT = (PFN_vkCmdSetRasterizationSamplesEXT)load(context, "vkCmdSetRasterizationSamplesEXT");
+	table->vkCmdSetSampleMaskEXT = (PFN_vkCmdSetSampleMaskEXT)load(context, "vkCmdSetSampleMaskEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && (defined(VK_KHR_maintenance2) || defined(VK_VERSION_1_1))) || (defined(VK_EXT_shader_object))
+	table->vkCmdSetTessellationDomainOriginEXT = (PFN_vkCmdSetTessellationDomainOriginEXT)load(context, "vkCmdSetTessellationDomainOriginEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && (defined(VK_KHR_maintenance2) || defined(VK_VERSION_1_1))) || (defined(VK_EXT_shader_object)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_transform_feedback)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_transform_feedback))
+	table->vkCmdSetRasterizationStreamEXT = (PFN_vkCmdSetRasterizationStreamEXT)load(context, "vkCmdSetRasterizationStreamEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_transform_feedback)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_transform_feedback)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_conservative_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_conservative_rasterization))
 	table->vkCmdSetConservativeRasterizationModeEXT = (PFN_vkCmdSetConservativeRasterizationModeEXT)load(context, "vkCmdSetConservativeRasterizationModeEXT");
+	table->vkCmdSetExtraPrimitiveOverestimationSizeEXT = (PFN_vkCmdSetExtraPrimitiveOverestimationSizeEXT)load(context, "vkCmdSetExtraPrimitiveOverestimationSizeEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_conservative_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_conservative_rasterization)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_enable)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_enable))
+	table->vkCmdSetDepthClipEnableEXT = (PFN_vkCmdSetDepthClipEnableEXT)load(context, "vkCmdSetDepthClipEnableEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_enable)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_enable)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_sample_locations)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_sample_locations))
+	table->vkCmdSetSampleLocationsEnableEXT = (PFN_vkCmdSetSampleLocationsEnableEXT)load(context, "vkCmdSetSampleLocationsEnableEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_sample_locations)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_sample_locations)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_blend_operation_advanced)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_blend_operation_advanced))
+	table->vkCmdSetColorBlendAdvancedEXT = (PFN_vkCmdSetColorBlendAdvancedEXT)load(context, "vkCmdSetColorBlendAdvancedEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_blend_operation_advanced)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_blend_operation_advanced)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_provoking_vertex)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_provoking_vertex))
+	table->vkCmdSetProvokingVertexModeEXT = (PFN_vkCmdSetProvokingVertexModeEXT)load(context, "vkCmdSetProvokingVertexModeEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_provoking_vertex)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_provoking_vertex)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_line_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_line_rasterization))
+	table->vkCmdSetLineRasterizationModeEXT = (PFN_vkCmdSetLineRasterizationModeEXT)load(context, "vkCmdSetLineRasterizationModeEXT");
+	table->vkCmdSetLineStippleEnableEXT = (PFN_vkCmdSetLineStippleEnableEXT)load(context, "vkCmdSetLineStippleEnableEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_line_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_line_rasterization)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_control))
+	table->vkCmdSetDepthClipNegativeOneToOneEXT = (PFN_vkCmdSetDepthClipNegativeOneToOneEXT)load(context, "vkCmdSetDepthClipNegativeOneToOneEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_control)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_clip_space_w_scaling)) || (defined(VK_EXT_shader_object) && defined(VK_NV_clip_space_w_scaling))
+	table->vkCmdSetViewportWScalingEnableNV = (PFN_vkCmdSetViewportWScalingEnableNV)load(context, "vkCmdSetViewportWScalingEnableNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_clip_space_w_scaling)) || (defined(VK_EXT_shader_object) && defined(VK_NV_clip_space_w_scaling)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_viewport_swizzle)) || (defined(VK_EXT_shader_object) && defined(VK_NV_viewport_swizzle))
+	table->vkCmdSetViewportSwizzleNV = (PFN_vkCmdSetViewportSwizzleNV)load(context, "vkCmdSetViewportSwizzleNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_viewport_swizzle)) || (defined(VK_EXT_shader_object) && defined(VK_NV_viewport_swizzle)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_fragment_coverage_to_color)) || (defined(VK_EXT_shader_object) && defined(VK_NV_fragment_coverage_to_color))
+	table->vkCmdSetCoverageToColorEnableNV = (PFN_vkCmdSetCoverageToColorEnableNV)load(context, "vkCmdSetCoverageToColorEnableNV");
+	table->vkCmdSetCoverageToColorLocationNV = (PFN_vkCmdSetCoverageToColorLocationNV)load(context, "vkCmdSetCoverageToColorLocationNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_fragment_coverage_to_color)) || (defined(VK_EXT_shader_object) && defined(VK_NV_fragment_coverage_to_color)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_framebuffer_mixed_samples)) || (defined(VK_EXT_shader_object) && defined(VK_NV_framebuffer_mixed_samples))
 	table->vkCmdSetCoverageModulationModeNV = (PFN_vkCmdSetCoverageModulationModeNV)load(context, "vkCmdSetCoverageModulationModeNV");
 	table->vkCmdSetCoverageModulationTableEnableNV = (PFN_vkCmdSetCoverageModulationTableEnableNV)load(context, "vkCmdSetCoverageModulationTableEnableNV");
 	table->vkCmdSetCoverageModulationTableNV = (PFN_vkCmdSetCoverageModulationTableNV)load(context, "vkCmdSetCoverageModulationTableNV");
-	table->vkCmdSetCoverageReductionModeNV = (PFN_vkCmdSetCoverageReductionModeNV)load(context, "vkCmdSetCoverageReductionModeNV");
-	table->vkCmdSetCoverageToColorEnableNV = (PFN_vkCmdSetCoverageToColorEnableNV)load(context, "vkCmdSetCoverageToColorEnableNV");
-	table->vkCmdSetCoverageToColorLocationNV = (PFN_vkCmdSetCoverageToColorLocationNV)load(context, "vkCmdSetCoverageToColorLocationNV");
-	table->vkCmdSetDepthClampEnableEXT = (PFN_vkCmdSetDepthClampEnableEXT)load(context, "vkCmdSetDepthClampEnableEXT");
-	table->vkCmdSetDepthClipEnableEXT = (PFN_vkCmdSetDepthClipEnableEXT)load(context, "vkCmdSetDepthClipEnableEXT");
-	table->vkCmdSetDepthClipNegativeOneToOneEXT = (PFN_vkCmdSetDepthClipNegativeOneToOneEXT)load(context, "vkCmdSetDepthClipNegativeOneToOneEXT");
-	table->vkCmdSetExtraPrimitiveOverestimationSizeEXT = (PFN_vkCmdSetExtraPrimitiveOverestimationSizeEXT)load(context, "vkCmdSetExtraPrimitiveOverestimationSizeEXT");
-	table->vkCmdSetLineRasterizationModeEXT = (PFN_vkCmdSetLineRasterizationModeEXT)load(context, "vkCmdSetLineRasterizationModeEXT");
-	table->vkCmdSetLineStippleEnableEXT = (PFN_vkCmdSetLineStippleEnableEXT)load(context, "vkCmdSetLineStippleEnableEXT");
-	table->vkCmdSetLogicOpEnableEXT = (PFN_vkCmdSetLogicOpEnableEXT)load(context, "vkCmdSetLogicOpEnableEXT");
-	table->vkCmdSetPolygonModeEXT = (PFN_vkCmdSetPolygonModeEXT)load(context, "vkCmdSetPolygonModeEXT");
-	table->vkCmdSetProvokingVertexModeEXT = (PFN_vkCmdSetProvokingVertexModeEXT)load(context, "vkCmdSetProvokingVertexModeEXT");
-	table->vkCmdSetRasterizationSamplesEXT = (PFN_vkCmdSetRasterizationSamplesEXT)load(context, "vkCmdSetRasterizationSamplesEXT");
-	table->vkCmdSetRasterizationStreamEXT = (PFN_vkCmdSetRasterizationStreamEXT)load(context, "vkCmdSetRasterizationStreamEXT");
-	table->vkCmdSetRepresentativeFragmentTestEnableNV = (PFN_vkCmdSetRepresentativeFragmentTestEnableNV)load(context, "vkCmdSetRepresentativeFragmentTestEnableNV");
-	table->vkCmdSetSampleLocationsEnableEXT = (PFN_vkCmdSetSampleLocationsEnableEXT)load(context, "vkCmdSetSampleLocationsEnableEXT");
-	table->vkCmdSetSampleMaskEXT = (PFN_vkCmdSetSampleMaskEXT)load(context, "vkCmdSetSampleMaskEXT");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_framebuffer_mixed_samples)) || (defined(VK_EXT_shader_object) && defined(VK_NV_framebuffer_mixed_samples)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_shading_rate_image)) || (defined(VK_EXT_shader_object) && defined(VK_NV_shading_rate_image))
 	table->vkCmdSetShadingRateImageEnableNV = (PFN_vkCmdSetShadingRateImageEnableNV)load(context, "vkCmdSetShadingRateImageEnableNV");
-	table->vkCmdSetTessellationDomainOriginEXT = (PFN_vkCmdSetTessellationDomainOriginEXT)load(context, "vkCmdSetTessellationDomainOriginEXT");
-	table->vkCmdSetViewportSwizzleNV = (PFN_vkCmdSetViewportSwizzleNV)load(context, "vkCmdSetViewportSwizzleNV");
-	table->vkCmdSetViewportWScalingEnableNV = (PFN_vkCmdSetViewportWScalingEnableNV)load(context, "vkCmdSetViewportWScalingEnableNV");
-#endif /* (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object)) */
-#if (defined(VK_EXT_full_screen_exclusive)) || (defined(VK_EXT_full_screen_exclusive))
-	table->vkGetDeviceGroupSurfacePresentModes2EXT = (PFN_vkGetDeviceGroupSurfacePresentModes2EXT)load(context, "vkGetDeviceGroupSurfacePresentModes2EXT");
-#endif /* (defined(VK_EXT_full_screen_exclusive)) || (defined(VK_EXT_full_screen_exclusive)) */
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_shading_rate_image)) || (defined(VK_EXT_shader_object) && defined(VK_NV_shading_rate_image)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_representative_fragment_test)) || (defined(VK_EXT_shader_object) && defined(VK_NV_representative_fragment_test))
+	table->vkCmdSetRepresentativeFragmentTestEnableNV = (PFN_vkCmdSetRepresentativeFragmentTestEnableNV)load(context, "vkCmdSetRepresentativeFragmentTestEnableNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_representative_fragment_test)) || (defined(VK_EXT_shader_object) && defined(VK_NV_representative_fragment_test)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_coverage_reduction_mode)) || (defined(VK_EXT_shader_object) && defined(VK_NV_coverage_reduction_mode))
+	table->vkCmdSetCoverageReductionModeNV = (PFN_vkCmdSetCoverageReductionModeNV)load(context, "vkCmdSetCoverageReductionModeNV");
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_coverage_reduction_mode)) || (defined(VK_EXT_shader_object) && defined(VK_NV_coverage_reduction_mode)) */
 #if (defined(VK_EXT_host_image_copy)) || (defined(VK_EXT_image_compression_control))
 	table->vkGetImageSubresourceLayout2EXT = (PFN_vkGetImageSubresourceLayout2EXT)load(context, "vkGetImageSubresourceLayout2EXT");
 #endif /* (defined(VK_EXT_host_image_copy)) || (defined(VK_EXT_image_compression_control)) */
 #if (defined(VK_EXT_shader_object)) || (defined(VK_EXT_vertex_input_dynamic_state))
 	table->vkCmdSetVertexInputEXT = (PFN_vkCmdSetVertexInputEXT)load(context, "vkCmdSetVertexInputEXT");
 #endif /* (defined(VK_EXT_shader_object)) || (defined(VK_EXT_vertex_input_dynamic_state)) */
-#if (defined(VK_KHR_descriptor_update_template)) || (defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor))
+#if (defined(VK_KHR_descriptor_update_template) && defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor) && (defined(VK_VERSION_1_1) || defined(VK_KHR_descriptor_update_template)))
 	table->vkCmdPushDescriptorSetWithTemplateKHR = (PFN_vkCmdPushDescriptorSetWithTemplateKHR)load(context, "vkCmdPushDescriptorSetWithTemplateKHR");
-#endif /* (defined(VK_KHR_descriptor_update_template)) || (defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor)) */
-#if (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain))
-	table->vkAcquireNextImage2KHR = (PFN_vkAcquireNextImage2KHR)load(context, "vkAcquireNextImage2KHR");
+#endif /* (defined(VK_KHR_descriptor_update_template) && defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor) && (defined(VK_VERSION_1_1) || defined(VK_KHR_descriptor_update_template))) */
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
 	table->vkGetDeviceGroupPresentCapabilitiesKHR = (PFN_vkGetDeviceGroupPresentCapabilitiesKHR)load(context, "vkGetDeviceGroupPresentCapabilitiesKHR");
 	table->vkGetDeviceGroupSurfacePresentModesKHR = (PFN_vkGetDeviceGroupSurfacePresentModesKHR)load(context, "vkGetDeviceGroupSurfacePresentModesKHR");
-#endif /* (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain)) */
-#if (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2))
-	table->vkGetFenceSciSyncFenceNV = (PFN_vkGetFenceSciSyncFenceNV)load(context, "vkGetFenceSciSyncFenceNV");
-	table->vkGetFenceSciSyncObjNV = (PFN_vkGetFenceSciSyncObjNV)load(context, "vkGetFenceSciSyncObjNV");
-	table->vkImportFenceSciSyncFenceNV = (PFN_vkImportFenceSciSyncFenceNV)load(context, "vkImportFenceSciSyncFenceNV");
-	table->vkImportFenceSciSyncObjNV = (PFN_vkImportFenceSciSyncObjNV)load(context, "vkImportFenceSciSyncObjNV");
-#endif /* (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2)) */
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_swapchain)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
+	table->vkAcquireNextImage2KHR = (PFN_vkAcquireNextImage2KHR)load(context, "vkAcquireNextImage2KHR");
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_swapchain)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
 	/* VOLK_GENERATE_LOAD_DEVICE_TABLE */
 }
 
@@ -2197,10 +2420,6 @@ PFN_vkGetPrivateData vkGetPrivateData;
 PFN_vkQueueSubmit2 vkQueueSubmit2;
 PFN_vkSetPrivateData vkSetPrivateData;
 #endif /* defined(VK_VERSION_1_3) */
-#if defined(VKSC_VERSION_1_0)
-PFN_vkGetCommandPoolMemoryConsumption vkGetCommandPoolMemoryConsumption;
-PFN_vkGetFaultData vkGetFaultData;
-#endif /* defined(VKSC_VERSION_1_0) */
 #if defined(VK_AMDX_shader_enqueue)
 PFN_vkCmdDispatchGraphAMDX vkCmdDispatchGraphAMDX;
 PFN_vkCmdDispatchGraphIndirectAMDX vkCmdDispatchGraphIndirectAMDX;
@@ -2210,6 +2429,9 @@ PFN_vkCreateExecutionGraphPipelinesAMDX vkCreateExecutionGraphPipelinesAMDX;
 PFN_vkGetExecutionGraphPipelineNodeIndexAMDX vkGetExecutionGraphPipelineNodeIndexAMDX;
 PFN_vkGetExecutionGraphPipelineScratchSizeAMDX vkGetExecutionGraphPipelineScratchSizeAMDX;
 #endif /* defined(VK_AMDX_shader_enqueue) */
+#if defined(VK_AMD_anti_lag)
+PFN_vkAntiLagUpdateAMD vkAntiLagUpdateAMD;
+#endif /* defined(VK_AMD_anti_lag) */
 #if defined(VK_AMD_buffer_marker)
 PFN_vkCmdWriteBufferMarkerAMD vkCmdWriteBufferMarkerAMD;
 #endif /* defined(VK_AMD_buffer_marker) */
@@ -2284,7 +2506,6 @@ PFN_vkCmdSetDepthBias2EXT vkCmdSetDepthBias2EXT;
 PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT vkCmdBindDescriptorBufferEmbeddedSamplersEXT;
 PFN_vkCmdBindDescriptorBuffersEXT vkCmdBindDescriptorBuffersEXT;
 PFN_vkCmdSetDescriptorBufferOffsetsEXT vkCmdSetDescriptorBufferOffsetsEXT;
-PFN_vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT;
 PFN_vkGetBufferOpaqueCaptureDescriptorDataEXT vkGetBufferOpaqueCaptureDescriptorDataEXT;
 PFN_vkGetDescriptorEXT vkGetDescriptorEXT;
 PFN_vkGetDescriptorSetLayoutBindingOffsetEXT vkGetDescriptorSetLayoutBindingOffsetEXT;
@@ -2293,9 +2514,23 @@ PFN_vkGetImageOpaqueCaptureDescriptorDataEXT vkGetImageOpaqueCaptureDescriptorDa
 PFN_vkGetImageViewOpaqueCaptureDescriptorDataEXT vkGetImageViewOpaqueCaptureDescriptorDataEXT;
 PFN_vkGetSamplerOpaqueCaptureDescriptorDataEXT vkGetSamplerOpaqueCaptureDescriptorDataEXT;
 #endif /* defined(VK_EXT_descriptor_buffer) */
+#if defined(VK_EXT_descriptor_buffer) && (defined(VK_KHR_acceleration_structure) || defined(VK_NV_ray_tracing))
+PFN_vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT;
+#endif /* defined(VK_EXT_descriptor_buffer) && (defined(VK_KHR_acceleration_structure) || defined(VK_NV_ray_tracing)) */
 #if defined(VK_EXT_device_fault)
 PFN_vkGetDeviceFaultInfoEXT vkGetDeviceFaultInfoEXT;
 #endif /* defined(VK_EXT_device_fault) */
+#if defined(VK_EXT_device_generated_commands)
+PFN_vkCmdExecuteGeneratedCommandsEXT vkCmdExecuteGeneratedCommandsEXT;
+PFN_vkCmdPreprocessGeneratedCommandsEXT vkCmdPreprocessGeneratedCommandsEXT;
+PFN_vkCreateIndirectCommandsLayoutEXT vkCreateIndirectCommandsLayoutEXT;
+PFN_vkCreateIndirectExecutionSetEXT vkCreateIndirectExecutionSetEXT;
+PFN_vkDestroyIndirectCommandsLayoutEXT vkDestroyIndirectCommandsLayoutEXT;
+PFN_vkDestroyIndirectExecutionSetEXT vkDestroyIndirectExecutionSetEXT;
+PFN_vkGetGeneratedCommandsMemoryRequirementsEXT vkGetGeneratedCommandsMemoryRequirementsEXT;
+PFN_vkUpdateIndirectExecutionSetPipelineEXT vkUpdateIndirectExecutionSetPipelineEXT;
+PFN_vkUpdateIndirectExecutionSetShaderEXT vkUpdateIndirectExecutionSetShaderEXT;
+#endif /* defined(VK_EXT_device_generated_commands) */
 #if defined(VK_EXT_direct_mode_display)
 PFN_vkReleaseDisplayEXT vkReleaseDisplayEXT;
 #endif /* defined(VK_EXT_direct_mode_display) */
@@ -2305,9 +2540,11 @@ PFN_vkGetPhysicalDeviceDirectFBPresentationSupportEXT vkGetPhysicalDeviceDirectF
 #endif /* defined(VK_EXT_directfb_surface) */
 #if defined(VK_EXT_discard_rectangles)
 PFN_vkCmdSetDiscardRectangleEXT vkCmdSetDiscardRectangleEXT;
+#endif /* defined(VK_EXT_discard_rectangles) */
+#if defined(VK_EXT_discard_rectangles) && VK_EXT_DISCARD_RECTANGLES_SPEC_VERSION >= 2
 PFN_vkCmdSetDiscardRectangleEnableEXT vkCmdSetDiscardRectangleEnableEXT;
 PFN_vkCmdSetDiscardRectangleModeEXT vkCmdSetDiscardRectangleModeEXT;
-#endif /* defined(VK_EXT_discard_rectangles) */
+#endif /* defined(VK_EXT_discard_rectangles) && VK_EXT_DISCARD_RECTANGLES_SPEC_VERSION >= 2 */
 #if defined(VK_EXT_display_control)
 PFN_vkDisplayPowerControlEXT vkDisplayPowerControlEXT;
 PFN_vkGetSwapchainCounterEXT vkGetSwapchainCounterEXT;
@@ -2325,6 +2562,9 @@ PFN_vkAcquireFullScreenExclusiveModeEXT vkAcquireFullScreenExclusiveModeEXT;
 PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT vkGetPhysicalDeviceSurfacePresentModes2EXT;
 PFN_vkReleaseFullScreenExclusiveModeEXT vkReleaseFullScreenExclusiveModeEXT;
 #endif /* defined(VK_EXT_full_screen_exclusive) */
+#if defined(VK_EXT_full_screen_exclusive) && (defined(VK_KHR_device_group) || defined(VK_VERSION_1_1))
+PFN_vkGetDeviceGroupSurfacePresentModes2EXT vkGetDeviceGroupSurfacePresentModes2EXT;
+#endif /* defined(VK_EXT_full_screen_exclusive) && (defined(VK_KHR_device_group) || defined(VK_VERSION_1_1)) */
 #if defined(VK_EXT_hdr_metadata)
 PFN_vkSetHdrMetadataEXT vkSetHdrMetadataEXT;
 #endif /* defined(VK_EXT_hdr_metadata) */
@@ -2455,9 +2695,11 @@ PFN_vkCmdDrawClusterIndirectHUAWEI vkCmdDrawClusterIndirectHUAWEI;
 #if defined(VK_HUAWEI_invocation_mask)
 PFN_vkCmdBindInvocationMaskHUAWEI vkCmdBindInvocationMaskHUAWEI;
 #endif /* defined(VK_HUAWEI_invocation_mask) */
+#if defined(VK_HUAWEI_subpass_shading) && VK_HUAWEI_SUBPASS_SHADING_SPEC_VERSION >= 2
+PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI;
+#endif /* defined(VK_HUAWEI_subpass_shading) && VK_HUAWEI_SUBPASS_SHADING_SPEC_VERSION >= 2 */
 #if defined(VK_HUAWEI_subpass_shading)
 PFN_vkCmdSubpassShadingHUAWEI vkCmdSubpassShadingHUAWEI;
-PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI;
 #endif /* defined(VK_HUAWEI_subpass_shading) */
 #if defined(VK_INTEL_performance_query)
 PFN_vkAcquirePerformanceConfigurationINTEL vkAcquirePerformanceConfigurationINTEL;
@@ -2500,6 +2742,10 @@ PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
 PFN_vkGetBufferOpaqueCaptureAddressKHR vkGetBufferOpaqueCaptureAddressKHR;
 PFN_vkGetDeviceMemoryOpaqueCaptureAddressKHR vkGetDeviceMemoryOpaqueCaptureAddressKHR;
 #endif /* defined(VK_KHR_buffer_device_address) */
+#if defined(VK_KHR_calibrated_timestamps)
+PFN_vkGetCalibratedTimestampsKHR vkGetCalibratedTimestampsKHR;
+PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR vkGetPhysicalDeviceCalibrateableTimeDomainsKHR;
+#endif /* defined(VK_KHR_calibrated_timestamps) */
 #if defined(VK_KHR_cooperative_matrix)
 PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR;
 #endif /* defined(VK_KHR_cooperative_matrix) */
@@ -2557,6 +2803,10 @@ PFN_vkCmdDrawIndirectCountKHR vkCmdDrawIndirectCountKHR;
 PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
 PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
 #endif /* defined(VK_KHR_dynamic_rendering) */
+#if defined(VK_KHR_dynamic_rendering_local_read)
+PFN_vkCmdSetRenderingAttachmentLocationsKHR vkCmdSetRenderingAttachmentLocationsKHR;
+PFN_vkCmdSetRenderingInputAttachmentIndicesKHR vkCmdSetRenderingInputAttachmentIndicesKHR;
+#endif /* defined(VK_KHR_dynamic_rendering_local_read) */
 #if defined(VK_KHR_external_fence_capabilities)
 PFN_vkGetPhysicalDeviceExternalFencePropertiesKHR vkGetPhysicalDeviceExternalFencePropertiesKHR;
 #endif /* defined(VK_KHR_external_fence_capabilities) */
@@ -2618,6 +2868,9 @@ PFN_vkGetPhysicalDeviceSparseImageFormatProperties2KHR vkGetPhysicalDeviceSparse
 PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR vkGetPhysicalDeviceSurfaceCapabilities2KHR;
 PFN_vkGetPhysicalDeviceSurfaceFormats2KHR vkGetPhysicalDeviceSurfaceFormats2KHR;
 #endif /* defined(VK_KHR_get_surface_capabilities2) */
+#if defined(VK_KHR_line_rasterization)
+PFN_vkCmdSetLineStippleKHR vkCmdSetLineStippleKHR;
+#endif /* defined(VK_KHR_line_rasterization) */
 #if defined(VK_KHR_maintenance1)
 PFN_vkTrimCommandPoolKHR vkTrimCommandPoolKHR;
 #endif /* defined(VK_KHR_maintenance1) */
@@ -2635,20 +2888,35 @@ PFN_vkGetDeviceImageSubresourceLayoutKHR vkGetDeviceImageSubresourceLayoutKHR;
 PFN_vkGetImageSubresourceLayout2KHR vkGetImageSubresourceLayout2KHR;
 PFN_vkGetRenderingAreaGranularityKHR vkGetRenderingAreaGranularityKHR;
 #endif /* defined(VK_KHR_maintenance5) */
+#if defined(VK_KHR_maintenance6)
+PFN_vkCmdBindDescriptorSets2KHR vkCmdBindDescriptorSets2KHR;
+PFN_vkCmdPushConstants2KHR vkCmdPushConstants2KHR;
+#endif /* defined(VK_KHR_maintenance6) */
+#if defined(VK_KHR_maintenance6) && defined(VK_KHR_push_descriptor)
+PFN_vkCmdPushDescriptorSet2KHR vkCmdPushDescriptorSet2KHR;
+PFN_vkCmdPushDescriptorSetWithTemplate2KHR vkCmdPushDescriptorSetWithTemplate2KHR;
+#endif /* defined(VK_KHR_maintenance6) && defined(VK_KHR_push_descriptor) */
+#if defined(VK_KHR_maintenance6) && defined(VK_EXT_descriptor_buffer)
+PFN_vkCmdBindDescriptorBufferEmbeddedSamplers2EXT vkCmdBindDescriptorBufferEmbeddedSamplers2EXT;
+PFN_vkCmdSetDescriptorBufferOffsets2EXT vkCmdSetDescriptorBufferOffsets2EXT;
+#endif /* defined(VK_KHR_maintenance6) && defined(VK_EXT_descriptor_buffer) */
 #if defined(VK_KHR_map_memory2)
 PFN_vkMapMemory2KHR vkMapMemory2KHR;
 PFN_vkUnmapMemory2KHR vkUnmapMemory2KHR;
 #endif /* defined(VK_KHR_map_memory2) */
-#if defined(VK_KHR_object_refresh)
-PFN_vkCmdRefreshObjectsKHR vkCmdRefreshObjectsKHR;
-PFN_vkGetPhysicalDeviceRefreshableObjectTypesKHR vkGetPhysicalDeviceRefreshableObjectTypesKHR;
-#endif /* defined(VK_KHR_object_refresh) */
 #if defined(VK_KHR_performance_query)
 PFN_vkAcquireProfilingLockKHR vkAcquireProfilingLockKHR;
 PFN_vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR;
 PFN_vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR;
 PFN_vkReleaseProfilingLockKHR vkReleaseProfilingLockKHR;
 #endif /* defined(VK_KHR_performance_query) */
+#if defined(VK_KHR_pipeline_binary)
+PFN_vkCreatePipelineBinariesKHR vkCreatePipelineBinariesKHR;
+PFN_vkDestroyPipelineBinaryKHR vkDestroyPipelineBinaryKHR;
+PFN_vkGetPipelineBinaryDataKHR vkGetPipelineBinaryDataKHR;
+PFN_vkGetPipelineKeyKHR vkGetPipelineKeyKHR;
+PFN_vkReleaseCapturedPipelineDataKHR vkReleaseCapturedPipelineDataKHR;
+#endif /* defined(VK_KHR_pipeline_binary) */
 #if defined(VK_KHR_pipeline_executable_properties)
 PFN_vkGetPipelineExecutableInternalRepresentationsKHR vkGetPipelineExecutableInternalRepresentationsKHR;
 PFN_vkGetPipelineExecutablePropertiesKHR vkGetPipelineExecutablePropertiesKHR;
@@ -2660,9 +2928,9 @@ PFN_vkWaitForPresentKHR vkWaitForPresentKHR;
 #if defined(VK_KHR_push_descriptor)
 PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR;
 #endif /* defined(VK_KHR_push_descriptor) */
-#if defined(VK_KHR_ray_tracing_maintenance1)
+#if defined(VK_KHR_ray_tracing_maintenance1) && defined(VK_KHR_ray_tracing_pipeline)
 PFN_vkCmdTraceRaysIndirect2KHR vkCmdTraceRaysIndirect2KHR;
-#endif /* defined(VK_KHR_ray_tracing_maintenance1) */
+#endif /* defined(VK_KHR_ray_tracing_maintenance1) && defined(VK_KHR_ray_tracing_pipeline) */
 #if defined(VK_KHR_ray_tracing_pipeline)
 PFN_vkCmdSetRayTracingPipelineStackSizeKHR vkCmdSetRayTracingPipelineStackSizeKHR;
 PFN_vkCmdTraceRaysIndirectKHR vkCmdTraceRaysIndirectKHR;
@@ -2698,11 +2966,15 @@ PFN_vkCmdPipelineBarrier2KHR vkCmdPipelineBarrier2KHR;
 PFN_vkCmdResetEvent2KHR vkCmdResetEvent2KHR;
 PFN_vkCmdSetEvent2KHR vkCmdSetEvent2KHR;
 PFN_vkCmdWaitEvents2KHR vkCmdWaitEvents2KHR;
-PFN_vkCmdWriteBufferMarker2AMD vkCmdWriteBufferMarker2AMD;
 PFN_vkCmdWriteTimestamp2KHR vkCmdWriteTimestamp2KHR;
-PFN_vkGetQueueCheckpointData2NV vkGetQueueCheckpointData2NV;
 PFN_vkQueueSubmit2KHR vkQueueSubmit2KHR;
 #endif /* defined(VK_KHR_synchronization2) */
+#if defined(VK_KHR_synchronization2) && defined(VK_AMD_buffer_marker)
+PFN_vkCmdWriteBufferMarker2AMD vkCmdWriteBufferMarker2AMD;
+#endif /* defined(VK_KHR_synchronization2) && defined(VK_AMD_buffer_marker) */
+#if defined(VK_KHR_synchronization2) && defined(VK_NV_device_diagnostic_checkpoints)
+PFN_vkGetQueueCheckpointData2NV vkGetQueueCheckpointData2NV;
+#endif /* defined(VK_KHR_synchronization2) && defined(VK_NV_device_diagnostic_checkpoints) */
 #if defined(VK_KHR_timeline_semaphore)
 PFN_vkGetSemaphoreCounterValueKHR vkGetSemaphoreCounterValueKHR;
 PFN_vkSignalSemaphoreKHR vkSignalSemaphoreKHR;
@@ -2763,9 +3035,11 @@ PFN_vkDestroyCuFunctionNVX vkDestroyCuFunctionNVX;
 PFN_vkDestroyCuModuleNVX vkDestroyCuModuleNVX;
 #endif /* defined(VK_NVX_binary_import) */
 #if defined(VK_NVX_image_view_handle)
-PFN_vkGetImageViewAddressNVX vkGetImageViewAddressNVX;
 PFN_vkGetImageViewHandleNVX vkGetImageViewHandleNVX;
 #endif /* defined(VK_NVX_image_view_handle) */
+#if defined(VK_NVX_image_view_handle) && VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION >= 2
+PFN_vkGetImageViewAddressNVX vkGetImageViewAddressNVX;
+#endif /* defined(VK_NVX_image_view_handle) && VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION >= 2 */
 #if defined(VK_NV_acquire_winrt_display)
 PFN_vkAcquireWinrtDisplayNV vkAcquireWinrtDisplayNV;
 PFN_vkGetWinrtDisplayNV vkGetWinrtDisplayNV;
@@ -2783,6 +3057,14 @@ PFN_vkCmdCopyMemoryToImageIndirectNV vkCmdCopyMemoryToImageIndirectNV;
 #if defined(VK_NV_coverage_reduction_mode)
 PFN_vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV;
 #endif /* defined(VK_NV_coverage_reduction_mode) */
+#if defined(VK_NV_cuda_kernel_launch)
+PFN_vkCmdCudaLaunchKernelNV vkCmdCudaLaunchKernelNV;
+PFN_vkCreateCudaFunctionNV vkCreateCudaFunctionNV;
+PFN_vkCreateCudaModuleNV vkCreateCudaModuleNV;
+PFN_vkDestroyCudaFunctionNV vkDestroyCudaFunctionNV;
+PFN_vkDestroyCudaModuleNV vkDestroyCudaModuleNV;
+PFN_vkGetCudaModuleCacheNV vkGetCudaModuleCacheNV;
+#endif /* defined(VK_NV_cuda_kernel_launch) */
 #if defined(VK_NV_device_diagnostic_checkpoints)
 PFN_vkCmdSetCheckpointNV vkCmdSetCheckpointNV;
 PFN_vkGetQueueCheckpointDataNV vkGetQueueCheckpointDataNV;
@@ -2806,25 +3088,19 @@ PFN_vkGetPhysicalDeviceExternalImageFormatPropertiesNV vkGetPhysicalDeviceExtern
 #if defined(VK_NV_external_memory_rdma)
 PFN_vkGetMemoryRemoteAddressNV vkGetMemoryRemoteAddressNV;
 #endif /* defined(VK_NV_external_memory_rdma) */
-#if defined(VK_NV_external_memory_sci_buf)
-PFN_vkGetMemorySciBufNV vkGetMemorySciBufNV;
-PFN_vkGetPhysicalDeviceExternalMemorySciBufPropertiesNV vkGetPhysicalDeviceExternalMemorySciBufPropertiesNV;
-PFN_vkGetPhysicalDeviceSciBufAttributesNV vkGetPhysicalDeviceSciBufAttributesNV;
-#endif /* defined(VK_NV_external_memory_sci_buf) */
 #if defined(VK_NV_external_memory_win32)
 PFN_vkGetMemoryWin32HandleNV vkGetMemoryWin32HandleNV;
 #endif /* defined(VK_NV_external_memory_win32) */
-#if defined(VK_NV_external_sci_sync)
-PFN_vkGetSemaphoreSciSyncObjNV vkGetSemaphoreSciSyncObjNV;
-PFN_vkImportSemaphoreSciSyncObjNV vkImportSemaphoreSciSyncObjNV;
-#endif /* defined(VK_NV_external_sci_sync) */
-#if defined(VK_NV_external_sci_sync2)
-PFN_vkCreateSemaphoreSciSyncPoolNV vkCreateSemaphoreSciSyncPoolNV;
-PFN_vkDestroySemaphoreSciSyncPoolNV vkDestroySemaphoreSciSyncPoolNV;
-#endif /* defined(VK_NV_external_sci_sync2) */
 #if defined(VK_NV_fragment_shading_rate_enums)
 PFN_vkCmdSetFragmentShadingRateEnumNV vkCmdSetFragmentShadingRateEnumNV;
 #endif /* defined(VK_NV_fragment_shading_rate_enums) */
+#if defined(VK_NV_low_latency2)
+PFN_vkGetLatencyTimingsNV vkGetLatencyTimingsNV;
+PFN_vkLatencySleepNV vkLatencySleepNV;
+PFN_vkQueueNotifyOutOfBandNV vkQueueNotifyOutOfBandNV;
+PFN_vkSetLatencyMarkerNV vkSetLatencyMarkerNV;
+PFN_vkSetLatencySleepModeNV vkSetLatencySleepModeNV;
+#endif /* defined(VK_NV_low_latency2) */
 #if defined(VK_NV_memory_decompression)
 PFN_vkCmdDecompressMemoryIndirectCountNV vkCmdDecompressMemoryIndirectCountNV;
 PFN_vkCmdDecompressMemoryNV vkCmdDecompressMemoryNV;
@@ -2855,8 +3131,10 @@ PFN_vkGetAccelerationStructureHandleNV vkGetAccelerationStructureHandleNV;
 PFN_vkGetAccelerationStructureMemoryRequirementsNV vkGetAccelerationStructureMemoryRequirementsNV;
 PFN_vkGetRayTracingShaderGroupHandlesNV vkGetRayTracingShaderGroupHandlesNV;
 #endif /* defined(VK_NV_ray_tracing) */
-#if defined(VK_NV_scissor_exclusive)
+#if defined(VK_NV_scissor_exclusive) && VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION >= 2
 PFN_vkCmdSetExclusiveScissorEnableNV vkCmdSetExclusiveScissorEnableNV;
+#endif /* defined(VK_NV_scissor_exclusive) && VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION >= 2 */
+#if defined(VK_NV_scissor_exclusive)
 PFN_vkCmdSetExclusiveScissorNV vkCmdSetExclusiveScissorNV;
 #endif /* defined(VK_NV_scissor_exclusive) */
 #if defined(VK_NV_shading_rate_image)
@@ -2879,6 +3157,9 @@ PFN_vkGetPhysicalDeviceScreenPresentationSupportQNX vkGetPhysicalDeviceScreenPre
 PFN_vkGetDescriptorSetHostMappingVALVE vkGetDescriptorSetHostMappingVALVE;
 PFN_vkGetDescriptorSetLayoutHostMappingInfoVALVE vkGetDescriptorSetLayoutHostMappingInfoVALVE;
 #endif /* defined(VK_VALVE_descriptor_set_host_mapping) */
+#if (defined(VK_EXT_depth_clamp_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clamp_control))
+PFN_vkCmdSetDepthClampRangeEXT vkCmdSetDepthClampRangeEXT;
+#endif /* (defined(VK_EXT_depth_clamp_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clamp_control)) */
 #if (defined(VK_EXT_extended_dynamic_state)) || (defined(VK_EXT_shader_object))
 PFN_vkCmdBindVertexBuffers2EXT vkCmdBindVertexBuffers2EXT;
 PFN_vkCmdSetCullModeEXT vkCmdSetCullModeEXT;
@@ -2903,61 +3184,85 @@ PFN_vkCmdSetRasterizerDiscardEnableEXT vkCmdSetRasterizerDiscardEnableEXT;
 #if (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object))
 PFN_vkCmdSetAlphaToCoverageEnableEXT vkCmdSetAlphaToCoverageEnableEXT;
 PFN_vkCmdSetAlphaToOneEnableEXT vkCmdSetAlphaToOneEnableEXT;
-PFN_vkCmdSetColorBlendAdvancedEXT vkCmdSetColorBlendAdvancedEXT;
 PFN_vkCmdSetColorBlendEnableEXT vkCmdSetColorBlendEnableEXT;
 PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT;
 PFN_vkCmdSetColorWriteMaskEXT vkCmdSetColorWriteMaskEXT;
+PFN_vkCmdSetDepthClampEnableEXT vkCmdSetDepthClampEnableEXT;
+PFN_vkCmdSetLogicOpEnableEXT vkCmdSetLogicOpEnableEXT;
+PFN_vkCmdSetPolygonModeEXT vkCmdSetPolygonModeEXT;
+PFN_vkCmdSetRasterizationSamplesEXT vkCmdSetRasterizationSamplesEXT;
+PFN_vkCmdSetSampleMaskEXT vkCmdSetSampleMaskEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && (defined(VK_KHR_maintenance2) || defined(VK_VERSION_1_1))) || (defined(VK_EXT_shader_object))
+PFN_vkCmdSetTessellationDomainOriginEXT vkCmdSetTessellationDomainOriginEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && (defined(VK_KHR_maintenance2) || defined(VK_VERSION_1_1))) || (defined(VK_EXT_shader_object)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_transform_feedback)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_transform_feedback))
+PFN_vkCmdSetRasterizationStreamEXT vkCmdSetRasterizationStreamEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_transform_feedback)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_transform_feedback)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_conservative_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_conservative_rasterization))
 PFN_vkCmdSetConservativeRasterizationModeEXT vkCmdSetConservativeRasterizationModeEXT;
+PFN_vkCmdSetExtraPrimitiveOverestimationSizeEXT vkCmdSetExtraPrimitiveOverestimationSizeEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_conservative_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_conservative_rasterization)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_enable)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_enable))
+PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_enable)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_enable)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_sample_locations)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_sample_locations))
+PFN_vkCmdSetSampleLocationsEnableEXT vkCmdSetSampleLocationsEnableEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_sample_locations)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_sample_locations)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_blend_operation_advanced)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_blend_operation_advanced))
+PFN_vkCmdSetColorBlendAdvancedEXT vkCmdSetColorBlendAdvancedEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_blend_operation_advanced)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_blend_operation_advanced)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_provoking_vertex)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_provoking_vertex))
+PFN_vkCmdSetProvokingVertexModeEXT vkCmdSetProvokingVertexModeEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_provoking_vertex)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_provoking_vertex)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_line_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_line_rasterization))
+PFN_vkCmdSetLineRasterizationModeEXT vkCmdSetLineRasterizationModeEXT;
+PFN_vkCmdSetLineStippleEnableEXT vkCmdSetLineStippleEnableEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_line_rasterization)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_line_rasterization)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_control))
+PFN_vkCmdSetDepthClipNegativeOneToOneEXT vkCmdSetDepthClipNegativeOneToOneEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_EXT_depth_clip_control)) || (defined(VK_EXT_shader_object) && defined(VK_EXT_depth_clip_control)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_clip_space_w_scaling)) || (defined(VK_EXT_shader_object) && defined(VK_NV_clip_space_w_scaling))
+PFN_vkCmdSetViewportWScalingEnableNV vkCmdSetViewportWScalingEnableNV;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_clip_space_w_scaling)) || (defined(VK_EXT_shader_object) && defined(VK_NV_clip_space_w_scaling)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_viewport_swizzle)) || (defined(VK_EXT_shader_object) && defined(VK_NV_viewport_swizzle))
+PFN_vkCmdSetViewportSwizzleNV vkCmdSetViewportSwizzleNV;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_viewport_swizzle)) || (defined(VK_EXT_shader_object) && defined(VK_NV_viewport_swizzle)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_fragment_coverage_to_color)) || (defined(VK_EXT_shader_object) && defined(VK_NV_fragment_coverage_to_color))
+PFN_vkCmdSetCoverageToColorEnableNV vkCmdSetCoverageToColorEnableNV;
+PFN_vkCmdSetCoverageToColorLocationNV vkCmdSetCoverageToColorLocationNV;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_fragment_coverage_to_color)) || (defined(VK_EXT_shader_object) && defined(VK_NV_fragment_coverage_to_color)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_framebuffer_mixed_samples)) || (defined(VK_EXT_shader_object) && defined(VK_NV_framebuffer_mixed_samples))
 PFN_vkCmdSetCoverageModulationModeNV vkCmdSetCoverageModulationModeNV;
 PFN_vkCmdSetCoverageModulationTableEnableNV vkCmdSetCoverageModulationTableEnableNV;
 PFN_vkCmdSetCoverageModulationTableNV vkCmdSetCoverageModulationTableNV;
-PFN_vkCmdSetCoverageReductionModeNV vkCmdSetCoverageReductionModeNV;
-PFN_vkCmdSetCoverageToColorEnableNV vkCmdSetCoverageToColorEnableNV;
-PFN_vkCmdSetCoverageToColorLocationNV vkCmdSetCoverageToColorLocationNV;
-PFN_vkCmdSetDepthClampEnableEXT vkCmdSetDepthClampEnableEXT;
-PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT;
-PFN_vkCmdSetDepthClipNegativeOneToOneEXT vkCmdSetDepthClipNegativeOneToOneEXT;
-PFN_vkCmdSetExtraPrimitiveOverestimationSizeEXT vkCmdSetExtraPrimitiveOverestimationSizeEXT;
-PFN_vkCmdSetLineRasterizationModeEXT vkCmdSetLineRasterizationModeEXT;
-PFN_vkCmdSetLineStippleEnableEXT vkCmdSetLineStippleEnableEXT;
-PFN_vkCmdSetLogicOpEnableEXT vkCmdSetLogicOpEnableEXT;
-PFN_vkCmdSetPolygonModeEXT vkCmdSetPolygonModeEXT;
-PFN_vkCmdSetProvokingVertexModeEXT vkCmdSetProvokingVertexModeEXT;
-PFN_vkCmdSetRasterizationSamplesEXT vkCmdSetRasterizationSamplesEXT;
-PFN_vkCmdSetRasterizationStreamEXT vkCmdSetRasterizationStreamEXT;
-PFN_vkCmdSetRepresentativeFragmentTestEnableNV vkCmdSetRepresentativeFragmentTestEnableNV;
-PFN_vkCmdSetSampleLocationsEnableEXT vkCmdSetSampleLocationsEnableEXT;
-PFN_vkCmdSetSampleMaskEXT vkCmdSetSampleMaskEXT;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_framebuffer_mixed_samples)) || (defined(VK_EXT_shader_object) && defined(VK_NV_framebuffer_mixed_samples)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_shading_rate_image)) || (defined(VK_EXT_shader_object) && defined(VK_NV_shading_rate_image))
 PFN_vkCmdSetShadingRateImageEnableNV vkCmdSetShadingRateImageEnableNV;
-PFN_vkCmdSetTessellationDomainOriginEXT vkCmdSetTessellationDomainOriginEXT;
-PFN_vkCmdSetViewportSwizzleNV vkCmdSetViewportSwizzleNV;
-PFN_vkCmdSetViewportWScalingEnableNV vkCmdSetViewportWScalingEnableNV;
-#endif /* (defined(VK_EXT_extended_dynamic_state3)) || (defined(VK_EXT_shader_object)) */
-#if (defined(VK_EXT_full_screen_exclusive)) || (defined(VK_EXT_full_screen_exclusive))
-PFN_vkGetDeviceGroupSurfacePresentModes2EXT vkGetDeviceGroupSurfacePresentModes2EXT;
-#endif /* (defined(VK_EXT_full_screen_exclusive)) || (defined(VK_EXT_full_screen_exclusive)) */
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_shading_rate_image)) || (defined(VK_EXT_shader_object) && defined(VK_NV_shading_rate_image)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_representative_fragment_test)) || (defined(VK_EXT_shader_object) && defined(VK_NV_representative_fragment_test))
+PFN_vkCmdSetRepresentativeFragmentTestEnableNV vkCmdSetRepresentativeFragmentTestEnableNV;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_representative_fragment_test)) || (defined(VK_EXT_shader_object) && defined(VK_NV_representative_fragment_test)) */
+#if (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_coverage_reduction_mode)) || (defined(VK_EXT_shader_object) && defined(VK_NV_coverage_reduction_mode))
+PFN_vkCmdSetCoverageReductionModeNV vkCmdSetCoverageReductionModeNV;
+#endif /* (defined(VK_EXT_extended_dynamic_state3) && defined(VK_NV_coverage_reduction_mode)) || (defined(VK_EXT_shader_object) && defined(VK_NV_coverage_reduction_mode)) */
 #if (defined(VK_EXT_host_image_copy)) || (defined(VK_EXT_image_compression_control))
 PFN_vkGetImageSubresourceLayout2EXT vkGetImageSubresourceLayout2EXT;
 #endif /* (defined(VK_EXT_host_image_copy)) || (defined(VK_EXT_image_compression_control)) */
 #if (defined(VK_EXT_shader_object)) || (defined(VK_EXT_vertex_input_dynamic_state))
 PFN_vkCmdSetVertexInputEXT vkCmdSetVertexInputEXT;
 #endif /* (defined(VK_EXT_shader_object)) || (defined(VK_EXT_vertex_input_dynamic_state)) */
-#if (defined(VK_KHR_descriptor_update_template)) || (defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor))
+#if (defined(VK_KHR_descriptor_update_template) && defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor) && (defined(VK_VERSION_1_1) || defined(VK_KHR_descriptor_update_template)))
 PFN_vkCmdPushDescriptorSetWithTemplateKHR vkCmdPushDescriptorSetWithTemplateKHR;
-#endif /* (defined(VK_KHR_descriptor_update_template)) || (defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor)) */
-#if (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain))
-PFN_vkAcquireNextImage2KHR vkAcquireNextImage2KHR;
+#endif /* (defined(VK_KHR_descriptor_update_template) && defined(VK_KHR_push_descriptor)) || (defined(VK_KHR_push_descriptor) && (defined(VK_VERSION_1_1) || defined(VK_KHR_descriptor_update_template))) */
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
 PFN_vkGetDeviceGroupPresentCapabilitiesKHR vkGetDeviceGroupPresentCapabilitiesKHR;
 PFN_vkGetDeviceGroupSurfacePresentModesKHR vkGetDeviceGroupSurfacePresentModesKHR;
 PFN_vkGetPhysicalDevicePresentRectanglesKHR vkGetPhysicalDevicePresentRectanglesKHR;
-#endif /* (defined(VK_KHR_device_group)) || (defined(VK_KHR_swapchain)) */
-#if (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2))
-PFN_vkGetFenceSciSyncFenceNV vkGetFenceSciSyncFenceNV;
-PFN_vkGetFenceSciSyncObjNV vkGetFenceSciSyncObjNV;
-PFN_vkGetPhysicalDeviceSciSyncAttributesNV vkGetPhysicalDeviceSciSyncAttributesNV;
-PFN_vkImportFenceSciSyncFenceNV vkImportFenceSciSyncFenceNV;
-PFN_vkImportFenceSciSyncObjNV vkImportFenceSciSyncObjNV;
-#endif /* (defined(VK_NV_external_sci_sync)) || (defined(VK_NV_external_sci_sync2)) */
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_swapchain)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
+PFN_vkAcquireNextImage2KHR vkAcquireNextImage2KHR;
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_swapchain)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
 /* VOLK_GENERATE_PROTOTYPES_C */
 
 #ifdef __GNUC__
