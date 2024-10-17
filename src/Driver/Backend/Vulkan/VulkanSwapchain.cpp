@@ -78,9 +78,8 @@ namespace BIGOS
                 VkSwapchainKHR nativeSwapchain = m_handle.GetNativeHandle();
                 VkSemaphore    nativeSemaphore = m_backBuffers[ m_semaphoreNdx ].hBackBufferAvailableSemaphore.GetNativeHandle();
                 uint32_t       bufferNdx;
-                // Timeout 0 ns mimics D3D12 behaviour, additionaly we do not support vulkan fences here.
-                // TODO: Timeout 0 doesn't work.
-                VkResult res = m_pParent->GetDeviceAPI()->vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, UINT64_MAX, nativeSemaphore,
+                // Timeout 1 ns mimics D3D12 behaviour, additionaly we do not support vulkan fences here.
+                VkResult res = m_pParent->GetDeviceAPI()->vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, 1, nativeSemaphore,
                                                                                  VK_NULL_HANDLE, &bufferNdx );
 
                 pInfo->hBackBufferAvailableSemaphore = m_backBuffers[ m_semaphoreNdx ].hBackBufferAvailableSemaphore;
@@ -229,11 +228,111 @@ namespace BIGOS
                 VkDevice       nativeDevice    = m_pParent->GetHandle().GetNativeHandle();
                 VkSwapchainKHR nativeSwapchain = m_handle.GetNativeHandle();
                 VkImage        images[ Config::Driver::Swapchain::MAX_BACK_BUFFER_COUNT ];
-                m_backBuffers.resize( m_desc.backBufferCount );
                 if( m_pParent->GetDeviceAPI()->vkGetSwapchainImagesKHR( nativeDevice, nativeSwapchain, &m_desc.backBufferCount, images ) )
                 {
                     return Results::FAIL;
                 }
+
+                if( m_backBuffers.size() == 0 )
+                {
+                    // Transition from undefined to general layout
+                    VulkanQueue* pVulkanQueue = static_cast<VulkanQueue*>( m_desc.pQueue );
+
+                    VkFence           cmdFence = VK_NULL_HANDLE;
+                    VkFenceCreateInfo fenceInfo;
+                    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+                    fenceInfo.pNext = nullptr;
+                    fenceInfo.flags = 0;
+                    if( m_pParent->GetDeviceAPI()->vkCreateFence( nativeDevice, &fenceInfo, nullptr, &cmdFence ) )
+                    {
+                        return Results::FAIL;
+                    }
+
+                    VkCommandPool           cmdPool = VK_NULL_HANDLE;
+                    VkCommandPoolCreateInfo poolInfo;
+                    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                    poolInfo.pNext            = nullptr;
+                    poolInfo.flags            = 0;
+                    poolInfo.queueFamilyIndex = pVulkanQueue->GetFamilyIndex();
+                    if( m_pParent->GetDeviceAPI()->vkCreateCommandPool( nativeDevice, &poolInfo, nullptr, &cmdPool ) )
+                    {
+                        m_pParent->GetDeviceAPI()->vkDestroyFence( nativeDevice, cmdFence, nullptr );
+                        return Results::FAIL;
+                    }
+
+                    VkCommandBuffer             cmdBuffer = VK_NULL_HANDLE;
+                    VkCommandBufferAllocateInfo allocInfo;
+                    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                    allocInfo.pNext              = nullptr;
+                    allocInfo.commandPool        = cmdPool;
+                    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                    allocInfo.commandBufferCount = 1;
+                    if( m_pParent->GetDeviceAPI()->vkAllocateCommandBuffers( nativeDevice, &allocInfo, &cmdBuffer ) )
+                    {
+                        m_pParent->GetDeviceAPI()->vkDestroyCommandPool( nativeDevice, cmdPool, nullptr );
+                        m_pParent->GetDeviceAPI()->vkDestroyFence( nativeDevice, cmdFence, nullptr );
+                        return Results::FAIL;
+                    }
+
+                    VkCommandBufferBeginInfo beginInfo;
+                    beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                    beginInfo.pNext            = nullptr;
+                    beginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+                    beginInfo.pInheritanceInfo = nullptr;
+                    m_pParent->GetDeviceAPI()->vkBeginCommandBuffer( cmdBuffer, &beginInfo );
+                    for( index_t ndx = 0; ndx < m_desc.backBufferCount; ++ndx )
+                    {
+                        VkImageMemoryBarrier imgBarrier;
+                        imgBarrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                        imgBarrier.pNext               = nullptr;
+                        imgBarrier.srcAccessMask       = VK_ACCESS_NONE;
+                        imgBarrier.dstAccessMask       = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+                        imgBarrier.oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+                        imgBarrier.newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                        imgBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        imgBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        imgBarrier.image               = images[ ndx ];
+                        imgBarrier.subresourceRange    = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+
+                        m_pParent->GetDeviceAPI()->vkCmdPipelineBarrier( cmdBuffer, VK_PIPELINE_STAGE_NONE,
+                                                                         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr,
+                                                                         1, &imgBarrier );
+                    }
+                    m_pParent->GetDeviceAPI()->vkEndCommandBuffer( cmdBuffer );
+
+                    VkSubmitInfo submitInfo;
+                    submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                    submitInfo.pNext                = nullptr;
+                    submitInfo.waitSemaphoreCount   = 0;
+                    submitInfo.pWaitSemaphores      = nullptr;
+                    submitInfo.pWaitDstStageMask    = nullptr;
+                    submitInfo.commandBufferCount   = 1;
+                    submitInfo.pCommandBuffers      = &cmdBuffer;
+                    submitInfo.signalSemaphoreCount = 0;
+                    submitInfo.pSignalSemaphores    = nullptr;
+
+                    if( m_pParent->GetDeviceAPI()->vkQueueSubmit( pVulkanQueue->GetHandle().GetNativeHandle(), 1, &submitInfo, cmdFence ) )
+                    {
+                        m_pParent->GetDeviceAPI()->vkFreeCommandBuffers( nativeDevice, cmdPool, 1, &cmdBuffer );
+                        m_pParent->GetDeviceAPI()->vkDestroyCommandPool( nativeDevice, cmdPool, nullptr );
+                        m_pParent->GetDeviceAPI()->vkDestroyFence( nativeDevice, cmdFence, nullptr );
+                        return Results::FAIL;
+                    }
+
+                    if( m_pParent->GetDeviceAPI()->vkWaitForFences( nativeDevice, 1, &cmdFence, VK_TRUE, UINT64_MAX ) )
+                    {
+                        m_pParent->GetDeviceAPI()->vkFreeCommandBuffers( nativeDevice, cmdPool, 1, &cmdBuffer );
+                        m_pParent->GetDeviceAPI()->vkDestroyCommandPool( nativeDevice, cmdPool, nullptr );
+                        m_pParent->GetDeviceAPI()->vkDestroyFence( nativeDevice, cmdFence, nullptr );
+                        return Results::FAIL;
+                    }
+
+                    m_pParent->GetDeviceAPI()->vkFreeCommandBuffers( nativeDevice, cmdPool, 1, &cmdBuffer );
+                    m_pParent->GetDeviceAPI()->vkDestroyCommandPool( nativeDevice, cmdPool, nullptr );
+                    m_pParent->GetDeviceAPI()->vkDestroyFence( nativeDevice, cmdFence, nullptr );
+                }
+
+                m_backBuffers.resize( m_desc.backBufferCount );
 
                 SemaphoreDesc   desc;
                 VulkanResource* pResArr = nullptr;
