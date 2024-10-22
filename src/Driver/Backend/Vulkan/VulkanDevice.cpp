@@ -61,6 +61,7 @@ namespace BIGOS
                     m_dev12Features.bufferDeviceAddress                      = VK_TRUE; // Needed for descriptor buffer ext
                     m_dev12Features.descriptorIndexing                       = VK_TRUE; // Needed for descriptor buffer ext
                     m_dev12Features.descriptorBindingVariableDescriptorCount = VK_TRUE; // Needed for descriptor buffer ext
+                    m_dev12Features.separateDepthStencilLayouts              = VK_TRUE;
 
                     // Vulkan 1.3 features
                     m_dev13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -1059,6 +1060,7 @@ namespace BIGOS
                         pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
                         pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
                         pResView->imageView       = nativeView;
+                        pResView->aspectFlags     = viewInfo.subresourceRange.aspectMask;
                         pResView->type            = VulkanResourceTypes::IMAGE;
 
                         VkDescriptorImageInfo imageInfo;
@@ -1084,6 +1086,7 @@ namespace BIGOS
                         pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
                         pResView->pDescriptorData = pBlock + sizeof( VulkanResourceView );
                         pResView->imageView       = nativeView;
+                        pResView->aspectFlags     = viewInfo.subresourceRange.aspectMask;
                         pResView->type            = VulkanResourceTypes::IMAGE;
 
                         VkDescriptorImageInfo imageInfo;
@@ -1109,6 +1112,7 @@ namespace BIGOS
                         pResView                  = reinterpret_cast<VulkanResourceView*>( pBlock );
                         pResView->pDescriptorData = nullptr;
                         pResView->imageView       = nativeView;
+                        pResView->aspectFlags     = viewInfo.subresourceRange.aspectMask;
                         pResView->type            = VulkanResourceTypes::IMAGE;
                     }
                 }

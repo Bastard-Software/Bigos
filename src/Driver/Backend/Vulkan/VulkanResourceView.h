@@ -13,6 +13,7 @@ namespace BIGOS
             {
                 void*                pDescriptorData;
                 VkImageView          imageView;
+                VkImageAspectFlags   aspectFlags;
                 VULKAN_RESOURCE_TYPE type;
             };
 
