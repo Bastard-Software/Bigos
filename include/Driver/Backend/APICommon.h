@@ -74,4 +74,215 @@ namespace BIGOS::Driver::Backend
 
         return translateTable[ BGS_ENUM_INDEX( format ) ];
     };
+
+    BGS_FORCEINLINE BGS_API bool_t IsDepthStencilFormat( FORMAT format )
+    {
+        static const bool_t translateTable[ BGS_ENUM_COUNT( Formats ) ] = {
+            BGS_FALSE, // UNKNOWN - not a valid value to get size
+            BGS_FALSE, // B5G5R5A1_UNORM
+            BGS_FALSE, // B5G6R5_UNORM
+            BGS_FALSE, // B8G8R8A8_UNORM
+            BGS_FALSE, // B8G8R8A8_UNORM_SRGB
+            BGS_FALSE, // BC1_UNORM
+            BGS_FALSE, // BC1_UNORM_SRGB
+            BGS_FALSE, // BC2_UNORM
+            BGS_FALSE, // BC2_UNORM_SRGB
+            BGS_FALSE, // BC3_UNORM
+            BGS_FALSE, // BC3_UNORM_SRGB
+            BGS_FALSE, // BC4_UNORM
+            BGS_FALSE, // BC4_SNORM
+            BGS_FALSE, // BC5_UNORM
+            BGS_FALSE, // BC5_SNORM
+            BGS_FALSE, // BC6H_UFLOAT
+            BGS_FALSE, // BC6H_SFLOAT
+            BGS_FALSE, // BC7_UNORM
+            BGS_FALSE, // BC7_UNORM_SRGB
+            BGS_FALSE, // R8_UINT
+            BGS_FALSE, // R8_SINT
+            BGS_FALSE, // R8_UNORM
+            BGS_FALSE, // R8_SNORM
+            BGS_FALSE, // R16_UINT
+            BGS_FALSE, // R16_SINT
+            BGS_FALSE, // R16_UNORM
+            BGS_FALSE, // R16_SNORM
+            BGS_FALSE, // R16_FLOAT
+            BGS_FALSE, // D16_UNORM
+            BGS_FALSE, // R8G8_UINT
+            BGS_FALSE, // R8G8_SINT
+            BGS_FALSE, // R8G8_UNORM
+            BGS_FALSE, // R8G8_SNORM
+            BGS_TRUE,  // D24_UNORM_S8_UINT
+            BGS_FALSE, // R32_FLOAT
+            BGS_FALSE, // R32_UINT
+            BGS_FALSE, // R32_SINT
+            BGS_FALSE, // D32_FLOAT
+            BGS_FALSE, // R16G16_UINT
+            BGS_FALSE, // R16G16_SINT
+            BGS_FALSE, // R16G16_UNORM
+            BGS_FALSE, // R16G16_SNORM
+            BGS_FALSE, // R16G16_FLOAT
+            BGS_FALSE, // R8G8B8A8_UNORM
+            BGS_FALSE, // R8G8B8A8_SNORM
+            BGS_FALSE, // R8G8B8A8_UNORM_SRGB
+            BGS_FALSE, // R8G8B8A8_UINT
+            BGS_FALSE, // R8G8B8A8_SINT
+            BGS_FALSE, // R32G32_UINT
+            BGS_FALSE, // R32G32_SINT
+            BGS_FALSE, // R32G32_FLOAT
+            BGS_FALSE, // R16G16B16A16_UNORM
+            BGS_FALSE, // R16G16B16A16_SNORM
+            BGS_FALSE, // R16G16B16A16_UINT
+            BGS_FALSE, // R16G16B16A16_SINT
+            BGS_FALSE, // R16G16B16A16_FLOAT
+            BGS_FALSE, // R32G32B32_UINT
+            BGS_FALSE, // R32G32B32_SINT
+            BGS_FALSE, // R32G32B32_FLOAT
+            BGS_FALSE, // R32G32B32A32_UINT
+            BGS_FALSE, // R32G32B32A32_SINT
+            BGS_FALSE, // R32G32B32A32_FLOAT
+        };
+
+        return translateTable[ BGS_ENUM_INDEX( format ) ];
+    };
+
+    BGS_FORCEINLINE BGS_API bool_t IsDepthFormat( FORMAT format )
+    {
+        static const bool_t translateTable[ BGS_ENUM_COUNT( Formats ) ] = {
+            BGS_FALSE, // UNKNOWN - not a valid value to get size
+            BGS_FALSE, // B5G5R5A1_UNORM
+            BGS_FALSE, // B5G6R5_UNORM
+            BGS_FALSE, // B8G8R8A8_UNORM
+            BGS_FALSE, // B8G8R8A8_UNORM_SRGB
+            BGS_FALSE, // BC1_UNORM
+            BGS_FALSE, // BC1_UNORM_SRGB
+            BGS_FALSE, // BC2_UNORM
+            BGS_FALSE, // BC2_UNORM_SRGB
+            BGS_FALSE, // BC3_UNORM
+            BGS_FALSE, // BC3_UNORM_SRGB
+            BGS_FALSE, // BC4_UNORM
+            BGS_FALSE, // BC4_SNORM
+            BGS_FALSE, // BC5_UNORM
+            BGS_FALSE, // BC5_SNORM
+            BGS_FALSE, // BC6H_UFLOAT
+            BGS_FALSE, // BC6H_SFLOAT
+            BGS_FALSE, // BC7_UNORM
+            BGS_FALSE, // BC7_UNORM_SRGB
+            BGS_FALSE, // R8_UINT
+            BGS_FALSE, // R8_SINT
+            BGS_FALSE, // R8_UNORM
+            BGS_FALSE, // R8_SNORM
+            BGS_FALSE, // R16_UINT
+            BGS_FALSE, // R16_SINT
+            BGS_FALSE, // R16_UNORM
+            BGS_FALSE, // R16_SNORM
+            BGS_FALSE, // R16_FLOAT
+            BGS_FALSE, // D16_UNORM
+            BGS_FALSE, // R8G8_UINT
+            BGS_FALSE, // R8G8_SINT
+            BGS_FALSE, // R8G8_UNORM
+            BGS_FALSE, // R8G8_SNORM
+            BGS_TRUE,  // D24_UNORM_S8_UINT
+            BGS_FALSE, // R32_FLOAT
+            BGS_FALSE, // R32_UINT
+            BGS_FALSE, // R32_SINT
+            BGS_TRUE,  // D32_FLOAT
+            BGS_FALSE, // R16G16_UINT
+            BGS_FALSE, // R16G16_SINT
+            BGS_FALSE, // R16G16_UNORM
+            BGS_FALSE, // R16G16_SNORM
+            BGS_FALSE, // R16G16_FLOAT
+            BGS_FALSE, // R8G8B8A8_UNORM
+            BGS_FALSE, // R8G8B8A8_SNORM
+            BGS_FALSE, // R8G8B8A8_UNORM_SRGB
+            BGS_FALSE, // R8G8B8A8_UINT
+            BGS_FALSE, // R8G8B8A8_SINT
+            BGS_FALSE, // R32G32_UINT
+            BGS_FALSE, // R32G32_SINT
+            BGS_FALSE, // R32G32_FLOAT
+            BGS_FALSE, // R16G16B16A16_UNORM
+            BGS_FALSE, // R16G16B16A16_SNORM
+            BGS_FALSE, // R16G16B16A16_UINT
+            BGS_FALSE, // R16G16B16A16_SINT
+            BGS_FALSE, // R16G16B16A16_FLOAT
+            BGS_FALSE, // R32G32B32_UINT
+            BGS_FALSE, // R32G32B32_SINT
+            BGS_FALSE, // R32G32B32_FLOAT
+            BGS_FALSE, // R32G32B32A32_UINT
+            BGS_FALSE, // R32G32B32A32_SINT
+            BGS_FALSE, // R32G32B32A32_FLOAT
+        };
+
+        return translateTable[ BGS_ENUM_INDEX( format ) ];
+    };
+
+    BGS_FORCEINLINE BGS_API bool_t IsStencilFormat( FORMAT format )
+    {
+        static const bool_t translateTable[ BGS_ENUM_COUNT( Formats ) ] = {
+            BGS_FALSE, // UNKNOWN - not a valid value to get size
+            BGS_FALSE, // B5G5R5A1_UNORM
+            BGS_FALSE, // B5G6R5_UNORM
+            BGS_FALSE, // B8G8R8A8_UNORM
+            BGS_FALSE, // B8G8R8A8_UNORM_SRGB
+            BGS_FALSE, // BC1_UNORM
+            BGS_FALSE, // BC1_UNORM_SRGB
+            BGS_FALSE, // BC2_UNORM
+            BGS_FALSE, // BC2_UNORM_SRGB
+            BGS_FALSE, // BC3_UNORM
+            BGS_FALSE, // BC3_UNORM_SRGB
+            BGS_FALSE, // BC4_UNORM
+            BGS_FALSE, // BC4_SNORM
+            BGS_FALSE, // BC5_UNORM
+            BGS_FALSE, // BC5_SNORM
+            BGS_FALSE, // BC6H_UFLOAT
+            BGS_FALSE, // BC6H_SFLOAT
+            BGS_FALSE, // BC7_UNORM
+            BGS_FALSE, // BC7_UNORM_SRGB
+            BGS_FALSE, // R8_UINT
+            BGS_FALSE, // R8_SINT
+            BGS_FALSE, // R8_UNORM
+            BGS_FALSE, // R8_SNORM
+            BGS_FALSE, // R16_UINT
+            BGS_FALSE, // R16_SINT
+            BGS_FALSE, // R16_UNORM
+            BGS_FALSE, // R16_SNORM
+            BGS_FALSE, // R16_FLOAT
+            BGS_FALSE, // D16_UNORM
+            BGS_FALSE, // R8G8_UINT
+            BGS_FALSE, // R8G8_SINT
+            BGS_FALSE, // R8G8_UNORM
+            BGS_FALSE, // R8G8_SNORM
+            BGS_TRUE,  // D24_UNORM_S8_UINT
+            BGS_FALSE, // R32_FLOAT
+            BGS_FALSE, // R32_UINT
+            BGS_FALSE, // R32_SINT
+            BGS_FALSE, // D32_FLOAT
+            BGS_FALSE, // R16G16_UINT
+            BGS_FALSE, // R16G16_SINT
+            BGS_FALSE, // R16G16_UNORM
+            BGS_FALSE, // R16G16_SNORM
+            BGS_FALSE, // R16G16_FLOAT
+            BGS_FALSE, // R8G8B8A8_UNORM
+            BGS_FALSE, // R8G8B8A8_SNORM
+            BGS_FALSE, // R8G8B8A8_UNORM_SRGB
+            BGS_FALSE, // R8G8B8A8_UINT
+            BGS_FALSE, // R8G8B8A8_SINT
+            BGS_FALSE, // R32G32_UINT
+            BGS_FALSE, // R32G32_SINT
+            BGS_FALSE, // R32G32_FLOAT
+            BGS_FALSE, // R16G16B16A16_UNORM
+            BGS_FALSE, // R16G16B16A16_SNORM
+            BGS_FALSE, // R16G16B16A16_UINT
+            BGS_FALSE, // R16G16B16A16_SINT
+            BGS_FALSE, // R16G16B16A16_FLOAT
+            BGS_FALSE, // R32G32B32_UINT
+            BGS_FALSE, // R32G32B32_SINT
+            BGS_FALSE, // R32G32B32_FLOAT
+            BGS_FALSE, // R32G32B32A32_UINT
+            BGS_FALSE, // R32G32B32A32_SINT
+            BGS_FALSE, // R32G32B32A32_FLOAT
+        };
+
+        return translateTable[ BGS_ENUM_INDEX( format ) ];
+    };
+
 } // namespace BIGOS::Driver::Backend
