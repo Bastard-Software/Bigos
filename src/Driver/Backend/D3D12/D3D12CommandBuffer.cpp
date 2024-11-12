@@ -239,9 +239,9 @@ namespace BIGOS
                     D3D12_RECT&   rect     = rects[ ndx ];
 
                     rect.left   = static_cast<LONG>( currDesc.offset.x );
-                    rect.top    = static_cast<LONG>( currDesc.offset.y + currDesc.size.height );
+                    rect.top    = static_cast<LONG>( currDesc.offset.y );
                     rect.right  = static_cast<LONG>( currDesc.offset.x + currDesc.size.width );
-                    rect.bottom = static_cast<LONG>( currDesc.offset.y );
+                    rect.bottom = static_cast<LONG>( currDesc.offset.y + currDesc.size.height );
                 }
 
                 ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
