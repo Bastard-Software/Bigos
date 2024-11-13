@@ -250,6 +250,7 @@ namespace BIGOS
             {
                 SemaphoreHandle* pWaitSemaphores;
                 uint32_t         waitSemaphoreCount;
+                uint32_t         frameNdx;
             };
 
             struct FrameInfo

@@ -208,6 +208,7 @@ void Triangle::OnRender()
     BIGOS::Driver::Backend::SwapchainPresentDesc presentDesc;
     presentDesc.waitSemaphoreCount = 1;
     presentDesc.pWaitSemaphores    = &m_hFrameFinishedSemaphores[ m_frameNdx ];
+    presentDesc.frameNdx           = bufferNdx;
     if( BGS_FAILED( m_pSwapchain->Present( presentDesc ) ) )
     {
         return;
