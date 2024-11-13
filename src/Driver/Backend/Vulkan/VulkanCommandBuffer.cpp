@@ -152,14 +152,22 @@ namespace BIGOS
                 renderingInfo.viewMask                 = 0;
                 renderingInfo.colorAttachmentCount     = desc.colorRenderTargetCount;
                 renderingInfo.pColorAttachments        = renderTargets;
-                renderingInfo.pDepthAttachment =
-                    ( desc.hDepthStencilTargetView.GetNativeHandle()->aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT ) == VK_IMAGE_ASPECT_DEPTH_BIT
-                        ? pDSV
-                        : nullptr;
-                renderingInfo.pStencilAttachment =
-                    ( desc.hDepthStencilTargetView.GetNativeHandle()->aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT ) == VK_IMAGE_ASPECT_STENCIL_BIT
-                        ? pDSV
-                        : nullptr;
+                if( desc.hDepthStencilTargetView != ResourceViewHandle() )
+                {
+                    renderingInfo.pDepthAttachment =
+                        ( desc.hDepthStencilTargetView.GetNativeHandle()->aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT ) == VK_IMAGE_ASPECT_DEPTH_BIT
+                            ? pDSV
+                            : nullptr;
+                    renderingInfo.pStencilAttachment =
+                        ( desc.hDepthStencilTargetView.GetNativeHandle()->aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT ) == VK_IMAGE_ASPECT_STENCIL_BIT
+                            ? pDSV
+                            : nullptr;
+                }
+                else
+                {
+                    renderingInfo.pDepthAttachment   = nullptr;
+                    renderingInfo.pStencilAttachment = nullptr;
+                }
 
                 m_pParent->GetDeviceAPI()->vkCmdBeginRendering( nativeCommandBuffer, &renderingInfo );
             }
