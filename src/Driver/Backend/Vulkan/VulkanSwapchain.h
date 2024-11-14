@@ -32,7 +32,6 @@ namespace BIGOS
             private:
                 VulkanDevice* m_pParent;
                 VkSurfaceKHR  m_surface;
-                uint32_t      m_bufferToPresent;
                 uint32_t      m_semaphoreNdx;
             };
         } // namespace Backend

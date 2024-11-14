@@ -88,8 +88,6 @@ void RotatedQuads::OnUpdate()
     m_constantBufferData.proj[ 1 ][ 1 ] *= -1;
     BIGOS::Memory::Set( &m_constantBufferData.padding, 0xFF, sizeof( m_constantBufferData.padding ) );
 
-    // m_constantBufferData.proj = glm::mat4( 1.0f );
-
     // Mapping constant buffer memory
     BIGOS::Driver::Backend::MapResourceDesc mapConstant;
     mapConstant.hResource          = m_hConstantBuffer;
@@ -276,6 +274,7 @@ void RotatedQuads::OnRender()
     BIGOS::Driver::Backend::SwapchainPresentDesc presentDesc;
     presentDesc.waitSemaphoreCount = 1;
     presentDesc.pWaitSemaphores    = &m_hFrameFinishedSemaphores[ m_frameNdx ];
+    presentDesc.frameNdx           = bufferNdx;
     if( BGS_FAILED( m_pSwapchain->Present( presentDesc ) ) )
     {
         return;

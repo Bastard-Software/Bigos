@@ -24,7 +24,6 @@ namespace BIGOS
             VulkanSwapchain::VulkanSwapchain()
                 : m_pParent( nullptr )
                 , m_surface( nullptr )
-                , m_bufferToPresent( 0 )
                 , m_semaphoreNdx( 0 )
             {
             }
@@ -59,13 +58,12 @@ namespace BIGOS
                 presInfo.pWaitSemaphores    = semaphores;
                 presInfo.swapchainCount     = 1;
                 presInfo.pSwapchains        = &nativeSwapchain;
-                presInfo.pImageIndices      = &m_bufferToPresent;
+                presInfo.pImageIndices      = &desc.frameNdx;
                 presInfo.pResults           = nullptr;
                 if( m_pParent->GetDeviceAPI()->vkQueuePresentKHR( nativeQueue, &presInfo ) != VK_SUCCESS )
                 {
                     return Results::FAIL;
                 }
-                m_bufferToPresent = ( m_bufferToPresent + 1 ) % m_desc.backBufferCount;
 
                 return Results::OK;
             }

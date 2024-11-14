@@ -56,8 +56,7 @@ namespace BIGOS
                 }
 
                 // Setting present semaphore to not ready, presenting and setting to ready
-                const uint32_t ndx = pSwapchain->GetCurrentBackBufferIndex();
-                pFence             = m_backBuffers[ ndx ].hBackBufferAvailableSemaphore.GetNativeHandle();
+                pFence = m_backBuffers[ desc.frameNdx ].hBackBufferAvailableSemaphore.GetNativeHandle();
                 if( FAILED( pQueue->Signal( pFence, static_cast<uint64_t>( D3D12SemaphoreStates::NOT_SIGNALED ) ) ) )
                 {
                     return Results::FAIL;
