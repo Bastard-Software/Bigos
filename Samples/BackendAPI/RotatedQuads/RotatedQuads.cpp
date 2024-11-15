@@ -84,7 +84,7 @@ void RotatedQuads::OnUpdate()
     m_constantBufferData.model = glm::rotate( glm::mat4( 1.0f ), glm::radians( 90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
     m_constantBufferData.view  = glm::lookAt( glm::vec3( 0.0f, 2.0f, 2.0f ), glm::vec3( 0.0f, 0.0f, 0.0f ), glm::vec3( 0.0f, 1.0f, 0.0f ) );
     m_constantBufferData.proj =
-        glm::perspective( glm::radians( 90.0f ), ( float )m_pWindow->GetDesc().width / ( float )m_pWindow->GetDesc().height, 0.1f, 100.0f );
+        glm::perspective( glm::radians( 45.0f ), ( float )m_pWindow->GetDesc().width / ( float )m_pWindow->GetDesc().height, 0.1f, 100.0f );
     m_constantBufferData.proj[ 1 ][ 1 ] *= -1;
     BIGOS::Memory::Set( &m_constantBufferData.padding, 0xFF, sizeof( m_constantBufferData.padding ) );
 

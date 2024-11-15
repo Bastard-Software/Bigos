@@ -16,7 +16,9 @@ IndirectCube::IndirectCube( APITypes APIType, uint32_t width, uint32_t height, c
     , m_pQueue( nullptr )
     , m_pSwapchain( nullptr )
     , m_hShaderResourceSetLayout()
+    , m_hSamplerSetLayout()
     , m_hShaderResourceHeap()
+    , m_hSamplerHeap()
     , m_hPipelineLayout()
     , m_hPipeline()
     , m_hCommandLayout()
@@ -25,6 +27,8 @@ IndirectCube::IndirectCube( APITypes APIType, uint32_t width, uint32_t height, c
     , m_hRTVs()
     , m_backBuffers()
     , m_cbvOffset( 0 )
+    , m_texOffset( 0 )
+    , m_samplerOffset( 0 )
     , m_frameNdx( 0 )
     , m_hVertexShader()
     , m_hPixelShader()
@@ -41,6 +45,10 @@ IndirectCube::IndirectCube( APITypes APIType, uint32_t width, uint32_t height, c
     , m_hConstantBufferMemory()
     , m_pConstantBufferHost( nullptr )
     , m_hConstantBufferView()
+    , m_hTexture()
+    , m_hTextureMemory()
+    , m_hSampledTextureView()
+    , m_hSampler()
 {
     BIGOS::Memory::Set( &m_constantBufferData, 0, sizeof( m_constantBufferData ) );
     BIGOS::Memory::Set( &m_fenceValues, 0, sizeof( m_fenceValues ) );
@@ -160,15 +168,20 @@ void IndirectCube::OnRender()
 
     m_pCommandBuffers[ bufferNdx ]->SetPrimitiveTopology( BIGOS::Driver::Backend::PrimitiveTopologies::TRIANGLE_LIST );
 
-    BIGOS::Driver::Backend::BindingHeapHandle bindingHeaps[] = {
-        m_hShaderResourceHeap,
-    };
-    m_pCommandBuffers[ bufferNdx ]->SetBindingHeaps( 1, bindingHeaps );
+    BIGOS::Driver::Backend::BindingHeapHandle bindingHeaps[] = { m_hShaderResourceHeap, m_hSamplerHeap };
+    m_pCommandBuffers[ bufferNdx ]->SetBindingHeaps( 2, bindingHeaps );
 
     BIGOS::Driver::Backend::SetBindingsDesc setBindingDesc;
     setBindingDesc.baseBindingOffset = m_cbvOffset;
     setBindingDesc.heapNdx           = 0;
     setBindingDesc.setSpaceNdx       = 0;
+    setBindingDesc.hPipelineLayout   = m_hPipelineLayout;
+    setBindingDesc.type              = BIGOS::Driver::Backend::PipelineTypes::GRAPHICS;
+    m_pCommandBuffers[ bufferNdx ]->SetBindings( setBindingDesc );
+
+    setBindingDesc.baseBindingOffset = m_samplerOffset;
+    setBindingDesc.heapNdx           = 1;
+    setBindingDesc.setSpaceNdx       = 1;
     setBindingDesc.hPipelineLayout   = m_hPipelineLayout;
     setBindingDesc.type              = BIGOS::Driver::Backend::PipelineTypes::GRAPHICS;
     m_pCommandBuffers[ bufferNdx ]->SetBindings( setBindingDesc );
@@ -298,6 +311,10 @@ void IndirectCube::OnDestroy()
     }
     m_pAPIDevice->DestroyResource( &m_hUploadBuffer );
     m_pAPIDevice->FreeMemory( &m_hUploadBufferMemory );
+    m_pAPIDevice->DestroyResourceView( &m_hSampledTextureView );
+    m_pAPIDevice->DestroyResource( &m_hTexture );
+    m_pAPIDevice->FreeMemory( &m_hTextureMemory );
+    m_pAPIDevice->DestroySampler( &m_hSampler );
     m_pAPIDevice->DestroyResourceView( &m_hDepthStencilView );
     m_pAPIDevice->DestroyResource( &m_hDephtStencilTarget );
     m_pAPIDevice->FreeMemory( &m_hDepthStencilMemory );
@@ -311,10 +328,12 @@ void IndirectCube::OnDestroy()
     m_pAPIDevice->DestroyShader( &m_hVertexShader );
     m_pAPIDevice->DestroyShader( &m_hPixelShader );
     m_pAPIDevice->DestroyBindingHeap( &m_hShaderResourceHeap );
+    m_pAPIDevice->DestroyBindingHeap( &m_hSamplerHeap );
     m_pAPIDevice->DestroyPipeline( &m_hPipeline );
     m_pAPIDevice->DestroyCommandLayout( &m_hCommandLayout );
     m_pAPIDevice->DestroyPipelineLayout( &m_hPipelineLayout );
     m_pAPIDevice->DestroyBindingSetLayout( &m_hShaderResourceSetLayout );
+    m_pAPIDevice->DestroyBindingSetLayout( &m_hSamplerSetLayout );
     for( uint32_t ndx = 0; ndx < BACK_BUFFER_COUNT; ++ndx )
     {
         m_pAPIDevice->DestroyCommandBuffer( &m_pCommandBuffers[ ndx ] );
@@ -417,9 +436,18 @@ BIGOS::RESULT IndirectCube::LoadAssets()
         return BIGOS::Results::FAIL;
     }
 
+    // Generating texture data
+    void*    pTextureData = nullptr;
+    uint32_t textureSize  = 0;
+    if( BGS_FAILED( GenerateCheckerboardData( 256, 256, &pTextureData, &textureSize ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
     // Creating upload buffer
     // 512 is copy alignment for textures (native API limitation)
-    const uint32_t                       uploadBufferSize = sizeof( VERTEX_DATA ) + sizeof( INDEX_DATA ) + sizeof( INDIRECT_DATA );
+    // const uint32_t                       uploadBufferSize = sizeof( VERTEX_DATA ) + sizeof( INDEX_DATA ) + sizeof( INDIRECT_DATA );
+    const uint32_t                       uploadBufferSize = 1024 + TEXTURE_WIDTH * TEXTURE_HEIGHT * 4;
     BIGOS::Driver::Backend::ResourceDesc uploadBufferDesc;
     uploadBufferDesc.size.width      = uploadBufferSize;
     uploadBufferDesc.size.height     = 1;
@@ -477,13 +505,16 @@ BIGOS::RESULT IndirectCube::LoadAssets()
     BIGOS::Memory::Copy( INDEX_DATA, sizeof( INDEX_DATA ), pCurr, sizeof( INDEX_DATA ) );
     pCurr += sizeof( INDEX_DATA );
     BIGOS::Memory::Copy( &INDIRECT_DATA, sizeof( INDIRECT_DATA ), pCurr, sizeof( INDIRECT_DATA ) );
-
+    pCurr += 1024;
+    BIGOS::Memory::Copy( pTextureData, textureSize, pCurr, textureSize );
     if( BGS_FAILED( m_pAPIDevice->UnmapResource( mapUpload ) ) )
     {
         return BIGOS::Results::FAIL;
     }
 
-    return BIGOS::RESULT();
+    delete[] pTextureData;
+
+    return BIGOS::Results::OK;
 }
 BIGOS::RESULT IndirectCube::CreateFrameResources()
 {
@@ -728,7 +759,7 @@ BIGOS::RESULT IndirectCube::CreateApplicationResources()
         return BIGOS::Results::FAIL;
     }
 
-    // Creating sampled texture view
+    // Creating depth stencil view
     BIGOS::Driver::Backend::TextureViewDesc dsViewDesc;
     dsViewDesc.usage                 = BGS_FLAG( BIGOS::Driver::Backend::ResourceViewUsageFlagBits::DEPTH_STENCIL_TARGET );
     dsViewDesc.format                = BIGOS::Driver::Backend::Formats::D24_UNORM_S8_UINT;
@@ -739,8 +770,90 @@ BIGOS::RESULT IndirectCube::CreateApplicationResources()
     dsViewDesc.range.arrayLayer      = 0;
     dsViewDesc.range.arrayLayerCount = 1;
     dsViewDesc.hResource             = m_hDephtStencilTarget;
-
     if( BGS_FAILED( m_pAPIDevice->CreateResourceView( dsViewDesc, &m_hDepthStencilView ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    // Creating texture
+    BIGOS::Driver::Backend::ResourceDesc texDesc;
+    texDesc.size.width      = TEXTURE_WIDTH;
+    texDesc.size.height     = TEXTURE_WIDTH;
+    texDesc.size.depth      = 1;
+    texDesc.mipLevelCount   = 1;
+    texDesc.arrayLayerCount = 1;
+    texDesc.format          = BIGOS::Driver::Backend::Formats::R8G8B8A8_UNORM;
+    texDesc.resourceLayout  = BIGOS::Driver::Backend::ResourceLayouts::OPTIMAL;
+    texDesc.resourceType    = BIGOS::Driver::Backend::ResourceTypes::TEXTURE_2D;
+    texDesc.sampleCount     = BIGOS::Driver::Backend::SampleCount::COUNT_1;
+    texDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
+    texDesc.resourceUsage   = BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::SAMPLED_TEXTURE ) |
+                            BGS_FLAG( BIGOS::Driver::Backend::ResourceUsageFlagBits::TRANSFER_DST );
+    if( BGS_FAILED( m_pAPIDevice->CreateResource( texDesc, &m_hTexture ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    // Allocating memory for textures
+    BIGOS::Driver::Backend::ResourceAllocationInfo texAllocInfo;
+    m_pAPIDevice->GetResourceAllocationInfo( m_hTexture, &texAllocInfo );
+
+    BIGOS::Driver::Backend::AllocateMemoryDesc texAllocDesc;
+    texAllocDesc.size      = texAllocInfo.size;
+    texAllocDesc.alignment = texAllocInfo.alignment;
+    texAllocDesc.heapType  = BIGOS::Driver::Backend::MemoryHeapTypes::DEFAULT;
+    texAllocDesc.heapUsage = BIGOS::Driver::Backend::MemoryHeapUsages::TEXTURES;
+    if( BGS_FAILED( m_pAPIDevice->AllocateMemory( texAllocDesc, &m_hTextureMemory ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    // Binding texture
+    bindMemDesc.hMemory      = m_hTextureMemory;
+    bindMemDesc.hResource    = m_hTexture;
+    bindMemDesc.memoryOffset = 0;
+    if( BGS_FAILED( m_pAPIDevice->BindResourceMemory( bindMemDesc ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    // Creating sampled texture view
+    BIGOS::Driver::Backend::TextureViewDesc texViewDesc;
+    texViewDesc.usage                 = BGS_FLAG( BIGOS::Driver::Backend::ResourceViewUsageFlagBits::SAMPLED_TEXTURE );
+    texViewDesc.format                = BIGOS::Driver::Backend::Formats::R8G8B8A8_UNORM;
+    texViewDesc.textureType           = BIGOS::Driver::Backend::TextureTypes::TEXTURE_2D;
+    texViewDesc.range.components      = BGS_FLAG( BIGOS::Driver::Backend::TextureComponentFlagBits::COLOR );
+    texViewDesc.range.mipLevel        = 0;
+    texViewDesc.range.mipLevelCount   = 1;
+    texViewDesc.range.arrayLayer      = 0;
+    texViewDesc.range.arrayLayerCount = 1;
+    texViewDesc.hResource             = m_hTexture;
+    if( BGS_FAILED( m_pAPIDevice->CreateResourceView( texViewDesc, &m_hSampledTextureView ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+
+    // Creating sampler
+    BIGOS::Driver::Backend::SamplerDesc samplerDesc;
+    samplerDesc.type                = BIGOS::Driver::Backend::SamplerTypes::NORMAL;
+    samplerDesc.minFilter           = BIGOS::Driver::Backend::FilterTypes::LINEAR;
+    samplerDesc.magFilter           = BIGOS::Driver::Backend::FilterTypes::LINEAR;
+    samplerDesc.mipMapFilter        = BIGOS::Driver::Backend::FilterTypes::LINEAR;
+    samplerDesc.addressU            = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
+    samplerDesc.addressV            = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
+    samplerDesc.addressW            = BIGOS::Driver::Backend::TextureAddressModes::CLAMP_TO_BORDER;
+    samplerDesc.anisotropyEnable    = BIGOS::BGS_FALSE;
+    samplerDesc.compareEnable       = BIGOS::BGS_FALSE;
+    samplerDesc.compareOperation    = BIGOS::Driver::Backend::CompareOperationTypes::NEVER;
+    samplerDesc.reductionMode       = BIGOS::Driver::Backend::SamplerReductionModes::WEIGHTED_AVERAGE;
+    samplerDesc.minLod              = 0;
+    samplerDesc.maxLod              = 0;
+    samplerDesc.mipLodBias          = 0;
+    samplerDesc.customBorderColor.r = 1.0f;
+    samplerDesc.customBorderColor.g = 1.0f;
+    samplerDesc.customBorderColor.b = 1.0f;
+    samplerDesc.customBorderColor.a = 1.0f;
+    if( BGS_FAILED( m_pAPIDevice->CreateSampler( samplerDesc, &m_hSampler ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -844,6 +957,48 @@ BIGOS::RESULT IndirectCube::UploadResourceData()
     cpyBuffDesc.size       = sizeof( INDIRECT_DATA );
     pCpyCmdBuffer->CopyBuffer( cpyBuffDesc );
 
+    BIGOS::Driver::Backend::TextureBarrierDesc preCpyBarrier;
+    preCpyBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::NONE );
+    preCpyBarrier.srcAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::NONE );
+    preCpyBarrier.srcLayout    = BIGOS::Driver::Backend::TextureLayouts::UNDEFINED;
+    preCpyBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::TRANSFER );
+    preCpyBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::TRANSFER_DST );
+    preCpyBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::TRANSFER_DST;
+    preCpyBarrier.hResouce     = m_hTexture;
+    preCpyBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
+
+    BIGOS::Driver::Backend::BarierDesc barrier;
+    barrier.textureBarrierCount = 1;
+    barrier.pTextureBarriers    = &preCpyBarrier;
+    barrier.globalBarrierCount  = 0;
+    barrier.pGlobalBarriers     = nullptr;
+    barrier.bufferBarrierCount  = 0;
+    barrier.pBufferBarriers     = nullptr;
+    pCpyCmdBuffer->Barrier( barrier );
+
+    BIGOS::Driver::Backend::CopyBufferTextureDesc cpyBuffTexDesc;
+    cpyBuffTexDesc.hBuffer       = m_hUploadBuffer;
+    cpyBuffTexDesc.hTexture      = m_hTexture;
+    cpyBuffTexDesc.bufferOffset  = 1024;
+    cpyBuffTexDesc.textureOffset = { 0, 0, 0 };
+    cpyBuffTexDesc.size          = { TEXTURE_WIDTH, TEXTURE_HEIGHT, 1 };
+    cpyBuffTexDesc.textureFormat = BIGOS::Driver::Backend::Formats::R8G8B8A8_UNORM;
+    cpyBuffTexDesc.textureRange  = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
+    pCpyCmdBuffer->CopyBuferToTexture( cpyBuffTexDesc );
+
+    BIGOS::Driver::Backend::TextureBarrierDesc postCpyBarrier;
+    postCpyBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::TRANSFER );
+    postCpyBarrier.srcAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::TRANSFER_DST );
+    postCpyBarrier.srcLayout    = BIGOS::Driver::Backend::TextureLayouts::TRANSFER_DST;
+    postCpyBarrier.dstStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::PIXEL_SHADING );
+    postCpyBarrier.dstAccess    = BGS_FLAG( BIGOS::Driver::Backend::AccessFlagBits::SHADER_READ_ONLY );
+    postCpyBarrier.dstLayout    = BIGOS::Driver::Backend::TextureLayouts::SHADER_READ_ONLY;
+    postCpyBarrier.hResouce     = m_hTexture;
+    postCpyBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::COLOR ), 0, 1, 0, 1 };
+
+    barrier.pTextureBarriers = &postCpyBarrier;
+    pCpyCmdBuffer->Barrier( barrier );
+
     // Barrier for depth stencil buffer
     BIGOS::Driver::Backend::TextureBarrierDesc dsvBarrier;
     dsvBarrier.srcStage     = BGS_FLAG( BIGOS::Driver::Backend::PipelineStageFlagBits::NONE );
@@ -855,13 +1010,7 @@ BIGOS::RESULT IndirectCube::UploadResourceData()
     dsvBarrier.hResouce     = m_hDephtStencilTarget;
     dsvBarrier.textureRange = { BGS_FLAG( TextureComponentFlagBits::DEPTH ) | BGS_FLAG( TextureComponentFlagBits::STENCIL ), 0, 1, 0, 1 };
 
-    BIGOS::Driver::Backend::BarierDesc barrier;
-    barrier.textureBarrierCount = 1;
-    barrier.pTextureBarriers    = &dsvBarrier;
-    barrier.globalBarrierCount  = 0;
-    barrier.pGlobalBarriers     = nullptr;
-    barrier.bufferBarrierCount  = 0;
-    barrier.pBufferBarriers     = nullptr;
+    barrier.pTextureBarriers = &dsvBarrier;
     pCpyCmdBuffer->Barrier( barrier );
 
     pCpyCmdBuffer->End();
@@ -913,25 +1062,46 @@ BIGOS::RESULT IndirectCube::CreatePipeline()
     }
 
     // Binding set layout
-    BIGOS::Driver::Backend::BindingRangeDesc bindingRange;
-    bindingRange.baseBindingSlot    = 0;
-    bindingRange.baseShaderRegister = 0;
-    bindingRange.bindingCount       = 1;
-    bindingRange.type               = BIGOS::Driver::Backend::BindingTypes::CONSTANT_BUFFER;
+    BIGOS::Driver::Backend::BindingRangeDesc srBindingRanges[ 2 ];
+    srBindingRanges[ 0 ].baseBindingSlot    = 0;
+    srBindingRanges[ 0 ].baseShaderRegister = 0;
+    srBindingRanges[ 0 ].bindingCount       = 1;
+    srBindingRanges[ 0 ].type               = BIGOS::Driver::Backend::BindingTypes::CONSTANT_BUFFER;
+    srBindingRanges[ 1 ].baseBindingSlot    = 1;
+    srBindingRanges[ 1 ].baseShaderRegister = 1;
+    srBindingRanges[ 1 ].bindingCount       = 1;
+    srBindingRanges[ 1 ].type               = BIGOS::Driver::Backend::BindingTypes::SAMPLED_TEXTURE;
     BIGOS::Driver::Backend::BindingSetLayoutDesc bindingLayoutDesc;
     bindingLayoutDesc.visibility        = BIGOS::Driver::Backend::ShaderVisibilities::ALL;
-    bindingLayoutDesc.bindingRangeCount = 1;
-    bindingLayoutDesc.pBindingRanges    = &bindingRange;
+    bindingLayoutDesc.bindingRangeCount = 2;
+    bindingLayoutDesc.pBindingRanges    = srBindingRanges;
     if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hShaderResourceSetLayout ) ) )
     {
         return BIGOS::Results::FAIL;
     }
+    BIGOS::Driver::Backend::BindingRangeDesc samplerBindingRange;
+    samplerBindingRange.baseBindingSlot    = 0;
+    samplerBindingRange.baseShaderRegister = 0;
+    samplerBindingRange.bindingCount       = 1;
+    samplerBindingRange.type               = BIGOS::Driver::Backend::BindingTypes::SAMPLER;
+    bindingLayoutDesc.bindingRangeCount    = 1;
+    bindingLayoutDesc.pBindingRanges       = &samplerBindingRange;
+    if( BGS_FAILED( m_pAPIDevice->CreateBindingSetLayout( bindingLayoutDesc, &m_hSamplerSetLayout ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
 
-    // Binding heap
+    // Binding heaps
     BIGOS::Driver::Backend::BindingHeapDesc bindingHeapDesc;
-    bindingHeapDesc.bindingCount = 1;
+    bindingHeapDesc.bindingCount = 2;
     bindingHeapDesc.type         = BIGOS::Driver::Backend::BindingHeapTypes::SHADER_RESOURCE;
     if( BGS_FAILED( m_pAPIDevice->CreateBindingHeap( bindingHeapDesc, &m_hShaderResourceHeap ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+    bindingHeapDesc.bindingCount = 1;
+    bindingHeapDesc.type         = BIGOS::Driver::Backend::BindingHeapTypes::SAMPLER;
+    if( BGS_FAILED( m_pAPIDevice->CreateBindingHeap( bindingHeapDesc, &m_hSamplerHeap ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -941,6 +1111,11 @@ BIGOS::RESULT IndirectCube::CreatePipeline()
     getAddressDesc.hBindingSetLayout = m_hShaderResourceSetLayout;
     getAddressDesc.bindingNdx        = 0;
     m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_cbvOffset );
+    getAddressDesc.bindingNdx = 1;
+    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_texOffset );
+    getAddressDesc.hBindingSetLayout = m_hSamplerSetLayout;
+    getAddressDesc.bindingNdx        = 0;
+    m_pAPIDevice->GetBindingOffset( getAddressDesc, &m_samplerOffset );
 
     BIGOS::Driver::Backend::WriteBindingDesc writeBindingDesc;
     writeBindingDesc.bindingType   = BindingTypes::CONSTANT_BUFFER;
@@ -948,12 +1123,22 @@ BIGOS::RESULT IndirectCube::CreatePipeline()
     writeBindingDesc.dstOffset     = m_cbvOffset;
     writeBindingDesc.hResourceView = m_hConstantBufferView;
     m_pAPIDevice->WriteBinding( writeBindingDesc );
+    writeBindingDesc.bindingType   = BindingTypes::SAMPLED_TEXTURE;
+    writeBindingDesc.dstOffset     = m_texOffset;
+    writeBindingDesc.hResourceView = m_hSampledTextureView;
+    m_pAPIDevice->WriteBinding( writeBindingDesc );
+    writeBindingDesc.bindingType = BindingTypes::SAMPLER;
+    writeBindingDesc.hDstHeap    = m_hSamplerHeap;
+    writeBindingDesc.dstOffset   = m_samplerOffset;
+    writeBindingDesc.hSampler    = m_hSampler;
+    m_pAPIDevice->WriteBinding( writeBindingDesc );
 
     // Pipeline layout
-    BIGOS::Driver::Backend::PipelineLayoutDesc pipelineLayoutDesc;
+    BIGOS::Driver::Backend::BindingSetLayoutHandle bindingSetLayouts[] = { m_hShaderResourceSetLayout, m_hSamplerSetLayout };
+    BIGOS::Driver::Backend::PipelineLayoutDesc     pipelineLayoutDesc;
     pipelineLayoutDesc.constantRangeCount    = 0;
-    pipelineLayoutDesc.bindingSetLayoutCount = 1;
-    pipelineLayoutDesc.phBindigSetLayouts    = &m_hShaderResourceSetLayout;
+    pipelineLayoutDesc.bindingSetLayoutCount = 2;
+    pipelineLayoutDesc.phBindigSetLayouts    = bindingSetLayouts;
     pipelineLayoutDesc.pConstantRanges       = nullptr;
     if( BGS_FAILED( m_pAPIDevice->CreatePipelineLayout( pipelineLayoutDesc, &m_hPipelineLayout ) ) )
     {
