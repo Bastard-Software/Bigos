@@ -11,6 +11,9 @@ constexpr uint32_t FRAME_COUNT = 2;
 
 constexpr uint32_t BACK_BUFFER_COUNT = 3;
 
+constexpr uint32_t TEXTURE_WIDTH  = 256;
+constexpr uint32_t TEXTURE_HEIGHT = 256;
+
 constexpr float VERTEX_DATA[] = {
     -0.5f, -0.5f, -0.5f, /* POSITION */ 0.0f, 0.0f, /* TEXCOORD */
     0.5f,  -0.5f, -0.5f, /* POSITION */ 1.0f, 0.0f, /* TEXCOORD */
@@ -90,7 +93,9 @@ private:
     // Pipeline objects
     Backend::ISwapchain*            m_pSwapchain;
     Backend::BindingSetLayoutHandle m_hShaderResourceSetLayout;
+    Backend::BindingSetLayoutHandle m_hSamplerSetLayout;
     Backend::BindingHeapHandle      m_hShaderResourceHeap;
+    Backend::BindingHeapHandle      m_hSamplerHeap;
     Backend::PipelineLayoutHandle   m_hPipelineLayout;
     Backend::PipelineHandle         m_hPipeline;
     Backend::CommandLayoutHandle    m_hCommandLayout;
@@ -99,6 +104,8 @@ private:
     Backend::ResourceViewHandle     m_hRTVs[ BACK_BUFFER_COUNT ];
     Backend::BackBufferArray        m_backBuffers;
     uint64_t                        m_cbvOffset;
+    uint64_t                        m_texOffset;
+    uint64_t                        m_samplerOffset;
     uint32_t                        m_frameNdx;
 
     // App resource
@@ -124,6 +131,11 @@ private:
     Backend::MemoryHandle       m_hConstantBufferMemory;
     void*                       m_pConstantBufferHost;
     Backend::ResourceViewHandle m_hConstantBufferView;
+
+    Backend::ResourceHandle     m_hTexture;
+    Backend::MemoryHandle       m_hTextureMemory;
+    Backend::ResourceViewHandle m_hSampledTextureView;
+    Backend::SamplerHandle      m_hSampler;
 
     // Synchronization objects
     Backend::FenceHandle     m_hFences[ FRAME_COUNT ];
