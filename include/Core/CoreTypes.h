@@ -97,6 +97,9 @@ namespace BIGOS
         using WString = std::wstring;
 
         template<typename T>
+        using UniquePtr = std::unique_ptr<T>;
+
+        template<typename T>
         using HeapArray = std::vector<T>;
 
         template<typename T, size_t S>
