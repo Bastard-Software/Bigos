@@ -1,0 +1,71 @@
+#pragma once
+
+#include "Core/CoreTypes.h"
+
+#include "Platform/Event/IEvent.h"
+
+namespace BIGOS
+{
+    namespace Platform
+    {
+        namespace Event
+        {
+            class BGS_API WindowResizeEvent : public IEvent
+            {
+            public:
+                WindowResizeEvent( uint32_t width, uint32_t height )
+                    : m_width( width )
+                    , m_height( height )
+                {
+                }
+
+                uint32_t GetWidth() const { return m_width; }
+                uint32_t GetHeight() const { return m_height; }
+
+                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_RESIZE; };
+                virtual const char* GetName() const override { return "WindowResize"; };
+
+            private:
+                uint32_t m_width;
+                uint32_t m_height;
+            };
+
+            class BGS_API WindowCloseEvent : public IEvent
+            {
+            public:
+                WindowCloseEvent() = default;
+
+                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_CLOSE; };
+                virtual const char* GetName() const override { return "WindowClose"; };
+            };
+
+            class BGS_API AppTickEvent : public IEvent
+            {
+            public:
+                AppTickEvent() = default;
+
+                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::APP_TICK; };
+                virtual const char* GetName() const override { return "AppTick"; };
+            };
+
+            class BGS_API AppUpdateEvent : public IEvent
+            {
+            public:
+                AppUpdateEvent() = default;
+
+                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::APP_UPDATE; };
+                virtual const char* GetName() const override { return "AppUpdate"; };
+            };
+
+            class BGS_API AppRenderEvent : public IEvent
+            {
+            public:
+                AppRenderEvent() = default;
+
+                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::APP_RENDER; };
+                virtual const char* GetName() const override { return "AppRender"; };
+            };
+
+        } // namespace Event
+    }     // namespace Platform
+} // namespace BIGOS
