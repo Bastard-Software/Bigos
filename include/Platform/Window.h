@@ -19,6 +19,7 @@ namespace BIGOS
 
             BGS_FORCEINLINE const WindowDesc&      GetDesc() const { return m_desc; }
             BGS_FORCEINLINE const WindowInternals& GetInternals() const { return m_internals; }
+            BGS_FORCEINLINE WindowSystem*          GetParent() { return m_pParent; }
 
         protected:
             RESULT Create( const WindowDesc& desc, WindowSystem* pWndSystem );

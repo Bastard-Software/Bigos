@@ -8,7 +8,7 @@ namespace BIGOS
     {
         namespace Input
         {
-            using KeyCOde = uint32_t;
+            using KeyCode = uint32_t;
 
             namespace Key
             {

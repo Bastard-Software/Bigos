@@ -3,11 +3,13 @@
 #include "Application.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/IShaderCompiler.h"
+#include "Platform/Event/EventSystem.h"
 #include "Platform/Window.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 RotatedQuads::RotatedQuads( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )
+    , m_pEventSystem( nullptr )
     , m_pWindowSystem( nullptr )
     , m_pRenderSystem( nullptr )
     , m_pWindow( nullptr )
@@ -99,6 +101,8 @@ void RotatedQuads::OnUpdate()
     BIGOS::Memory::Copy( &m_constantBufferData, sizeof( m_constantBufferData ), m_pConstantBufferHost, sizeof( m_constantBufferData ) );
 
     m_pAPIDevice->UnmapResource( mapConstant );
+
+    m_pWindow->Update();
 }
 
 void RotatedQuads::OnRender()
@@ -328,6 +332,13 @@ void RotatedQuads::OnDestroy()
 
 BIGOS::RESULT RotatedQuads::InitDevice()
 {
+    BIGOS::Platform::Event::EventSystemDesc eventDesc;
+    if( BGS_FAILED( Application::GetFramework()->CreateEventSystem( eventDesc, &m_pEventSystem ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+    m_pEventSystem->Subscribe( &m_windowCloseHandler );
+
     BIGOS::Platform::WindowSystemDesc wndSystemDesc;
     if( BGS_FAILED( Application::GetFramework()->CreateWindowSystem( wndSystemDesc, &m_pWindowSystem ) ) )
     {

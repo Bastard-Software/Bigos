@@ -15,6 +15,6 @@ extern "C"
 
 int main()
 {
-    VertexlessTriangle sample( BIGOS::Driver::Backend::APITypes::D3D12, 1280, 720, "VertexlessTriangle" );
+    VertexlessTriangle sample( BIGOS::Driver::Backend::APITypes::VULKAN, 1280, 720, "VertexlessTriangle" );
     return Application::Run( &sample );
 }

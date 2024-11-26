@@ -3,6 +3,7 @@
 #include "Driver/Frontend/RenderSystemTypes.h"
 
 #include "Driver/Frontend/RenderSystem.h"
+#include "Platform/Event/EventSystem.h"
 #include "Platform/WindowSystem.h"
 
 BGS_API BIGOS::RESULT CreateBigosFramework( const BIGOS::BigosFrameworkDesc& desc, BIGOS::BigosFramework** ppFramework )
@@ -52,6 +53,7 @@ namespace BIGOS
         : m_memorySystem()
         , m_pRenderSystem( nullptr )
         , m_pWindowSystem( nullptr )
+        , m_pEventSystem( nullptr )
     {
     }
 
@@ -129,6 +131,43 @@ namespace BIGOS
         }
     }
 
+    RESULT BigosFramework::CreateEventSystem( const Platform::Event::EventSystemDesc& desc, Platform::Event::EventSystem** ppSystem )
+    {
+        BGS_ASSERT( ppSystem != nullptr, "Event system (ppSystem) must be a valid address." );
+
+        // If event system exist we return it otherwise we need to create.
+        if( m_pEventSystem == nullptr )
+        {
+            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocator(), &m_pEventSystem ) ) )
+            {
+                return Results::NO_MEMORY;
+            }
+
+            if( BGS_FAILED( m_pEventSystem->Create( desc, this ) ) )
+            {
+                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &m_pEventSystem );
+                return Results::FAIL;
+            }
+        }
+
+        *ppSystem = m_pEventSystem;
+
+        return Results::OK;
+    }
+
+    void BigosFramework::DestroyEventSystem( Platform::Event::EventSystem** ppSystem )
+    {
+        BGS_ASSERT( ppSystem != nullptr, "Event system (ppSystem) must be a valid address." );
+
+        if( ( *ppSystem != nullptr ) && ( *ppSystem == m_pEventSystem ) )
+        {
+            Platform::Event::EventSystem* pSystem = *ppSystem;
+            pSystem->Destroy();
+            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &pSystem );
+            m_pWindowSystem = nullptr;
+        }
+    }
+
     RESULT BigosFramework::Create( const BigosFrameworkDesc& desc )
     {
         if( BGS_FAILED( m_memorySystem.Create( desc.memorySystemDesc ) ) )
@@ -143,6 +182,7 @@ namespace BIGOS
     {
         DestroyRenderSystem( &m_pRenderSystem );
         DestroyWindowSystem( &m_pWindowSystem );
+        DestroyEventSystem( &m_pEventSystem );
 
         m_memorySystem.Destroy();
     }

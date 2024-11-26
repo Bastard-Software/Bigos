@@ -35,8 +35,27 @@ namespace BIGOS
             public:
                 WindowCloseEvent() = default;
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_CLOSE; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::WINDOW_CLOSE; }
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "WindowClose"; };
+            };
+
+            class BGS_API WindowFocusEvent : public IEvent
+            {
+            public:
+                WindowFocusEvent() = default;
+
+                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_FOCUS; };
+                virtual const char* GetName() const override { return "WindowFocus"; };
+            };
+
+            class BGS_API WindowLostFocusEvent : public IEvent
+            {
+            public:
+                WindowLostFocusEvent() = default;
+
+                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_LOST_FOCUS; };
+                virtual const char* GetName() const override { return "WindowLostFocus"; };
             };
 
             class BGS_API AppTickEvent : public IEvent

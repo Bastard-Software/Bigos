@@ -2,6 +2,10 @@
 
 #include "Core/CoreTypes.h"
 
+#if defined MOUSE_MOVED
+#    undef MOUSE_MOVED
+#endif
+
 namespace BIGOS
 {
     namespace Platform
@@ -9,7 +13,13 @@ namespace BIGOS
         namespace Event
         {
             class IEvent;
-            using EventQueue = HeapArray<UniquePtr<IEvent>>;
+            class IEventHandlerWraper;
+            class EventSystem;
+            using EventQueue        = HeapArray<UniquePtr<IEvent>>;
+            using EventHandlerArray = HeapArray<IEventHandlerWraper*>;
+
+            template<typename EventType>
+            using EventHandler = std::function<void( const EventType& e )>;
 
             enum class EventTypes
             {
@@ -44,7 +54,7 @@ namespace BIGOS
             };
             using EventCategoryFlags = EventCategoryFlagBits;
 
-            struct EventManagerDesc
+            struct EventSystemDesc
             {
                 // For future use
             };
