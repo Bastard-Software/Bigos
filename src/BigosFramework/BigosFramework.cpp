@@ -4,6 +4,7 @@
 
 #include "Driver/Frontend/RenderSystem.h"
 #include "Platform/Event/EventSystem.h"
+#include "Platform/Input/InputSystem.h"
 #include "Platform/WindowSystem.h"
 
 BGS_API BIGOS::RESULT CreateBigosFramework( const BIGOS::BigosFrameworkDesc& desc, BIGOS::BigosFramework** ppFramework )
@@ -54,6 +55,7 @@ namespace BIGOS
         , m_pRenderSystem( nullptr )
         , m_pWindowSystem( nullptr )
         , m_pEventSystem( nullptr )
+        , m_pInputSystem( nullptr )
     {
     }
 
@@ -164,7 +166,44 @@ namespace BIGOS
             Platform::Event::EventSystem* pSystem = *ppSystem;
             pSystem->Destroy();
             Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &pSystem );
-            m_pWindowSystem = nullptr;
+            m_pEventSystem = nullptr;
+        }
+    }
+
+    RESULT BigosFramework::CreateInputSystem( const Platform::Input::InputSystemDesc& desc, Platform::Input::InputSystem** ppSystem )
+    {
+        BGS_ASSERT( ppSystem != nullptr, "Input system (ppSystem) must be a valid address." );
+
+        // If event system exist we return it otherwise we need to create.
+        if( m_pInputSystem == nullptr )
+        {
+            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocator(), &m_pInputSystem ) ) )
+            {
+                return Results::NO_MEMORY;
+            }
+
+            if( BGS_FAILED( m_pInputSystem->Create( desc, this ) ) )
+            {
+                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &m_pInputSystem );
+                return Results::FAIL;
+            }
+        }
+
+        *ppSystem = m_pInputSystem;
+
+        return Results::OK;
+    }
+
+    void BigosFramework::DestroyInputSystem( Platform::Input::InputSystem** ppSystem )
+    {
+        BGS_ASSERT( ppSystem != nullptr, "Input system (ppSystem) must be a valid address." );
+
+        if( ( *ppSystem != nullptr ) && ( *ppSystem == m_pInputSystem ) )
+        {
+            Platform::Input::InputSystem* pSystem = *ppSystem;
+            pSystem->Destroy();
+            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &pSystem );
+            m_pInputSystem = nullptr;
         }
     }
 
@@ -182,6 +221,7 @@ namespace BIGOS
     {
         DestroyRenderSystem( &m_pRenderSystem );
         DestroyWindowSystem( &m_pWindowSystem );
+        DestroyInputSystem( &m_pInputSystem );
         DestroyEventSystem( &m_pEventSystem );
 
         m_memorySystem.Destroy();

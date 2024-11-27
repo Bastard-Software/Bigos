@@ -5,6 +5,10 @@
 #include "Platform/Event/IEvent.h"
 #include "Platform/Input/MouseCodes.h"
 
+#if defined MOUSE_MOVED
+#    undef MOUSE_MOVED
+#endif
+
 namespace BIGOS
 {
     namespace Platform
@@ -24,7 +28,8 @@ namespace BIGOS
                 float GetX() const { return m_mouseX; }
                 float GetY() const { return m_mouseY; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::MOUSE_MOVED; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::MOUSE_MOVED; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "MouseMoved"; };
 
             private:
@@ -44,7 +49,8 @@ namespace BIGOS
                 float GetX() const { return m_offsetX; }
                 float GetY() const { return m_offsetY; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::MOUSE_SCROLLED; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::MOUSE_SCROLLED; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "MouseScrolled"; };
 
             private:
@@ -62,7 +68,8 @@ namespace BIGOS
 
                 Input::MouseCode GetMouseButton() const { return m_button; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::MOUSE_BUTTON_PRESSED; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::MOUSE_BUTTON_PRESSED; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "MouseButtonPressed"; };
 
             private:
@@ -79,7 +86,8 @@ namespace BIGOS
 
                 Input::MouseCode GetMouseButton() const { return m_button; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::MOUSE_BUTTON_RELEASED; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::MOUSE_BUTTON_RELEASED; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "MouseButtonReleased"; };
 
             private:
