@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/CoreTypes.h"
 #include "Driver/Frontend/RenderSystemTypes.h"
+#include "Platform/Event/EventTypes.h"
 #include "Platform/PlatformTypes.h"
 
 #include "Core/Memory/MemorySystem.h"
@@ -43,9 +44,13 @@ namespace BIGOS
         RESULT CreateWindowSystem( const Platform::WindowSystemDesc& desc, Platform::WindowSystem** ppSystem );
         void   DestroyWindowSystem( Platform::WindowSystem** ppSystem );
 
+        RESULT CreateEventSystem( const Platform::Event::EventSystemDesc& desc, Platform::Event::EventSystem** ppSystem );
+        void   DestroyEventSystem( Platform::Event::EventSystem** ppSystem );
+
         Core::Memory::MemorySystem*     GetMemorySystem() { return &m_memorySystem; }
         Driver::Frontend::RenderSystem* GetDriverSystem() { return m_pRenderSystem; }
         Platform::WindowSystem*         GetWindowSystem() { return m_pWindowSystem; }
+        Platform::Event::EventSystem*   GetEventSystem() { return m_pEventSystem; }
 
         RESULT Create( const BigosFrameworkDesc& desc );
         void   Destroy();
@@ -54,5 +59,6 @@ namespace BIGOS
         Core::Memory::MemorySystem      m_memorySystem;
         Driver::Frontend::RenderSystem* m_pRenderSystem;
         Platform::WindowSystem*         m_pWindowSystem;
+        Platform::Event::EventSystem*   m_pEventSystem;
     };
 } // namespace BIGOS

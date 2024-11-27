@@ -2,6 +2,7 @@
 #include "Core/CoreTypes.h"
 
 #if( BGS_WINDOWS )
+#    include <Windowsx.h>
 #    include <Windows.h>
 using LibraryHandle = HMODULE;
 using WindowHandle  = HWND;

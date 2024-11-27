@@ -23,6 +23,7 @@ namespace BIGOS
 
             // TODO: Get created windows by param e.x. index, title
             BGS_FORCEINLINE const WindowSystemDesc& GetDesc() const { return m_desc; }
+            BGS_FORCEINLINE BigosFramework*         GetParent() { return m_pParent; }
 
         protected:
             RESULT Create( const WindowSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pFramework );

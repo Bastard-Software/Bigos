@@ -3,10 +3,12 @@
 #include "Application.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/IShaderCompiler.h"
+#include "Platform/Event/EventSystem.h"
 #include "Platform/Window.h"
 
 Triangle::Triangle( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )
+    , m_pEventSystem( nullptr )
     , m_pWindowSystem( nullptr )
     , m_pRenderSystem( nullptr )
     , m_pWindow( nullptr )
@@ -252,6 +254,13 @@ void Triangle::OnDestroy()
 
 BIGOS::RESULT Triangle::InitDevice()
 {
+    BIGOS::Platform::Event::EventSystemDesc eventDesc;
+    if( BGS_FAILED( Application::GetFramework()->CreateEventSystem( eventDesc, &m_pEventSystem ) ) )
+    {
+        return BIGOS::Results::FAIL;
+    }
+    m_pEventSystem->Subscribe( &m_windowCloseHandler );
+
     BIGOS::Platform::WindowSystemDesc wndSystemDesc;
     if( BGS_FAILED( Application::GetFramework()->CreateWindowSystem( wndSystemDesc, &m_pWindowSystem ) ) )
     {

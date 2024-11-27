@@ -21,9 +21,7 @@ int Application::Run( Sample* pSample )
 
     pSample->OnInit();
 
-    // Renders and display frame for 10 seconds
-    for( auto start = std::chrono::steady_clock::now(), now = start; now < start + std::chrono::seconds{ 10 };
-         now = std::chrono::steady_clock::now() )
+    while( pSample->IsRunning() )
     {
         pSample->OnUpdate();
         pSample->OnRender();
