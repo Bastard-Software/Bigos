@@ -19,11 +19,12 @@ public:
     virtual void          OnRender()  = 0;
     virtual void          OnDestroy() = 0;
 
-    void OnWindowClose( const WindowCloseEvent& e );
-
     const API_TYPE GetAPIType() const { return m_APIType; }
 
     bool IsRunning() { return m_running; }
+
+private:
+    void OnWindowClose( const WindowCloseEvent& e );
 
 protected:
     const char*                          m_pName;

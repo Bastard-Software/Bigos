@@ -1,9 +1,10 @@
 #pragma once
 #include "Core/CoreTypes.h"
+#include "Platform/Event/EventTypes.h"
 
 #if( BGS_WINDOWS )
-#    include <Windowsx.h>
 #    include <Windows.h>
+#    include <Windowsx.h>
 using LibraryHandle = HMODULE;
 using WindowHandle  = HWND;
 using WindowModule  = HMODULE;
@@ -56,5 +57,14 @@ namespace BIGOS
             // TODO: Fill
         };
 
-    } // namespace Platform
+        namespace Input
+        {
+            class InputSystem;
+
+            struct InputSystemDesc
+            {
+                Event::EventSystem* pEventSystem;
+            };
+        } // namespace Input
+    }     // namespace Platform
 } // namespace BIGOS

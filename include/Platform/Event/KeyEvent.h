@@ -23,7 +23,8 @@ namespace BIGOS
                 Input::KeyCode GetKeyCode() const { return m_keycode; }
                 uint16_t       GetRepeatCount() const { return m_repeatCnt; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::KEY_PRESSED; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::KEY_PRESSED; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "KeyPressed"; };
 
             private:
@@ -41,7 +42,8 @@ namespace BIGOS
 
                 Input::KeyCode GetKeyCode() const { return m_keycode; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::KEY_RELEASED; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::KEY_RELEASED; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "KeyReleased"; };
 
             private:
@@ -58,7 +60,8 @@ namespace BIGOS
 
                 Input::KeyCode GetKeyCode() const { return m_keycode; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::KEY_TYPED; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::KEY_TYPED; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "KeyTyped"; };
 
             private:

@@ -47,10 +47,14 @@ namespace BIGOS
         RESULT CreateEventSystem( const Platform::Event::EventSystemDesc& desc, Platform::Event::EventSystem** ppSystem );
         void   DestroyEventSystem( Platform::Event::EventSystem** ppSystem );
 
+        RESULT CreateInputSystem( const Platform::Input::InputSystemDesc& desc, Platform::Input::InputSystem** ppSystem );
+        void   DestroyInputSystem( Platform::Input::InputSystem** ppSystem );
+
         Core::Memory::MemorySystem*     GetMemorySystem() { return &m_memorySystem; }
         Driver::Frontend::RenderSystem* GetDriverSystem() { return m_pRenderSystem; }
         Platform::WindowSystem*         GetWindowSystem() { return m_pWindowSystem; }
         Platform::Event::EventSystem*   GetEventSystem() { return m_pEventSystem; }
+        Platform::Input::InputSystem*   GetInputSystem() { return m_pInputSystem; }
 
         RESULT Create( const BigosFrameworkDesc& desc );
         void   Destroy();
@@ -60,5 +64,6 @@ namespace BIGOS
         Driver::Frontend::RenderSystem* m_pRenderSystem;
         Platform::WindowSystem*         m_pWindowSystem;
         Platform::Event::EventSystem*   m_pEventSystem;
+        Platform::Input::InputSystem*   m_pInputSystem;
     };
 } // namespace BIGOS

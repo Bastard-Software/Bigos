@@ -22,7 +22,8 @@ namespace BIGOS
                 uint32_t GetWidth() const { return m_width; }
                 uint32_t GetHeight() const { return m_height; }
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_RESIZE; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::WINDOW_RESIZE; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "WindowResize"; };
 
             private:
@@ -45,7 +46,8 @@ namespace BIGOS
             public:
                 WindowFocusEvent() = default;
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_FOCUS; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::WINDOW_FOCUS; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "WindowFocus"; };
             };
 
@@ -54,7 +56,8 @@ namespace BIGOS
             public:
                 WindowLostFocusEvent() = default;
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::WINDOW_LOST_FOCUS; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::WINDOW_LOST_FOCUS; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "WindowLostFocus"; };
             };
 
@@ -63,7 +66,8 @@ namespace BIGOS
             public:
                 AppTickEvent() = default;
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::APP_TICK; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::APP_TICK; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "AppTick"; };
             };
 
@@ -72,7 +76,8 @@ namespace BIGOS
             public:
                 AppUpdateEvent() = default;
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::APP_UPDATE; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::APP_UPDATE; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "AppUpdate"; };
             };
 
@@ -81,7 +86,8 @@ namespace BIGOS
             public:
                 AppRenderEvent() = default;
 
-                virtual EVENT_TYPE  GetEventType() const override { return EventTypes::APP_RENDER; };
+                static EVENT_TYPE   GetStaticEventType() { return EventTypes::APP_RENDER; };
+                virtual EVENT_TYPE  GetEventType() const override { return GetStaticEventType(); };
                 virtual const char* GetName() const override { return "AppRender"; };
             };
 
