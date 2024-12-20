@@ -4,6 +4,7 @@
 #include "Core/Memory/Memory.h"
 #include "Driver/Backend/D3D12/D3D12Factory.h"
 #include "Driver/Backend/Vulkan/VulkanFactory.h"
+#include "Driver/Frontend/Camera/Camera.h"
 #include "Driver/Frontend/RenderDevice.h"
 #include "Shader/ShaderCompilerFactory.h"
 
@@ -19,6 +20,7 @@ namespace BIGOS
                 , m_pFactory( nullptr )
                 , m_adapters()
                 , m_devices()
+                , m_cameras()
                 , m_pParent( nullptr )
                 , m_pShaderCompilerFactory( nullptr )
                 , m_pDefaultAllocator( nullptr )
@@ -100,6 +102,72 @@ namespace BIGOS
                 }
             }
 
+            RESULT RenderSystem::CreateCamera( const CameraDesc& desc, Camera** ppCamera )
+            {
+                BGS_ASSERT( ppCamera != nullptr, "Camera (ppCamera) must be a valid address." );
+
+                Camera* pCamera = ( *ppCamera );
+                if( pCamera != nullptr )
+                {
+                    for( index_t ndx = 0; ndx < m_cameras.size(); ++ndx )
+                    {
+                        // TODO: Find camera in array using hash
+                        if( m_cameras[ ndx ] == pCamera )
+                        {
+                            return Results::OK;
+                        }
+                    }
+
+                    // TDOD: Warrning that camera wasn't created by framework?
+                    m_cameras.push_back( pCamera );
+
+                    return Results::OK;
+                }
+                else
+                {
+                    if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pCamera ) ) )
+                    {
+                        return Results::NO_MEMORY;
+                    }
+
+                    if( BGS_FAILED( pCamera->Create( desc, this ) ) )
+                    {
+                        Memory::FreeObject( m_pDefaultAllocator, &pCamera );
+                        return Results::FAIL;
+                    }
+                }
+
+                m_cameras.push_back( pCamera );
+                ( *ppCamera ) = pCamera;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyCamera( Camera** ppCamera )
+            {
+                BGS_ASSERT( ( ppCamera != nullptr ) && ( *ppCamera != nullptr ), " Camera (ppCamera) must be an valid address of a valid pointer." );
+
+                if( ppCamera != nullptr )
+                {
+
+                    Camera* pCamera = ( *ppCamera );
+
+                    for( index_t ndx = 0; ndx < m_cameras.size(); ++ndx )
+                    {
+                        // TODO: Find device in array using hash
+                        if( m_cameras[ ndx ] == pCamera )
+                        {
+                            m_cameras[ ndx ] = m_cameras.back();
+                            m_cameras.pop_back();
+                            pCamera->Destroy();
+                            Memory::FreeObject( m_pDefaultAllocator, &pCamera );
+                            ppCamera = nullptr;
+                            break;
+                        }
+                    }
+                }
+            }
+
             RESULT RenderSystem::Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pFramework )
             {
                 BGS_ASSERT( pFramework != nullptr, "Bigos framework (pFramework) must be a valid pointer." );
@@ -136,6 +204,11 @@ namespace BIGOS
                 for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
                 {
                     DestroyDevice( &m_devices[ ndx ] );
+                }
+
+                for( index_t ndx = 0; ndx < m_cameras.size(); ++ndx )
+                {
+                    DestroyCamera( &m_cameras[ ndx ] );
                 }
 
                 if( m_pFactory != nullptr )
@@ -289,5 +362,5 @@ namespace BIGOS
             }
 
         } // namespace Frontend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

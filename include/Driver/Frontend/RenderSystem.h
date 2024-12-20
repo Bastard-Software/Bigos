@@ -21,6 +21,9 @@ namespace BIGOS
                 RESULT CreateDevice( const RenderDeviceDesc& desc, RenderDevice** ppDevice );
                 void   DestroyDevice( RenderDevice** ppDevice );
 
+                RESULT CreateCamera( const CameraDesc& desc, Camera** ppCamera );
+                void   DestroyCamera( Camera** ppCamera);
+
                 void SetDefaultCompiler( IShaderCompiler* pCompiler ) { m_pCompiler = pCompiler; }
 
                 BigosFramework*     GetParent() { return m_pParent; }
@@ -49,6 +52,7 @@ namespace BIGOS
                 Backend::IFactory*     m_pFactory;
                 AdapterArray           m_adapters;
                 RenderDeviceArray      m_devices;
+                CameraArray            m_cameras;
                 BigosFramework*        m_pParent;
                 ShaderCompilerFactory* m_pShaderCompilerFactory;
                 Memory::IAllocator*    m_pDefaultAllocator;
@@ -56,5 +60,5 @@ namespace BIGOS
             };
 
         } // namespace Frontend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS
