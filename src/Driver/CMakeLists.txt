@@ -50,6 +50,7 @@ target_include_directories(Driver PRIVATE
     ${THIRD_PARTY_DIR}/volk
     ${THIRD_PARTY_DIR}/DXCompiler/include
     ${THIRD_PARTY_DIR}/D3D12/build/native/include
+    ${THIRD_PARTY_DIR}/glm
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 

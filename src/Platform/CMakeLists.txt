@@ -25,4 +25,8 @@ add_library(${PROJECT_NAME} STATIC
     ${SOURCE_FILES}
 )
 
+target_include_directories(Platform PRIVATE 
+    ${THIRD_PARTY_DIR}/glm
+)
+
 include ("${ROOT_DIR}/CMakeScripts/TargetProperties.cmake" NO_POLICY_SCOPE)

@@ -3,6 +3,7 @@
 #include "Core/Memory/MemoryTypes.h"
 
 #include "Driver/Backend/API.h"
+#include "glm/glm.hpp"
 
 namespace BIGOS
 {
@@ -21,7 +22,7 @@ namespace BIGOS
 
         namespace Frontend
         {
-
+            class Camera;
             class RenderSystem;
             class RenderDevice;
             class IShaderCompiler;
@@ -30,6 +31,7 @@ namespace BIGOS
             using AdapterArray      = Backend::AdapterArray;
             using RenderDeviceArray = HeapArray<RenderDevice*>; // Framework allows to create only one device for each adapter
             using QueueArray        = HeapArray<Backend::IQueue*>;
+            using CameraArray       = HeapArray<Camera*>;
 
             using QueueDesc = Backend::QueueDesc;
 
@@ -94,6 +96,13 @@ namespace BIGOS
             };
             using SHADER_FORMAT = ShaderFormats;
 
+            enum class CameraTypes : uint8_t
+            {
+                DEFAULT,
+                _MAX_ENUM,
+            };
+            using CAMERA_TYPE = CameraTypes;
+
             struct ShaderSource
             {
                 const void* pSourceCode;
@@ -125,6 +134,12 @@ namespace BIGOS
                 ShaderCompilerFactoryDesc compilerFactoryDesc;
             };
 
+            struct CameraDesc
+            {
+                glm::mat4   projection;
+                CAMERA_TYPE type;
+            };
+
             struct RenderDeviceDesc
             {
                 struct
@@ -145,5 +160,5 @@ namespace BIGOS
             };
 
         } // namespace Frontend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS
