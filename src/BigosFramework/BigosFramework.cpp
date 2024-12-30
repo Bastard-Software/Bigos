@@ -59,6 +59,23 @@ namespace BIGOS
     {
     }
 
+    RESULT BigosFramework::DefaultInit( Driver::Backend::API_TYPE apiType )
+    {
+        // TODO: For no we expect no fails during init
+        Platform::WindowSystemDesc wndDesc;
+        CreateWindowSystem( wndDesc, &m_pWindowSystem );
+        
+        Platform::Event::EventSystemDesc eventDesc;
+        CreateEventSystem( eventDesc, &m_pEventSystem );
+
+        Driver::Frontend::RenderSystemDesc renderDesc;
+        renderDesc.factoryDesc.apiType = apiType;
+        renderDesc.factoryDesc.flags   = BGS_FLAG( BIGOS::Driver::Backend::FactoryFlagBits::ENABLE_DEBUG_LAYERS_IF_AVAILABLE );
+        CreateRenderSystem( renderDesc, &m_pRenderSystem );
+
+        return Results::OK;
+    }
+
     RESULT BigosFramework::CreateRenderSystem( const Driver::Frontend::RenderSystemDesc& desc, Driver::Frontend::RenderSystem** ppSystem )
     {
         BGS_ASSERT( ppSystem != nullptr, "Render system (ppSystem) must be a valid address." );

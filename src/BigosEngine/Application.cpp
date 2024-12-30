@@ -1,0 +1,123 @@
+#include "BigosEngine/Application.h"
+
+#include "BigosFramework/BigosFramework.h"
+#include "Core/Utils/Timer.h"
+#include "Platform/Event/EventHandler.h"
+#include "Platform/Event/EventSystem.h"
+#include "Platform/Window.h"
+#include "Platform/WindowSystem.h"
+
+namespace BIGOS
+{
+    Application*    Application::s_pInstance  = nullptr;
+    BigosFramework* Application::s_pFramework = nullptr;
+
+    Application::Application( const char* pName )
+        : m_pName( pName )
+        , m_running( BGS_TRUE )
+        , m_pWindow( nullptr )
+        , m_windowCloseHandler( [ this ]( const Platform::Event::WindowCloseEvent& e ) { OnWindowClose( e ); } )
+        , m_lastFrameTime( 0.0f )
+    {
+    }
+
+    Application::~Application()
+    {
+    }
+
+    void Application::PushLayer( Layer* pLayer )
+    {
+        m_layerStack.PushLayer( pLayer );
+        pLayer->OnAttach();
+    }
+
+    void Application::PushOverlay( Layer* pLayer )
+    {
+        pLayer;
+    }
+
+    RESULT Application::Create()
+    {
+        BGS_ASSERT( s_pInstance == nullptr, "Bigos application already exists." );
+        BGS_ASSERT( s_pFramework == nullptr, "Bigos framework already exists." );
+
+        s_pInstance = this;
+
+        BIGOS::BigosFrameworkDesc frameworkDesc;
+        if( BGS_FAILED( CreateBigosFramework( frameworkDesc, &s_pFramework ) ) )
+        {
+            return Results::FAIL;
+        }
+
+        // Init bigos systems
+        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::VULKAN ) ) )
+        {
+            return Results::FAIL;
+        }
+
+        // Create window
+        BIGOS::Platform::WindowDesc wndDesc;
+        wndDesc.pTitle    = m_pName;
+        wndDesc.mode      = BIGOS::Platform::WindowModes::WINDOW;
+        wndDesc.xPosition = 100;
+        wndDesc.yPosition = 100;
+        wndDesc.width     = 1600;
+        wndDesc.height    = 900;
+        if( BGS_FAILED( s_pFramework->GetWindowSystem()->CreateWindow( wndDesc, &m_pWindow ) ) )
+        {
+            return BIGOS::Results::FAIL;
+        }
+        m_pWindow->Show();
+
+        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::VULKAN ) ) )
+        {
+            return Results::FAIL;
+        }
+
+        s_pFramework->GetEventSystem()->Subscribe( &m_windowCloseHandler );
+
+        return Results::OK;
+    }
+
+    void Application::Destroy()
+    {
+        DestroyBigosFramework( &s_pFramework );
+    }
+
+    void Application::Run()
+    {
+        BGS_ASSERT( s_pInstance != nullptr );
+        BGS_ASSERT( s_pFramework != nullptr );
+
+        Core::Utils::Timer timer;
+        uint32_t           fps = 0;
+
+        while( m_running )
+        {
+            float                 time = timer.ElapsedMillis();
+            Core::Utils::Timestep ts   = time - m_lastFrameTime;
+            m_lastFrameTime            = time;
+
+            m_pWindow->Update();
+
+            for( Layer* pLayer: m_layerStack )
+            {
+                pLayer->OnUpdate( ts );
+            }
+            fps++;
+
+            // Display fps on window title
+            if( timer.Elapsed() - time > 1.0f )
+            {
+                // TODO: Display FPS
+            }
+        }
+    }
+
+    void Application::OnWindowClose( const Platform::Event::WindowCloseEvent& e )
+    {
+        e;
+        m_running = BGS_FALSE;
+    }
+
+} // namespace BIGOS

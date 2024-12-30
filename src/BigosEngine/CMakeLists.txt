@@ -25,12 +25,11 @@ add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
     ${INCLUDE_DIR}
+    ${THIRD_PARTY_DIR}/glm
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-    Core
-    Driver
-    Platform
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    BigosFramework
 )
 
 include ("${ROOT_DIR}/CMakeScripts/TargetProperties.cmake" NO_POLICY_SCOPE)
