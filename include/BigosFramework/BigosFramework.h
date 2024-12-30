@@ -37,7 +37,9 @@ namespace BIGOS
         BigosFramework();
         ~BigosFramework() = default;
 
-        // TODO: Should that be private and create with framework?
+        // TODO: Refactor? We need sth like that
+        RESULT DefaultInit( Driver::Backend::API_TYPE apiType );
+
         RESULT CreateRenderSystem( const Driver::Frontend::RenderSystemDesc& desc, Driver::Frontend::RenderSystem** ppSystem );
         void   DestroyRenderSystem( Driver::Frontend::RenderSystem** ppSystem );
 

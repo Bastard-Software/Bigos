@@ -30,6 +30,8 @@ add_subdirectory(${SAMPLES_DIR}/BackendAPI/Fibonacci)
 add_subdirectory(${SAMPLES_DIR}/BackendAPI/RotatedQuads)
 add_subdirectory(${SAMPLES_DIR}/BackendAPI/IndirectCube)
 
+add_subdirectory(${ROOT_DIR}/Sandbox)
+
 if(BGS_VULKAN_API)
     add_subdirectory(${THIRD_PARTY_DIR}/volk)
 endif()
