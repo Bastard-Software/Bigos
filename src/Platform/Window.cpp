@@ -103,6 +103,15 @@ namespace BIGOS
             }
         }
 
+        void Window::SetTitle( const char* pTitle )
+        {
+            BGS_ASSERT( pTitle != nullptr );
+            BGS_ASSERT( m_internals.hWnd != nullptr );
+
+            m_desc.pTitle = pTitle;
+            SetWindowText( m_internals.hWnd, m_desc.pTitle );
+        }
+
         RESULT Window::Create( const WindowDesc& desc, WindowSystem* pWndSystem )
         {
             BGS_ASSERT( pWndSystem != nullptr, "Window system (pWndSystem) must be a valid pointer." );

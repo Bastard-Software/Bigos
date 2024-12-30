@@ -90,7 +90,8 @@ namespace BIGOS
         BGS_ASSERT( s_pFramework != nullptr );
 
         Core::Utils::Timer timer;
-        uint32_t           fps = 0;
+        uint32_t           fps     = 0;
+        float              fpsTime = 0.0f;
 
         while( m_running )
         {
@@ -107,9 +108,12 @@ namespace BIGOS
             fps++;
 
             // Display fps on window title
-            if( timer.Elapsed() - time > 1.0f )
+            if( timer.Elapsed() - fpsTime > 1.0f )
             {
-                // TODO: Display FPS
+                std::string title = m_pName + std::string( " (FPS: " ) + std::to_string( fps ) + std::string( ")" );
+                m_pWindow->SetTitle( title.c_str() );
+                fpsTime += 1.0f;
+                fps = 0;
             }
         }
     }
