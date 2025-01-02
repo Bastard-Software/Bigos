@@ -13,9 +13,10 @@ namespace BIGOS
             Window();
             ~Window() = default;
 
-            // TODO: Hide, minimize?
             void Show();
             void Update();
+
+            void SetTitle( const char* pTitle );
 
             BGS_FORCEINLINE const WindowDesc&      GetDesc() const { return m_desc; }
             BGS_FORCEINLINE const WindowInternals& GetInternals() const { return m_internals; }
