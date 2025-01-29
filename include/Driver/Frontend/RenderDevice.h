@@ -21,17 +21,10 @@ namespace BIGOS
                 void   Destroy();
 
             private:
-                RESULT CreateQueues( QueueDesc* descs, uint32_t descCount );
-                void   DestroyQueues();
-
-            private:
                 RenderDeviceDesc   m_desc;
                 Backend::IFactory* m_pFactory   = nullptr;
                 RenderSystem*      m_pParent    = nullptr;
                 Backend::IDevice*  m_pAPIDevice = nullptr;
-                QueueArray         m_graphicsQueues;
-                QueueArray         m_computeQueues;
-                QueueArray         m_copyQueues;
             };
 
         } // namespace Frontend
