@@ -46,7 +46,6 @@ namespace BIGOS
 
             void RenderDevice::Destroy()
             {
-                DestroyQueues();
                 if( m_pFactory && m_pAPIDevice )
                 {
                     m_pFactory->DestroyDevice( &m_pAPIDevice );
@@ -55,59 +54,6 @@ namespace BIGOS
                 m_pParent  = nullptr;
                 m_pFactory = nullptr;
             }
-
-            RESULT RenderDevice::CreateQueues( QueueDesc* descs, uint32_t descCount )
-            {
-                BGS_ASSERT( descs != nullptr, "" );
-                BGS_ASSERT( descCount != 0, "" );
-                BGS_ASSERT( m_pAPIDevice != nullptr, "" );
-
-                const index_t qCnt = static_cast<index_t>( descCount );
-                for( index_t ndx = 0; ndx < qCnt; ++ndx )
-                {
-                    const QueueDesc& desc   = descs[ ndx ];
-                    Backend::IQueue* pQueue = nullptr;
-                    if( BGS_FAILED( m_pAPIDevice->CreateQueue( desc, &pQueue ) ) )
-                    {
-                        // TODO: LOg which creation failed
-                        return Results::FAIL;
-                    }
-
-                    if( desc.type == Backend::QueueTypes::GRAPHICS )
-                    {
-                        m_graphicsQueues.push_back( pQueue );
-                    }
-                    else if( desc.type == Backend::QueueTypes::COMPUTE )
-                    {
-                        m_computeQueues.push_back( pQueue );
-                    }
-                    else // desc.type == Backend::QueueTypes::COPY
-                    {
-                        m_copyQueues.push_back( pQueue );
-                    }
-                }
-
-                return Results::OK;
-            }
-
-            void RenderDevice::DestroyQueues()
-            {
-                for( index_t ndx = 0; ndx < m_graphicsQueues.size(); ++ndx )
-                {
-                    m_pAPIDevice->DestroyQueue( &m_graphicsQueues[ ndx ] );
-                }
-
-                for( index_t ndx = 0; ndx < m_computeQueues.size(); ++ndx )
-                {
-                    m_pAPIDevice->DestroyQueue( &m_computeQueues[ ndx ] );
-                }
-
-                for( index_t ndx = 0; ndx < m_copyQueues.size(); ++ndx )
-                {
-                    m_pAPIDevice->DestroyQueue( &m_copyQueues[ ndx ] );
-                }
-            }
-
         } // namespace Frontend
     }     // namespace Driver
 } // namespace BIGOS

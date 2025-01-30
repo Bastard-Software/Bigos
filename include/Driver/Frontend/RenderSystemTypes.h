@@ -30,10 +30,7 @@ namespace BIGOS
 
             using AdapterArray      = Backend::AdapterArray;
             using RenderDeviceArray = HeapArray<RenderDevice*>; // Framework allows to create only one device for each adapter
-            using QueueArray        = HeapArray<Backend::IQueue*>;
             using CameraArray       = HeapArray<Camera*>;
-
-            using QueueDesc = Backend::QueueDesc;
 
             enum class AdapterTypes : uint8_t
             {
