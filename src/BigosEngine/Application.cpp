@@ -6,6 +6,8 @@
 #include "Platform/Event/EventSystem.h"
 #include "Platform/Window.h"
 #include "Platform/WindowSystem.h"
+#include "Driver/Frontend/RenderSystem.h"
+#include "Driver/Frontend/RenderDevice.h"
 
 namespace BIGOS
 {
@@ -18,6 +20,8 @@ namespace BIGOS
         , m_pWindow( nullptr )
         , m_windowCloseHandler( [ this ]( const Platform::Event::WindowCloseEvent& e ) { OnWindowClose( e ); } )
         , m_lastFrameTime( 0.0f )
+        , m_pDefaultDevice( nullptr )
+        , m_pGraphicsCtx( nullptr )
     {
     }
 
@@ -75,6 +79,11 @@ namespace BIGOS
         }
 
         s_pFramework->GetEventSystem()->Subscribe( &m_windowCloseHandler );
+
+        Driver::Frontend::RenderDeviceDesc devDesc;
+        devDesc.adapter.index = 0;
+        s_pFramework->GetRenderSystem()->CreateDevice( devDesc, &m_pDefaultDevice );
+        m_pGraphicsCtx = m_pDefaultDevice->GetGraphicsContext();
 
         return Results::OK;
     }

@@ -30,6 +30,7 @@ namespace BIGOS
                 Memory::IAllocator* GetDefaultAllocator() { return m_pDefaultAllocator; }
                 Backend::IFactory*  GetFactory() { return m_pFactory; }
                 IShaderCompiler*    GetDefaultCompiler() { return m_pCompiler; }
+                RenderDevice*       GetDevaultDevice() { return m_devices[ 0 ]; }
 
                 const RenderDeviceArray& GetDevices() const { return m_devices; }
                 const AdapterArray&      GetAdapters() const { return m_adapters; }

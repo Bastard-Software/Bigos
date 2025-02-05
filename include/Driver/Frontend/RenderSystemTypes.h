@@ -25,6 +25,9 @@ namespace BIGOS
             class Camera;
             class RenderSystem;
             class RenderDevice;
+            class GraphicsContext;
+            class ComputeContext;
+            class CopyContext;
             class IShaderCompiler;
             class ShaderCompilerFactory;
 
