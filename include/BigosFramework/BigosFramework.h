@@ -53,7 +53,7 @@ namespace BIGOS
         void   DestroyInputSystem( Platform::Input::InputSystem** ppSystem );
 
         Core::Memory::MemorySystem*     GetMemorySystem() { return &m_memorySystem; }
-        Driver::Frontend::RenderSystem* GetDriverSystem() { return m_pRenderSystem; }
+        Driver::Frontend::RenderSystem* GetRenderSystem() { return m_pRenderSystem; }
         Platform::WindowSystem*         GetWindowSystem() { return m_pWindowSystem; }
         Platform::Event::EventSystem*   GetEventSystem() { return m_pEventSystem; }
         Platform::Input::InputSystem*   GetInputSystem() { return m_pInputSystem; }

@@ -45,6 +45,9 @@ namespace BIGOS
         bool_t            m_running;
         float             m_lastFrameTime;
 
+        Driver::Frontend::RenderDevice*    m_pDefaultDevice;
+        Driver::Frontend::GraphicsContext* m_pGraphicsCtx;
+
     private:
         static Application*    s_pInstance;
         static BigosFramework* s_pFramework;

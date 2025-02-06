@@ -14,6 +14,13 @@ namespace BIGOS
                 friend class RenderSystem;
 
             public:
+                RenderDevice();
+                ~RenderDevice() = default;
+
+                GraphicsContext* GetGraphicsContext() { return m_pGraphicsContext; }
+                ComputeContext*  GetComputeContext() { return m_pComputeContext; }
+                CopyContext*     GetCopyContext() { return m_pCopyContext; }
+
                 Backend::IDevice* GetNativeAPIDevice() { return m_pAPIDevice; }
 
             protected:
@@ -21,12 +28,19 @@ namespace BIGOS
                 void   Destroy();
 
             private:
+                RESULT CreateContexts();
+                void   DestroyContexts();
+
+            private:
                 RenderDeviceDesc   m_desc;
-                Backend::IFactory* m_pFactory   = nullptr;
-                RenderSystem*      m_pParent    = nullptr;
-                Backend::IDevice*  m_pAPIDevice = nullptr;
+                Backend::IFactory* m_pFactory;
+                RenderSystem*      m_pParent;
+                Backend::IDevice*  m_pAPIDevice;
+                GraphicsContext*   m_pGraphicsContext;
+                ComputeContext*    m_pComputeContext;
+                CopyContext*       m_pCopyContext;
             };
 
         } // namespace Frontend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS
