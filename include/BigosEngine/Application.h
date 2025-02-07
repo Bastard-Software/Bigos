@@ -3,6 +3,7 @@
 #include "BigosEngine/BigosTypes.h"
 
 #include "BigosEngine/LayerStack.h"
+#include "BigosEngine/Renderer/Renderer.h"
 #include "BigosFramework/BigosFramework.h"
 #include "Platform/Event/ApplicationEvent.h"
 #include "Platform/Event/EventHandler.h"
@@ -23,6 +24,8 @@ namespace BIGOS
 
         void PushLayer( Layer* pLayer );
         void PushOverlay( Layer* pLayer );
+
+        const Renderer& GetRenderer() { return m_renderer; }
 
         static Application&    Get() { return *s_pInstance; }
         static BigosFramework& GetFramework() { return *s_pFramework; }
@@ -45,8 +48,7 @@ namespace BIGOS
         bool_t            m_running;
         float             m_lastFrameTime;
 
-        Driver::Frontend::RenderDevice*    m_pDefaultDevice;
-        Driver::Frontend::GraphicsContext* m_pGraphicsCtx;
+        Renderer m_renderer;
 
     private:
         static Application*    s_pInstance;

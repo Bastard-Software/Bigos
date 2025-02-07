@@ -17,6 +17,9 @@ namespace BIGOS
                 RenderDevice();
                 ~RenderDevice() = default;
 
+                RESULT CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget );
+                void   DestroyRenderTarget( RenderTarget** ppRenderTarget );
+
                 GraphicsContext* GetGraphicsContext() { return m_pGraphicsContext; }
                 ComputeContext*  GetComputeContext() { return m_pComputeContext; }
                 CopyContext*     GetCopyContext() { return m_pCopyContext; }
