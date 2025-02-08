@@ -6,7 +6,7 @@
 #include "Platform/Event/EventSystem.h"
 #include "Platform/Window.h"
 #include "Platform/WindowSystem.h"
-#include "Driver/Frontend/RenderSystem.h"
+
 #include "Driver/Frontend/RenderDevice.h"
 
 namespace BIGOS
@@ -20,8 +20,7 @@ namespace BIGOS
         , m_pWindow( nullptr )
         , m_windowCloseHandler( [ this ]( const Platform::Event::WindowCloseEvent& e ) { OnWindowClose( e ); } )
         , m_lastFrameTime( 0.0f )
-        , m_pDefaultDevice( nullptr )
-        , m_pGraphicsCtx( nullptr )
+        , m_renderer()
     {
     }
 
@@ -73,23 +72,21 @@ namespace BIGOS
         }
         m_pWindow->Show();
 
-        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::VULKAN ) ) )
+        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::D3D12 ) ) )
         {
             return Results::FAIL;
         }
 
         s_pFramework->GetEventSystem()->Subscribe( &m_windowCloseHandler );
 
-        Driver::Frontend::RenderDeviceDesc devDesc;
-        devDesc.adapter.index = 0;
-        s_pFramework->GetRenderSystem()->CreateDevice( devDesc, &m_pDefaultDevice );
-        m_pGraphicsCtx = m_pDefaultDevice->GetGraphicsContext();
+        m_renderer.Create( s_pFramework->GetRenderSystem() );
 
         return Results::OK;
     }
 
     void Application::Destroy()
     {
+        m_renderer.Destroy();
         DestroyBigosFramework( &s_pFramework );
     }
 

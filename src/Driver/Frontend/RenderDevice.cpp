@@ -4,6 +4,7 @@
 #include "Core/Memory/Memory.h"
 #include "Driver/Frontend/Contexts.h"
 #include "Driver/Frontend/RenderSystem.h"
+#include "Driver/Frontend/RenderTarget.h"
 
 namespace BIGOS
 {
@@ -20,6 +21,37 @@ namespace BIGOS
                 , m_pComputeContext( nullptr )
                 , m_pCopyContext( nullptr )
             {
+            }
+
+            RESULT RenderDevice::CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget )
+            {
+                BGS_ASSERT( ppRenderTarget != nullptr, "ppRenderTarget must be a valid address." );
+
+                Memory::IAllocator* pAllocator    = m_pParent->GetDefaultAllocator();
+                RenderTarget*       pRenderTarget = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pRenderTarget ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pRenderTarget->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pRenderTarget );
+                    return Results::FAIL;
+                }
+
+                ( *ppRenderTarget ) = pRenderTarget;
+
+                return Results::OK;
+            }
+
+            void RenderDevice::DestroyRenderTarget( RenderTarget** ppRenderTarget )
+            {
+                BGS_ASSERT( ppRenderTarget != nullptr, "ppRenderTarget must be a valid address." );
+
+                RenderTarget* pRenderTarget = ( *ppRenderTarget );
+                pRenderTarget->Destroy();
+                Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pRenderTarget );
             }
 
             RESULT RenderDevice::Create( const RenderDeviceDesc& desc, Backend::IFactory* pFactory, RenderSystem* pDriverSystem )

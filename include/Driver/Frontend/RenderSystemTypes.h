@@ -28,6 +28,7 @@ namespace BIGOS
             class GraphicsContext;
             class ComputeContext;
             class CopyContext;
+            class RenderTarget;
             class IShaderCompiler;
             class ShaderCompilerFactory;
 
@@ -150,13 +151,16 @@ namespace BIGOS
                     const char*  pText = nullptr;
                     */
                 } adapter;
-                /* TODO: Expose to framework, for now we create all three type of queues
-                struct
-                {
-                    QueueDesc* pQueueDescs;
-                    uint32_t   queueCount;
-                } queue;
-                */
+            };
+
+            struct RenderTargetDesc
+            {
+                Backend::FORMAT       format;
+                uint32_t              width;
+                uint32_t              height;
+                Backend::SAMPLE_COUNT sampleCount;
+                bool_t                allowSampling;
+                bool_t                allowCopying;
             };
 
         } // namespace Frontend
