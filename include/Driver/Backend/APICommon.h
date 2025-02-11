@@ -176,7 +176,7 @@ namespace BIGOS::Driver::Backend
             BGS_FALSE, // R16_UNORM
             BGS_FALSE, // R16_SNORM
             BGS_FALSE, // R16_FLOAT
-            BGS_FALSE, // D16_UNORM
+            BGS_TRUE,  // D16_UNORM
             BGS_FALSE, // R8G8_UINT
             BGS_FALSE, // R8G8_SINT
             BGS_FALSE, // R8G8_UNORM

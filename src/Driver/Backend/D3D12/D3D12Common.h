@@ -15,6 +15,8 @@ namespace BIGOS
             D3D12_PRIMITIVE_TOPOLOGY_TYPE      MapBigosPrimitiveTopologyToD3D12PrimitiveTopologyType( PRIMITIVE_TOPOLOGY topo );
             D3D12_INPUT_CLASSIFICATION         MapBigosInputStepRateToD3D12InputClassification( INPUT_STEP_RATE rate );
             DXGI_FORMAT                        MapBigosFormatToD3D12Format( FORMAT format );
+            DXGI_FORMAT                        MapBigosDepthFormatToD3D12TypelessFormat( FORMAT format );
+            DXGI_FORMAT                        MapBigosDepthFormatToD3D12SRVFormat( FORMAT format );
             D3D12_INDEX_BUFFER_STRIP_CUT_VALUE MapBigosIndexRestartValueToD3D12IndexBufferStripCutValue( INDEX_RESTART_VALUE val );
             D3D12_FILL_MODE                    MapBigosPolygonFillModeToD3D12FillModes( POLYGON_FILL_MODE mode );
             D3D12_CULL_MODE                    MapBigosCullModeToD3D12CullMode( CULL_MODE mode );

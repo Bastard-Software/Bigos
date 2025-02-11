@@ -649,6 +649,10 @@ namespace BIGOS
                     return Results::NO_MEMORY;
                 }
 
+                DXGI_FORMAT format = ( IsDepthFormat( desc.format ) || IsDepthStencilFormat( desc.format ) )
+                                         ? MapBigosDepthFormatToD3D12TypelessFormat( desc.format )
+                                         : MapBigosFormatToD3D12Format( desc.format );
+
                 D3D12_RESOURCE_DESC& nativeDesc = pResource->desc;
                 nativeDesc.Dimension            = MapBigosResourceTypeToD3D12ResourceDimension( desc.resourceType );
                 nativeDesc.Alignment            = 0; // TODO: Rethik
@@ -657,7 +661,7 @@ namespace BIGOS
                 nativeDesc.DepthOrArraySize     = desc.resourceType == ResourceTypes::TEXTURE_3D ? static_cast<uint16_t>( desc.size.depth )
                                                                                                  : static_cast<uint16_t>( desc.arrayLayerCount );
                 nativeDesc.MipLevels            = static_cast<uint16_t>( desc.mipLevelCount );
-                nativeDesc.Format               = MapBigosFormatToD3D12Format( desc.format );
+                nativeDesc.Format               = format;
                 nativeDesc.SampleDesc.Count     = MapBigosSampleCountToD3D12Uint( desc.sampleCount );
                 nativeDesc.SampleDesc.Quality   = 0; // TODO: Handle (same for pipeline state)
                 // In most case it is the best solution. Textures can be created with D3D12_TEXTURE_LAYOUT_ROW_MAJOR
@@ -1658,6 +1662,8 @@ namespace BIGOS
 
             uint32_t D3D12Device::CreateD3D12RTV( const TextureViewDesc& desc )
             {
+                bool isMS = desc.hResource.GetNativeHandle()->desc.SampleDesc.Count > 1;
+
                 D3D12_RENDER_TARGET_VIEW_DESC viewDesc;
                 viewDesc.Format = MapBigosFormatToD3D12Format( desc.format );
 
@@ -1680,14 +1686,14 @@ namespace BIGOS
                     }
                     case TextureTypes::TEXTURE_2D:
                     {
-                        viewDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
+                        viewDesc.ViewDimension        = isMS ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
                         viewDesc.Texture2D.MipSlice   = desc.range.mipLevel;
                         viewDesc.Texture2D.PlaneSlice = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
                         break;
                     }
                     case TextureTypes::TEXTURE_2D_ARRAY:
                     {
-                        viewDesc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                        viewDesc.ViewDimension                  = isMS ? D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
                         viewDesc.Texture2DArray.MipSlice        = desc.range.mipLevel;
                         viewDesc.Texture2DArray.PlaneSlice      = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
                         viewDesc.Texture2DArray.FirstArraySlice = desc.range.arrayLayer;
@@ -1797,13 +1803,15 @@ namespace BIGOS
 
             uint32_t D3D12Device::CreateD3D12SRV( const TextureViewDesc& desc )
             {
+                bool isMS            = desc.hResource.GetNativeHandle()->desc.SampleDesc.Count > 1;
+                bool swapDepthFormat = IsDepthFormat( desc.format );
+
                 D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc;
-                viewDesc.Format                  = MapBigosFormatToD3D12Format( desc.format );
+                viewDesc.Format = swapDepthFormat ? MapBigosDepthFormatToD3D12SRVFormat( desc.format ) : MapBigosFormatToD3D12Format( desc.format );
                 viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
                 switch( desc.textureType )
                 {
-                    // TODO: Does vulkan support buffer render target?
                     case TextureTypes::TEXTURE_1D:
                     {
                         viewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE1D;
@@ -1824,19 +1832,20 @@ namespace BIGOS
                     }
                     case TextureTypes::TEXTURE_2D:
                     {
-                        viewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-                        viewDesc.Texture2D.MostDetailedMip     = desc.range.mipLevel;
-                        viewDesc.Texture2D.MipLevels           = desc.range.mipLevelCount;
-                        viewDesc.Texture2D.PlaneSlice          = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        viewDesc.ViewDimension             = isMS ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D;
+                        viewDesc.Texture2D.MostDetailedMip = desc.range.mipLevel;
+                        viewDesc.Texture2D.MipLevels       = desc.range.mipLevelCount;
+                        viewDesc.Texture2D.PlaneSlice = swapDepthFormat ? 0 : MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
                         viewDesc.Texture2D.ResourceMinLODClamp = 0.0f;
                         break;
                     }
                     case TextureTypes::TEXTURE_2D_ARRAY:
                     {
-                        viewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                        viewDesc.Texture2DArray.MostDetailedMip     = desc.range.mipLevel;
-                        viewDesc.Texture2DArray.MipLevels           = desc.range.mipLevelCount;
-                        viewDesc.Texture2DArray.PlaneSlice          = MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
+                        viewDesc.ViewDimension                  = isMS ? D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                        viewDesc.Texture2DArray.MostDetailedMip = desc.range.mipLevel;
+                        viewDesc.Texture2DArray.MipLevels       = desc.range.mipLevelCount;
+                        viewDesc.Texture2DArray.PlaneSlice =
+                            swapDepthFormat ? 0 : MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.range.components );
                         viewDesc.Texture2DArray.FirstArraySlice     = desc.range.arrayLayer;
                         viewDesc.Texture2DArray.ArraySize           = desc.range.arrayLayerCount;
                         viewDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
@@ -2070,5 +2079,5 @@ namespace BIGOS
             }
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS
