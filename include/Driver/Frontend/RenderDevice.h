@@ -17,6 +17,9 @@ namespace BIGOS
                 RenderDevice();
                 ~RenderDevice() = default;
 
+                RESULT CreateBuffer( const BufferDesc& desc, Buffer** ppBuffer );
+                void   DestroyBuffer( Buffer** ppBuffer );
+
                 RESULT CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget );
                 void   DestroyRenderTarget( RenderTarget** ppRenderTarget );
 

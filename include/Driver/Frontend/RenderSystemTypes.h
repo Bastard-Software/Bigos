@@ -11,7 +11,6 @@ namespace BIGOS
 
     namespace Driver
     {
-
         namespace Backend
         {
 
@@ -29,6 +28,7 @@ namespace BIGOS
             class ComputeContext;
             class CopyContext;
             class RenderTarget;
+            class Buffer;
             class IShaderCompiler;
             class ShaderCompilerFactory;
 
@@ -161,6 +161,12 @@ namespace BIGOS
                 Backend::SAMPLE_COUNT sampleCount;
                 bool_t                allowSampling;
                 bool_t                allowCopying;
+            };
+
+            struct BufferDesc
+            {
+                uint32_t                    size;
+                Backend::ResourceUsageFlags usage;
             };
 
         } // namespace Frontend
