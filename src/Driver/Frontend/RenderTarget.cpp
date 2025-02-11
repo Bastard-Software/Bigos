@@ -27,7 +27,7 @@ namespace BIGOS
                 m_desc                       = desc;
                 Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
 
-                const bool_t isDepthStencil = Backend::IsDepthStencilFormat( m_desc.format );
+                const bool isDepthStencil = Backend::IsDepthStencilFormat( m_desc.format ) || Backend::IsDepthFormat( m_desc.format );
 
                 m_targetDesc.format          = m_desc.format;
                 m_targetDesc.size.width      = m_desc.width;
