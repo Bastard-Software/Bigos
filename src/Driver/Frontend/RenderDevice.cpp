@@ -2,6 +2,7 @@
 
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
+#include "Driver/Frontend/Buffer.h"
 #include "Driver/Frontend/Contexts.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/RenderTarget.h"
@@ -23,9 +24,40 @@ namespace BIGOS
             {
             }
 
+            RESULT RenderDevice::CreateBuffer( const BufferDesc& desc, Buffer** ppBuffer )
+            {
+                BGS_ASSERT( ppBuffer != nullptr, "Buffer (ppBuffer) must be a valid address." );
+
+                Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
+                Buffer*             pBuffer    = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pBuffer ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pBuffer->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pBuffer );
+                    return Results::FAIL;
+                }
+
+                ( *ppBuffer ) = pBuffer;
+
+                return Results::OK;
+            }
+
+            void RenderDevice::DestroyBuffer( Buffer** ppBuffer )
+            {
+                BGS_ASSERT( ppBuffer != nullptr, "Buffer (ppBuffer) must be a valid address." );
+
+                Buffer* pBuffer = ( *ppBuffer );
+                pBuffer->Destroy();
+                Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pBuffer );
+            }
+
             RESULT RenderDevice::CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget )
             {
-                BGS_ASSERT( ppRenderTarget != nullptr, "ppRenderTarget must be a valid address." );
+                BGS_ASSERT( ppRenderTarget != nullptr, "Render target (ppRenderTarget) must be a valid address." );
 
                 Memory::IAllocator* pAllocator    = m_pParent->GetDefaultAllocator();
                 RenderTarget*       pRenderTarget = nullptr;
@@ -47,7 +79,7 @@ namespace BIGOS
 
             void RenderDevice::DestroyRenderTarget( RenderTarget** ppRenderTarget )
             {
-                BGS_ASSERT( ppRenderTarget != nullptr, "ppRenderTarget must be a valid address." );
+                BGS_ASSERT( ppRenderTarget != nullptr, "Render target (ppRenderTarget) must be a valid address." );
 
                 RenderTarget* pRenderTarget = ( *ppRenderTarget );
                 pRenderTarget->Destroy();

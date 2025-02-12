@@ -1,7 +1,6 @@
 #pragma once
 
 #include "BigosEngine/BigosTypes.h"
-
 #include "Driver/Frontend/RenderSystemTypes.h"
 
 namespace BIGOS
@@ -15,7 +14,7 @@ namespace BIGOS
         ~Renderer() = default;
 
     protected:
-        RESULT Create(Driver::Frontend::RenderSystem* pSystem);
+        RESULT Create( Driver::Frontend::RenderSystem* pSystem );
         void   Destroy();
 
     private:
@@ -23,5 +22,9 @@ namespace BIGOS
         Driver::Frontend::RenderDevice* m_pDevice;
         Driver::Frontend::RenderTarget* m_pColorRT;
         Driver::Frontend::RenderTarget* m_pDepthRT;
+        Driver::Frontend::Buffer*       m_pVertexBuffer;
+        Driver::Frontend::Buffer*       m_pIndexBuffer;
+        Driver::Frontend::Buffer*       m_pConstantBuffer;
+        Driver::Frontend::Buffer*       m_pStorageBuffer;
     };
 } // namespace BIGOS
