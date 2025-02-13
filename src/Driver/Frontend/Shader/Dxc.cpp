@@ -600,10 +600,11 @@ namespace BIGOS
                     pReflection->GetInputParameterDesc( static_cast<uint32_t>( ndx ), &inputDesc );
 
                     ShaderInputBindingInfo binding;
-                    String                 semName = ( inputDesc.SemanticName + inputDesc.SemanticIndex );
-                    binding.location               = inputDesc.Register;
-                    binding.type                   = MapDXILTypeToBigosShaderInputBaseDataType( inputDesc.ComponentType );
-                    binding.componentCount         = GetComponentCountFromDXILMask( inputDesc.Mask );
+                    String                 semName = ( inputDesc.SemanticName );
+                    semName += inputDesc.SemanticIndex ? std::to_string( inputDesc.SemanticIndex ) : "";
+                    binding.location       = inputDesc.Register;
+                    binding.type           = MapDXILTypeToBigosShaderInputBaseDataType( inputDesc.ComponentType );
+                    binding.componentCount = GetComponentCountFromDXILMask( inputDesc.Mask );
                     Core::Utils::String::Copy( binding.pSemanticName, semName.length() + 1, semName.c_str() );
 
                     bindingArray.push_back( binding );
