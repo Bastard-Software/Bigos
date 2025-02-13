@@ -17,7 +17,7 @@ endif()
 
 # setting flags
 if(MSVC)
-    add_definitions("/MP /W4 /WX")
+    add_definitions("/MP /W4") # /WX
     add_definitions("/std:c++latest")
     add_definitions("-DBGS_VISUAL_STUDIO")
 

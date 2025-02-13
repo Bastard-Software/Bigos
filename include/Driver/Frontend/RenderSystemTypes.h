@@ -117,16 +117,49 @@ namespace BIGOS
                 const wchar_t* const* ppArgs;
                 uint32_t              argCount;
                 bool_t                compileDebug;
+                bool_t                reflect;
                 Backend::SHADER_TYPE  type;
                 SHADER_MODEL          model;
                 SHADER_FORMAT         outputFormat;
             };
 
+            struct ShaderBindingInfo
+            {
+                char                  pName[ Config::Driver::Shader::MAX_SHADER_BINDING_NAME_LENGHT ];
+                uint32_t              baseBindingSlot;
+                uint32_t              baseShaderRegister;
+                uint32_t              set;
+                Backend::BINDING_TYPE type;
+            };
+            using ShaderBindingArray = HeapArray<ShaderBindingInfo>;
+
+            enum class ShaderInputBaseTypes : uint8_t
+            {
+                UNKNOWN,
+                FLOAT,
+                INT,
+                UINT,
+                _MAX_ENUM
+            };
+            using SHADER_INPUT_BASE_TYPE = ShaderInputBaseTypes;
+
+            struct ShaderInputBindingInfo
+            {
+                char                   pSemanticName[ Config::Driver::Shader::MAX_SHADER_BINDING_NAME_LENGHT ];
+                uint32_t               location;
+                uint32_t               componentCount;
+                SHADER_INPUT_BASE_TYPE type;
+            };
+            using ShaderInputBindingArray = HeapArray<ShaderInputBindingInfo>;
+
             struct ShaderCompilerOutput
             {
-                byte_t*  pByteCode;
-                uint32_t byteCodeSize;
-                // TODO: Add more if needed
+                byte_t*                 pByteCode;
+                ShaderBindingInfo*      pBindings;
+                ShaderInputBindingInfo* pInputBindings;
+                uint32_t                byteCodeSize;
+                uint32_t                bindingCount;
+                uint32_t                inputBindingCount;
             };
 
             struct RenderSystemDesc

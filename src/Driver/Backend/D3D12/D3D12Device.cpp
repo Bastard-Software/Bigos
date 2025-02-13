@@ -2013,7 +2013,7 @@ namespace BIGOS
                 D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc;
                 viewDesc.Format                      = MapBigosFormatToD3D12Format( desc.format );
                 viewDesc.ViewDimension               = D3D12_UAV_DIMENSION_BUFFER;
-                viewDesc.Buffer.Flags                = D3D12_BUFFER_UAV_FLAG_RAW;
+                viewDesc.Buffer.Flags                = D3D12_BUFFER_UAV_FLAG_NONE;
                 viewDesc.Buffer.CounterOffsetInBytes = 0;
                 viewDesc.Buffer.StructureByteStride  = 0;
                 viewDesc.Buffer.FirstElement         = desc.range.offset / GetBigosFormatSize( desc.format );
