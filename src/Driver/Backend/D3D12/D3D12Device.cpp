@@ -27,6 +27,31 @@ namespace BIGOS
     {
         namespace Backend
         {
+            static const uint32_t GetSemanticNdx( const char* pSemanticName )
+            {
+                BGS_ASSERT( pSemanticName != nullptr );
+
+                const char* ptr = pSemanticName;
+                while( *ptr )
+                    ptr++;
+                ptr--;
+
+                if( !isdigit( *ptr ) )
+                    return 0;
+
+                int result     = 0;
+                int multiplier = 1;
+
+                while( ptr >= pSemanticName && isdigit( *ptr ) )
+                {
+                    result += ( *ptr - '0' ) * multiplier;
+                    multiplier *= 10;
+                    ptr--;
+                }
+
+                return result;
+            }
+
             RESULT D3D12Device::CreateQueue( const QueueDesc& desc, IQueue** ppQueue )
             {
                 BGS_ASSERT( ppQueue != nullptr, "Queue (ppQueue) must be a valid address." );
@@ -1372,7 +1397,7 @@ namespace BIGOS
 
                     D3D12_INPUT_ELEMENT_DESC& currElem = elemDescs[ ndx ];
                     currElem.SemanticName              = currDesc.pSemanticName;
-                    currElem.SemanticIndex             = 0; // TODO: Handle
+                    currElem.SemanticIndex             = GetSemanticNdx( currDesc.pSemanticName );
                     currElem.InputSlot                 = currDesc.binding;
                     currElem.Format                    = MapBigosFormatToD3D12Format( currDesc.format );
                     currElem.AlignedByteOffset         = currDesc.offset;
