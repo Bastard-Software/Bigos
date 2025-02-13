@@ -48,6 +48,7 @@ COMMAND ${CMAKE_COMMAND} -E copy
 target_include_directories(Driver PRIVATE 
     ${THIRD_PARTY_DIR}/vulkan/include
     ${THIRD_PARTY_DIR}/volk
+    ${THIRD_PARTY_DIR}/SPIRV-Cross/include
     ${THIRD_PARTY_DIR}/DXCompiler/include
     ${THIRD_PARTY_DIR}/D3D12/build/native/include
     ${THIRD_PARTY_DIR}/glm
@@ -59,6 +60,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     dxguid
     volk
     setupapi
+    spirv-cross-core
+    spirv-cross-reflect
 )
 
 include ("${ROOT_DIR}/CMakeScripts/TargetProperties.cmake" NO_POLICY_SCOPE)

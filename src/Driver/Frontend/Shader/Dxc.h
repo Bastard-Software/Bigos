@@ -28,6 +28,13 @@ namespace BIGOS
                 void   Destroy();
 
             private:
+                ShaderBindingArray GetDXILReflection( IDxcResult* pRes );
+                ShaderBindingArray GetSPIRVReflection( void* pSrc, uint32_t srcSize );
+
+                ShaderInputBindingArray GetDXILInputReflection( IDxcResult* pRes );
+                ShaderInputBindingArray GetSPIRVInputReflection( void* pSrc, uint32_t srcSize );
+
+            private:
                 ShaderCompilerFactory* m_pParent;
                 IDxcUtils*             m_pUtils;
                 IDxcCompiler3*         m_pCompiler;
@@ -35,5 +42,5 @@ namespace BIGOS
                 // TODO:
             };
         } // namespace Frontend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

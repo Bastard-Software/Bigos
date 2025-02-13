@@ -34,4 +34,5 @@ add_subdirectory(${ROOT_DIR}/Sandbox)
 
 if(BGS_VULKAN_API)
     add_subdirectory(${THIRD_PARTY_DIR}/volk)
+    add_subdirectory(${THIRD_PARTY_DIR}/SPIRV-Cross)
 endif()
