@@ -33,6 +33,7 @@ namespace BIGOS
                 Backend::ResourceViewHandle m_hReadAccess;
                 Backend::ResourceViewHandle m_hReadWriteAccess;
             };
+
         } // namespace Frontend
     } // namespace Driver
 } // namespace BIGOS

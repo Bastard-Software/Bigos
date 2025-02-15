@@ -6,6 +6,7 @@
 #include "Driver/Frontend/Contexts.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/RenderTarget.h"
+#include "Driver/Frontend/Shader/Shader.h"
 
 namespace BIGOS
 {
@@ -84,6 +85,37 @@ namespace BIGOS
                 RenderTarget* pRenderTarget = ( *ppRenderTarget );
                 pRenderTarget->Destroy();
                 Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pRenderTarget );
+            }
+
+            RESULT RenderDevice::CreateShader( const ShaderDesc& desc, Shader** ppShader )
+            {
+                BGS_ASSERT( ppShader != nullptr, "Shader (ppShader) must be a valid address." );
+
+                Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
+                Shader*             pShader    = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pShader ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pShader->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pShader );
+                    return Results::FAIL;
+                }
+
+                ( *ppShader ) = pShader;
+
+                return Results::OK;
+            }
+
+            void RenderDevice::DestroyShader( Shader** ppShader )
+            {
+                BGS_ASSERT( ppShader != nullptr, "Shader (ppShader) must be a valid address." );
+
+                Shader* pShader = ( *ppShader );
+                pShader->Destroy();
+                Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pShader );
             }
 
             RESULT RenderDevice::Create( const RenderDeviceDesc& desc, Backend::IFactory* pFactory, RenderSystem* pDriverSystem )
