@@ -26,5 +26,7 @@ namespace BIGOS
         Driver::Frontend::Buffer*       m_pIndexBuffer;
         Driver::Frontend::Buffer*       m_pConstantBuffer;
         Driver::Frontend::Buffer*       m_pStorageBuffer;
+        Driver::Frontend::Shader*       m_pVS;
+        Driver::Frontend::Shader*       m_pPS;
     };
 } // namespace BIGOS

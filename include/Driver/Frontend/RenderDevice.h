@@ -23,11 +23,15 @@ namespace BIGOS
                 RESULT CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget );
                 void   DestroyRenderTarget( RenderTarget** ppRenderTarget );
 
+                RESULT CreateShader( const ShaderDesc& desc, Shader** ppShader );
+                void   DestroyShader( Shader** ppShader );
+
                 GraphicsContext* GetGraphicsContext() { return m_pGraphicsContext; }
                 ComputeContext*  GetComputeContext() { return m_pComputeContext; }
                 CopyContext*     GetCopyContext() { return m_pCopyContext; }
 
                 Backend::IDevice* GetNativeAPIDevice() { return m_pAPIDevice; }
+                RenderSystem*     GetParent() { return m_pParent; }
 
             protected:
                 RESULT Create( const RenderDeviceDesc& desc, Backend::IFactory* pFactory, RenderSystem* pDriverSystem );

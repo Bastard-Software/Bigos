@@ -29,6 +29,7 @@ namespace BIGOS
             class CopyContext;
             class RenderTarget;
             class Buffer;
+            class Shader;
             class IShaderCompiler;
             class ShaderCompilerFactory;
 
@@ -200,6 +201,12 @@ namespace BIGOS
             {
                 uint32_t                    size;
                 Backend::ResourceUsageFlags usage;
+            };
+
+            struct ShaderDesc
+            {
+                ShaderSource         source;
+                Backend::SHADER_TYPE type;
             };
 
         } // namespace Frontend
