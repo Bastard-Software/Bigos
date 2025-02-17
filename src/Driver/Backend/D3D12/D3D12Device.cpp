@@ -1884,7 +1884,7 @@ namespace BIGOS
                         viewDesc.Texture3D.ResourceMinLODClamp = 0.0f;
                         break;
                     }
-                    case TextureTypes::TEXURTE_CUBE:
+                    case TextureTypes::TEXTURE_CUBE:
                     {
                         viewDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURECUBE;
                         viewDesc.TextureCube.MostDetailedMip     = desc.range.mipLevel;
@@ -1892,7 +1892,7 @@ namespace BIGOS
                         viewDesc.TextureCube.ResourceMinLODClamp = 0.0f;
                         break;
                     }
-                    case TextureTypes::TEXURTE_CUBE_ARRAY:
+                    case TextureTypes::TEXTURE_CUBE_ARRAY:
                     {
                         viewDesc.ViewDimension                        = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
                         viewDesc.TextureCubeArray.MostDetailedMip     = desc.range.mipLevel;

@@ -20,6 +20,9 @@ namespace BIGOS
                 RESULT CreateBuffer( const BufferDesc& desc, Buffer** ppBuffer );
                 void   DestroyBuffer( Buffer** ppBuffer );
 
+                RESULT CreateTexture( const TextureDesc& desc, Texture** ppTexture );
+                void   DestroyTexture( Texture** ppTexture );
+
                 RESULT CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget );
                 void   DestroyRenderTarget( RenderTarget** ppRenderTarget );
 

@@ -464,6 +464,7 @@ namespace BIGOS
                     D3D12_RESOURCE_DIMENSION_TEXTURE1D, // TEXTURE_1D
                     D3D12_RESOURCE_DIMENSION_TEXTURE2D, // TEXTURE_2D
                     D3D12_RESOURCE_DIMENSION_TEXTURE3D, // TEXTURE_3D
+                    D3D12_RESOURCE_DIMENSION_TEXTURE2D, // TEXTURE_CUBE
                 };
 
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
