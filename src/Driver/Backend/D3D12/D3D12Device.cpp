@@ -353,7 +353,9 @@ namespace BIGOS
                 }
 
                 D3D12_ROOT_SIGNATURE_DESC1 nativeDesc;
-                nativeDesc.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // Mimicking vulkan behaviour
+                nativeDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+                                   D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
+                                   D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED; // Mimicking vulkan behaviour
                 nativeDesc.NumParameters     = createEmpty ? 0 : rootParamCnt;
                 nativeDesc.pParameters       = createEmpty ? nullptr : rootParameters;
                 nativeDesc.NumStaticSamplers = 0;
