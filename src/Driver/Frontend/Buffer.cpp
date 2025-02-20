@@ -82,7 +82,7 @@ namespace BIGOS
                 buffDesc.sharingMode     = BIGOS::Driver::Backend::ResourceSharingModes::EXCLUSIVE_ACCESS;
                 if( BGS_FAILED( pAPIDevice->CreateResource( buffDesc, &m_hResource ) ) )
                 {
-                    return BIGOS::Results::FAIL;
+                    return Results::FAIL;
                 }
 
                 BIGOS::Driver::Backend::ResourceAllocationInfo allocInfo;

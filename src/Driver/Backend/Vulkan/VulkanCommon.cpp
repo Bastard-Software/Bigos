@@ -393,6 +393,7 @@ namespace BIGOS
                     VK_IMAGE_TYPE_1D,       // TEXTURE_1D
                     VK_IMAGE_TYPE_2D,       // TEXTURE_2D
                     VK_IMAGE_TYPE_3D,       // TEXTURE_3D
+                    VK_IMAGE_TYPE_2D,       // TEXTURE_3D
                 };
 
                 return translateTable[ BGS_ENUM_INDEX( type ) ];
@@ -702,5 +703,5 @@ namespace BIGOS
             }
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

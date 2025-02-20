@@ -14,6 +14,11 @@ namespace BIGOS
         , m_pIndexBuffer( nullptr )
         , m_pConstantBuffer( nullptr )
         , m_pStorageBuffer( nullptr )
+        , m_pVS( nullptr )
+        , m_pPS( nullptr )
+        , m_pSampledTexture( nullptr )
+        , m_pStorageTexture( nullptr )
+        , m_pSkyTexture( nullptr )
     {
     }
 
@@ -147,7 +152,7 @@ namespace BIGOS
         Driver::Frontend::ShaderDesc shaderDesc;
         shaderDesc.type               = Driver::Backend::ShaderTypes::VERTEX;
         shaderDesc.source.pSourceCode = hlslShader.c_str();
-        shaderDesc.source.sourceSize  = hlslShader.size();
+        shaderDesc.source.sourceSize  = static_cast<uint32_t>( hlslShader.size() );
         if( BGS_FAILED( m_pDevice->CreateShader( shaderDesc, &m_pVS ) ) )
         {
             Destroy();
@@ -155,6 +160,41 @@ namespace BIGOS
         }
         shaderDesc.type = Driver::Backend::ShaderTypes::PIXEL;
         if( BGS_FAILED( m_pDevice->CreateShader( shaderDesc, &m_pPS ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+
+        Driver::Frontend::TextureDesc texDesc;
+        texDesc.size            = { 16384, 1, 1 };
+        texDesc.format          = Driver::Backend::Formats::R32_UINT;
+        texDesc.mipLevelCount   = 1;
+        texDesc.arrayLayerCount = 1;
+        texDesc.sampleCount     = Driver::Backend::SampleCount::COUNT_1;
+        texDesc.type            = Driver::Frontend::TextureTypes::TEXTURE_1D;
+        texDesc.usage  = BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::STORAGE ) | BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::SAMPLED );
+        if( BGS_FAILED( m_pDevice->CreateTexture( texDesc, &m_pStorageTexture ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+        texDesc.size            = { 2048, 2048, 1 };
+        texDesc.format          = Driver::Backend::Formats::R8G8B8A8_UNORM;
+        texDesc.arrayLayerCount = 6;
+        texDesc.type            = Driver::Frontend::TextureTypes::TEXTURE_CUBE;
+        texDesc.usage           = BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::SAMPLED );
+        if( BGS_FAILED( m_pDevice->CreateTexture( texDesc, &m_pSkyTexture ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+        texDesc.size            = { 1024, 1024, 1 };
+        texDesc.format          = Driver::Backend::Formats::R32G32B32A32_FLOAT;
+        texDesc.mipLevelCount   = 4;
+        texDesc.arrayLayerCount = 16;
+        texDesc.sampleCount     = Driver::Backend::SampleCount::COUNT_1;
+        texDesc.type            = Driver::Frontend::TextureTypes::TEXTURE_2D;
+        if( BGS_FAILED( m_pDevice->CreateTexture( texDesc, &m_pSampledTexture ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -196,6 +236,18 @@ namespace BIGOS
         if( m_pPS != nullptr )
         {
             m_pDevice->DestroyShader( &m_pPS );
+        }
+        if( m_pSampledTexture != nullptr )
+        {
+            m_pDevice->DestroyTexture( &m_pSampledTexture );
+        }
+        if( m_pStorageTexture != nullptr )
+        {
+            m_pDevice->DestroyTexture( &m_pStorageTexture );
+        }
+        if( m_pSkyTexture != nullptr )
+        {
+            m_pDevice->DestroyTexture( &m_pSkyTexture );
         }
     }
 

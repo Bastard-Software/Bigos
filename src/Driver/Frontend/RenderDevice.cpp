@@ -7,6 +7,7 @@
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/RenderTarget.h"
 #include "Driver/Frontend/Shader/Shader.h"
+#include "Driver/Frontend/Texture.h"
 
 namespace BIGOS
 {
@@ -28,6 +29,7 @@ namespace BIGOS
             RESULT RenderDevice::CreateBuffer( const BufferDesc& desc, Buffer** ppBuffer )
             {
                 BGS_ASSERT( ppBuffer != nullptr, "Buffer (ppBuffer) must be a valid address." );
+                BGS_ASSERT( *ppBuffer == nullptr, "There is a valid pointer at the given address. Buffer (*ppBuffer) must be nullptr." );
 
                 Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
                 Buffer*             pBuffer    = nullptr;
@@ -50,15 +52,51 @@ namespace BIGOS
             void RenderDevice::DestroyBuffer( Buffer** ppBuffer )
             {
                 BGS_ASSERT( ppBuffer != nullptr, "Buffer (ppBuffer) must be a valid address." );
+                BGS_ASSERT( *ppBuffer != nullptr, "Buffer (*ppBuffer) must be a valid pointer." );
 
                 Buffer* pBuffer = ( *ppBuffer );
                 pBuffer->Destroy();
                 Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pBuffer );
             }
 
+            RESULT RenderDevice::CreateTexture( const TextureDesc& desc, Texture** ppTexture )
+            {
+                BGS_ASSERT( ppTexture != nullptr, "Texture (ppTexture) must be a valid address." );
+                BGS_ASSERT( *ppTexture == nullptr, "There is a valid pointer at the given address. Texture (*ppTExture) must be nullptr." );
+
+                Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
+                Texture*            pTexture   = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pTexture ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pTexture->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pTexture );
+                    return Results::FAIL;
+                }
+
+                ( *ppTexture ) = pTexture;
+
+                return Results::OK;
+            }
+
+            void RenderDevice::DestroyTexture( Texture** ppTexture )
+            {
+                BGS_ASSERT( ppTexture != nullptr, "Texture (ppTexture) must be a valid address." );
+                BGS_ASSERT( *ppTexture != nullptr, "Texture (*ppTexture) must be a valid pointer." );
+
+                Texture* pTexture = ( *ppTexture );
+                pTexture->Destroy();
+                Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pTexture );
+            }
+
             RESULT RenderDevice::CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget )
             {
                 BGS_ASSERT( ppRenderTarget != nullptr, "Render target (ppRenderTarget) must be a valid address." );
+                BGS_ASSERT( *ppRenderTarget == nullptr,
+                            "There is a valid pointer at the given address. Render target (*ppRenderTarget) must be nullptr." );
 
                 Memory::IAllocator* pAllocator    = m_pParent->GetDefaultAllocator();
                 RenderTarget*       pRenderTarget = nullptr;
@@ -81,6 +119,7 @@ namespace BIGOS
             void RenderDevice::DestroyRenderTarget( RenderTarget** ppRenderTarget )
             {
                 BGS_ASSERT( ppRenderTarget != nullptr, "Render target (ppRenderTarget) must be a valid address." );
+                BGS_ASSERT( *ppRenderTarget != nullptr, "Render target (*ppRenderTarget) must be a valid pointer." );
 
                 RenderTarget* pRenderTarget = ( *ppRenderTarget );
                 pRenderTarget->Destroy();
@@ -90,6 +129,7 @@ namespace BIGOS
             RESULT RenderDevice::CreateShader( const ShaderDesc& desc, Shader** ppShader )
             {
                 BGS_ASSERT( ppShader != nullptr, "Shader (ppShader) must be a valid address." );
+                BGS_ASSERT( *ppShader == nullptr, "There is a valid pointer at the given address. Shader (*ppShader) must be nullptr." );
 
                 Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
                 Shader*             pShader    = nullptr;
@@ -112,6 +152,7 @@ namespace BIGOS
             void RenderDevice::DestroyShader( Shader** ppShader )
             {
                 BGS_ASSERT( ppShader != nullptr, "Shader (ppShader) must be a valid address." );
+                BGS_ASSERT( *ppShader != nullptr, "Buffer (*ppShader) must be a valid pointer." );
 
                 Shader* pShader = ( *ppShader );
                 pShader->Destroy();

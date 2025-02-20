@@ -901,6 +901,7 @@ namespace BIGOS
                 TEXTURE_1D,
                 TEXTURE_2D,
                 TEXTURE_3D,
+                TEXTURE_CUBE,
                 _MAX_ENUM,
             };
             using RESOURCE_TYPE = ResourceTypes;
@@ -1019,8 +1020,8 @@ namespace BIGOS
                 TEXTURE_2D,
                 TEXTURE_2D_ARRAY,
                 TEXTURE_3D,
-                TEXURTE_CUBE,
-                TEXURTE_CUBE_ARRAY,
+                TEXTURE_CUBE,
+                TEXTURE_CUBE_ARRAY,
                 _MAX_ENUM,
             };
             using TEXTURE_TYPE = TextureTypes;

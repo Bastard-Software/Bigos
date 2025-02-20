@@ -2,12 +2,11 @@
 
 #include "BigosFramework/BigosFramework.h"
 #include "Core/Utils/Timer.h"
+#include "Driver/Frontend/RenderDevice.h"
 #include "Platform/Event/EventHandler.h"
 #include "Platform/Event/EventSystem.h"
 #include "Platform/Window.h"
 #include "Platform/WindowSystem.h"
-
-#include "Driver/Frontend/RenderDevice.h"
 
 namespace BIGOS
 {
@@ -53,7 +52,7 @@ namespace BIGOS
         }
 
         // Init bigos systems
-        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::D3D12 ) ) )
+        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::VULKAN ) ) )
         {
             return Results::FAIL;
         }

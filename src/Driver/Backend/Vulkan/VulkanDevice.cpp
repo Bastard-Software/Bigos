@@ -47,6 +47,7 @@ namespace BIGOS
                     m_devCoreFeatures.pipelineStatisticsQuery = VK_TRUE;
                     m_devCoreFeatures.samplerAnisotropy       = VK_TRUE;
                     m_devCoreFeatures.multiDrawIndirect       = VK_TRUE;
+                    m_devCoreFeatures.imageCubeArray          = VK_TRUE;
 
                     // Vulkan 1.1 features
                     m_dev11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
@@ -2172,7 +2173,7 @@ namespace BIGOS
                 VkImageCreateInfo imgInfo;
                 imgInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
                 imgInfo.pNext                 = nullptr;
-                imgInfo.flags                 = 0; // TODO: Handle
+                imgInfo.flags                 = desc.resourceType == ResourceTypes::TEXTURE_CUBE ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
                 imgInfo.imageType             = MapBigosResourceTypeToVulkanImageType( desc.resourceType );
                 imgInfo.format                = MapBigosFormatToVulkanFormat( desc.format );
                 imgInfo.extent.width          = desc.size.width;
@@ -2444,5 +2445,5 @@ namespace BIGOS
             }
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

@@ -29,6 +29,7 @@ namespace BIGOS
             class CopyContext;
             class RenderTarget;
             class Buffer;
+            class Texture;
             class Shader;
             class IShaderCompiler;
             class ShaderCompilerFactory;
@@ -201,6 +202,34 @@ namespace BIGOS
             {
                 uint32_t                    size;
                 Backend::ResourceUsageFlags usage;
+            };
+
+            enum class TextureUsageFlagBits : uint32_t
+            {
+                SAMPLED = 0x00000001,
+                STORAGE = 0x00000002,
+            };
+            using TextureUsageFlags = uint32_t;
+
+            enum class TextureTypes : uint8_t
+            {
+                TEXTURE_1D,
+                TEXTURE_2D,
+                TEXTURE_3D,
+                TEXTURE_CUBE,
+                _MAX_ENUM
+            };
+            using TEXTURE_TYPE = TextureTypes;
+
+            struct TextureDesc
+            {
+                Size3D                size;
+                Backend::FORMAT       format;
+                Backend::SAMPLE_COUNT sampleCount;
+                uint32_t              mipLevelCount;
+                uint32_t              arrayLayerCount;
+                TextureUsageFlags     usage;
+                TEXTURE_TYPE          type;
             };
 
             struct ShaderDesc
