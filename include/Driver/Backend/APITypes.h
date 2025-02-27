@@ -556,10 +556,7 @@ namespace BIGOS
                 RenderTargetBlendDesc* pRenderTargetBlendDescs;
                 uint32_t               renderTargetBlendDescCount;
                 LOGIC_OPERATION_TYPE   logicOperation;
-                /// <summary>
-                /// Enables logic operations.
-                /// </summary>
-                bool enableLogicOperations;
+                bool                   enableLogicOperations;
             };
 
             struct GraphicsPipelineDesc : public PipelineDesc
@@ -1285,5 +1282,5 @@ namespace BIGOS
             };
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

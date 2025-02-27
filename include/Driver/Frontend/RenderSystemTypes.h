@@ -31,6 +31,7 @@ namespace BIGOS
             class Buffer;
             class Texture;
             class Shader;
+            class Pipeline;
             class IShaderCompiler;
             class ShaderCompilerFactory;
 
@@ -236,6 +237,37 @@ namespace BIGOS
             {
                 ShaderSource         source;
                 Backend::SHADER_TYPE type;
+            };
+
+            struct BlendState
+            {
+                bool_t blendEnable;
+            };
+
+            struct DepthStencilState
+            {
+                bool_t depthTestEnable;
+                bool_t depthWriteEnable;
+            };
+
+            struct GraphicsPipelineDesc
+            {
+                Shader*                pVertexShader;
+                Shader*                pPixelShader;
+                Shader*                pGeometryShader;
+                Shader*                pHullShader;
+                Shader*                pDomainShader;
+                BlendState             blendState;
+                DepthStencilState      depthStencilState;
+                Backend::SAMPLE_COUNT  sampleCount;
+                uint32_t               renderTargetCount;
+                const Backend::FORMAT* pRenderTargetFormats;
+                Backend::FORMAT        depthStencilFormat;
+            };
+
+            struct ComputePipelineDesc
+            {
+                Shader* pComputeShader;
             };
 
         } // namespace Frontend

@@ -6,6 +6,7 @@
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Core/Utils/String.h"
+#include "Driver/Backend/APICommon.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "VulkanBindingHeap.h"
 #include "VulkanCommandBuffer.h"
@@ -44,10 +45,11 @@ namespace BIGOS
                     m_devDesc = desc;
 
                     // Vulkan 1.0 features (core)
-                    m_devCoreFeatures.pipelineStatisticsQuery = VK_TRUE;
-                    m_devCoreFeatures.samplerAnisotropy       = VK_TRUE;
-                    m_devCoreFeatures.multiDrawIndirect       = VK_TRUE;
-                    m_devCoreFeatures.imageCubeArray          = VK_TRUE;
+                    m_devCoreFeatures.pipelineStatisticsQuery  = VK_TRUE;
+                    m_devCoreFeatures.samplerAnisotropy        = VK_TRUE;
+                    m_devCoreFeatures.multiDrawIndirect        = VK_TRUE;
+                    m_devCoreFeatures.imageCubeArray           = VK_TRUE;
+                    m_devCoreFeatures.fragmentStoresAndAtomics = VK_TRUE;
 
                     // Vulkan 1.1 features
                     m_dev11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
@@ -61,6 +63,7 @@ namespace BIGOS
                     m_dev12Features.timelineSemaphore                        = VK_TRUE; // Crucial for synchronization
                     m_dev12Features.bufferDeviceAddress                      = VK_TRUE; // Needed for descriptor buffer ext
                     m_dev12Features.descriptorIndexing                       = VK_TRUE; // Needed for descriptor buffer ext
+                    m_dev12Features.descriptorBindingPartiallyBound          = VK_TRUE; // Needed for descriptor buffer ext
                     m_dev12Features.descriptorBindingVariableDescriptorCount = VK_TRUE; // Needed for descriptor buffer ext
                     m_dev12Features.separateDepthStencilLayouts              = VK_TRUE;
 
@@ -1490,7 +1493,7 @@ namespace BIGOS
                 // We need to set VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT flag for range with highest binding number to let driver
                 // calculate binding indices and test against queried capabilities and device limits.
                 VkDescriptorBindingFlags bindingFlags[ Config::Driver::Pipeline::MAX_BINDING_RANGE_COUNT ];
-                Memory::Set( bindingFlags, 0, sizeof( VkDescriptorBindingFlags ) );
+                Memory::Set( bindingFlags, 0, sizeof( bindingFlags ) );
                 bindingFlags[ maxBindingRangeNdx ] = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
 
                 VkDescriptorSetLayoutBindingFlagsCreateInfo createFlags;
@@ -2074,8 +2077,10 @@ namespace BIGOS
                 dynamicInfo.viewMask                = 0;
                 dynamicInfo.colorAttachmentCount    = gpDesc.renderTargetCount;
                 dynamicInfo.pColorAttachmentFormats = rtFormats;
-                dynamicInfo.depthAttachmentFormat   = MapBigosFormatToVulkanFormat( gpDesc.depthStencilFormat );
-                dynamicInfo.stencilAttachmentFormat = MapBigosFormatToVulkanFormat( gpDesc.depthStencilFormat );
+                dynamicInfo.depthAttachmentFormat =
+                    IsDepthFormat( gpDesc.depthStencilFormat ) ? MapBigosFormatToVulkanFormat( gpDesc.depthStencilFormat ) : VK_FORMAT_UNDEFINED;
+                dynamicInfo.stencilAttachmentFormat =
+                    IsStencilFormat( gpDesc.depthStencilFormat ) ? MapBigosFormatToVulkanFormat( gpDesc.depthStencilFormat ) : VK_FORMAT_UNDEFINED;
 
                 VkGraphicsPipelineCreateInfo pipelineInfo;
                 pipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

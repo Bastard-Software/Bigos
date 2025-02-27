@@ -28,6 +28,9 @@ namespace BIGOS
         Driver::Frontend::Buffer*       m_pStorageBuffer;
         Driver::Frontend::Shader*       m_pVS;
         Driver::Frontend::Shader*       m_pPS;
+        Driver::Frontend::Pipeline*     m_pGraphicsPipeline;
+        Driver::Frontend::Shader*       m_pCS;
+        Driver::Frontend::Pipeline*     m_pComputePipeline;
         Driver::Frontend::Texture*      m_pSampledTexture;
         Driver::Frontend::Texture*      m_pStorageTexture;
         Driver::Frontend::Texture*      m_pSkyTexture;

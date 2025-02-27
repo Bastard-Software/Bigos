@@ -52,7 +52,7 @@ namespace BIGOS
         }
 
         // Init bigos systems
-        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::VULKAN ) ) )
+        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::D3D12 ) ) )
         {
             return Results::FAIL;
         }
