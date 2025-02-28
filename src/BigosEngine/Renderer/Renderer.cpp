@@ -16,6 +16,9 @@ namespace BIGOS
         , m_pStorageBuffer( nullptr )
         , m_pVS( nullptr )
         , m_pPS( nullptr )
+        , m_pGraphicsPipeline( nullptr )
+        , m_pCS( nullptr )
+        , m_pComputePipeline( nullptr )
         , m_pSampledTexture( nullptr )
         , m_pStorageTexture( nullptr )
         , m_pSkyTexture( nullptr )
@@ -34,8 +37,11 @@ namespace BIGOS
             return Results::FAIL;
         }
 
+        const Driver::Backend::FORMAT rtFormat = Driver::Backend::Formats::R8G8B8A8_UNORM;
+        const Driver::Backend::FORMAT dsFormat = Driver::Backend::Formats::D32_FLOAT;
+
         Driver::Frontend::RenderTargetDesc rtDesc;
-        rtDesc.format        = Driver::Backend::Formats::R8G8B8A8_UNORM;
+        rtDesc.format        = rtFormat;
         rtDesc.allowSampling = BGS_TRUE;
         rtDesc.allowCopying  = BGS_TRUE;
         rtDesc.width         = 1280;
@@ -46,7 +52,7 @@ namespace BIGOS
             return Results::FAIL;
         }
 
-        rtDesc.format       = Driver::Backend::Formats::D24_UNORM_S8_UINT;
+        rtDesc.format       = dsFormat;
         rtDesc.allowCopying = BGS_FALSE;
         rtDesc.sampleCount  = Driver::Backend::SampleCount::COUNT_1;
         if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pDepthRT ) ) )
@@ -85,7 +91,7 @@ namespace BIGOS
 
         const String hlslShader = R"(
             // Sta³y bufor (cbuffer) - przekazuje macierze do transformacji
-            cbuffer MatrixBuffer : register(b0) {
+            cbuffer MatrixBuffer : register(b1, space0) {
                 matrix modelMatrix;
                 matrix viewMatrix;
                 matrix projectionMatrix;
@@ -124,11 +130,11 @@ namespace BIGOS
             }
 
             // Sampler i tekstury
-            SamplerState texSampler : register(s0);
-            Texture2D texture0 : register(t0);
-            Texture2D texture1 : register(t1);
-            RWTexture2D<float4> storageTexture : register(u0);
-            RWByteAddressBuffer rawStorageBuffer : register(u1);
+            SamplerState texSampler : register(s0, space1);
+            Texture2D texture0 : register(t2, space0);
+            Texture2D texture1 : register(t3, space0);
+            RWTexture2D<float4> storageTexture : register(u4, space0);
+            RWByteAddressBuffer rawStorageBuffer : register(u5, space0);
 
             // Pixel Shader
             float4 PSMain(VSOutput input) : SV_Target {
@@ -165,6 +171,75 @@ namespace BIGOS
             return Results::FAIL;
         }
 
+        Driver::Frontend::GraphicsPipelineDesc graphicsPipelineDesc;
+        graphicsPipelineDesc.pVertexShader                      = m_pVS;
+        graphicsPipelineDesc.pPixelShader                       = m_pPS;
+        graphicsPipelineDesc.pHullShader                        = nullptr;
+        graphicsPipelineDesc.pDomainShader                      = nullptr;
+        graphicsPipelineDesc.pGeometryShader                    = nullptr;
+        graphicsPipelineDesc.blendState.blendEnable             = BGS_TRUE;
+        graphicsPipelineDesc.depthStencilState.depthTestEnable  = BGS_TRUE;
+        graphicsPipelineDesc.depthStencilState.depthWriteEnable = BGS_TRUE;
+        graphicsPipelineDesc.sampleCount                        = Driver::Backend::SampleCount::COUNT_1;
+        graphicsPipelineDesc.renderTargetCount                  = 1;
+        graphicsPipelineDesc.pRenderTargetFormats               = &rtFormat;
+        graphicsPipelineDesc.depthStencilFormat                 = dsFormat;
+        if( BGS_FAILED( m_pDevice->CreatePipeline( graphicsPipelineDesc, &m_pGraphicsPipeline ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+
+        const String compHlslShader = R"(
+            // Sta³y bufor (CBV)
+            cbuffer ConstantBuffer : register(b0, space0) {
+                float4 someConstants;
+            };
+
+            // Tekstura jako SRV
+            Texture2D<float4> InputTexture : register(t1, space0);
+
+            // Tekstura z zapisem (UAV)
+            RWTexture2D<float4> OutputTexture : register(u2, space0);
+
+            // Sampler
+            SamplerState mySampler : register(s0, space1);
+
+            // Compute Shader
+            [numthreads(8, 8, 1)]
+            void CSMain(uint3 threadID : SV_DispatchThreadID)
+            {
+                // Odczyt z constant buffera
+                float4 constData = someConstants;
+
+                // Poprawiony sampling – Compute Shader wymaga `SampleLevel()`
+                float2 uv = float2(threadID.xy) / float2(256, 256);
+                float4 texValue = InputTexture.SampleLevel(mySampler, uv, 0.0);
+
+                // Prosta operacja
+                float4 result = constData + texValue;
+
+                // Zapis do tekstury (UAV)
+                OutputTexture[threadID.xy] = result;
+            })";
+
+        shaderDesc.type               = Driver::Backend::ShaderTypes::COMPUTE;
+        shaderDesc.source.pSourceCode = compHlslShader.c_str();
+        shaderDesc.source.sourceSize  = static_cast<uint32_t>( compHlslShader.size() );
+        if( BGS_FAILED( m_pDevice->CreateShader( shaderDesc, &m_pCS ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+
+        Driver::Frontend::ComputePipelineDesc compPipelineDesc;
+        compPipelineDesc.pComputeShader = m_pCS;
+        if( BGS_FAILED( m_pDevice->CreatePipeline( compPipelineDesc, &m_pComputePipeline ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+
         Driver::Frontend::TextureDesc texDesc;
         texDesc.size            = { 16384, 1, 1 };
         texDesc.format          = Driver::Backend::Formats::R32_UINT;
@@ -172,7 +247,7 @@ namespace BIGOS
         texDesc.arrayLayerCount = 1;
         texDesc.sampleCount     = Driver::Backend::SampleCount::COUNT_1;
         texDesc.type            = Driver::Frontend::TextureTypes::TEXTURE_1D;
-        texDesc.usage  = BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::STORAGE ) | BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::SAMPLED );
+        texDesc.usage = BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::STORAGE ) | BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::SAMPLED );
         if( BGS_FAILED( m_pDevice->CreateTexture( texDesc, &m_pStorageTexture ) ) )
         {
             Destroy();
@@ -229,6 +304,14 @@ namespace BIGOS
         {
             m_pDevice->DestroyBuffer( &m_pStorageBuffer );
         }
+        if( m_pComputePipeline != nullptr )
+        {
+            m_pDevice->DestroyPipeline( &m_pComputePipeline );
+        }
+        if( m_pGraphicsPipeline != nullptr )
+        {
+            m_pDevice->DestroyPipeline( &m_pGraphicsPipeline );
+        }
         if( m_pVS != nullptr )
         {
             m_pDevice->DestroyShader( &m_pVS );
@@ -236,6 +319,10 @@ namespace BIGOS
         if( m_pPS != nullptr )
         {
             m_pDevice->DestroyShader( &m_pPS );
+        }
+        if( m_pCS != nullptr )
+        {
+            m_pDevice->DestroyShader( &m_pCS );
         }
         if( m_pSampledTexture != nullptr )
         {

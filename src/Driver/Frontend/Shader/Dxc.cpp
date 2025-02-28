@@ -150,6 +150,16 @@ namespace BIGOS
                 return compCnt;
             }
 
+            static const String GetResourceNameFromSPIRVName( const String& name )
+            {
+                const String prefix = "type.";
+                if( name.rfind( prefix, 0 ) == 0 )
+                {
+                    return name.substr( prefix.length() );
+                }
+                return name;
+            }
+
             static const String GetSemanticNameFromSPIRVName( const String& name )
             {
                 const String prefix = "in.var.";
@@ -478,6 +488,21 @@ namespace BIGOS
                 spirv_cross::Compiler        compiler( reinterpret_cast<uint32_t*>( pSrc ), srcSize / 4 );
                 spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
+                // Constant buffers
+                for( index_t ndx = 0; ndx < resources.uniform_buffers.size(); ++ndx )
+                {
+                    ShaderBindingInfo            binding;
+                    const spirv_cross::Resource& res     = resources.uniform_buffers[ ndx ];
+                    String                       resName = GetResourceNameFromSPIRVName( res.name );
+                    binding.baseShaderRegister           = MAX_UINT32; // Not used in vulkan
+                    binding.baseBindingSlot              = compiler.get_decoration( res.id, spv::DecorationBinding );
+                    binding.set                          = compiler.get_decoration( res.id, spv::DecorationDescriptorSet );
+                    binding.type                         = Backend::BindingTypes::CONSTANT_BUFFER;
+                    Core::Utils::String::Copy( binding.pName, resName.length() + 1, resName.c_str() );
+
+                    bindingArray.push_back( binding );
+                }
+
                 // Textures
                 for( index_t ndx = 0; ndx < resources.separate_images.size(); ++ndx )
                 {
@@ -531,20 +556,6 @@ namespace BIGOS
                     binding.baseBindingSlot          = compiler.get_decoration( res.id, spv::DecorationBinding );
                     binding.set                      = compiler.get_decoration( res.id, spv::DecorationDescriptorSet );
                     binding.type                     = Backend::BindingTypes::SAMPLER;
-                    Core::Utils::String::Copy( binding.pName, res.name.length() + 1, res.name.c_str() );
-
-                    bindingArray.push_back( binding );
-                }
-
-                // Constant buffers
-                for( index_t ndx = 0; ndx < resources.uniform_buffers.size(); ++ndx )
-                {
-                    ShaderBindingInfo            binding;
-                    const spirv_cross::Resource& res = resources.uniform_buffers[ ndx ];
-                    binding.baseShaderRegister       = MAX_UINT32; // Not used in vulkan
-                    binding.baseBindingSlot          = compiler.get_decoration( res.id, spv::DecorationBinding );
-                    binding.set                      = compiler.get_decoration( res.id, spv::DecorationDescriptorSet );
-                    binding.type                     = Backend::BindingTypes::CONSTANT_BUFFER;
                     Core::Utils::String::Copy( binding.pName, res.name.length() + 1, res.name.c_str() );
 
                     bindingArray.push_back( binding );

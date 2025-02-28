@@ -29,6 +29,10 @@ namespace BIGOS
                 RESULT CreateShader( const ShaderDesc& desc, Shader** ppShader );
                 void   DestroyShader( Shader** ppShader );
 
+                RESULT CreatePipeline( const GraphicsPipelineDesc& desc, Pipeline** ppPipeline );
+                RESULT CreatePipeline( const ComputePipelineDesc& desc, Pipeline** ppPipeline );
+                void   DestroyPipeline( Pipeline** ppPipeline );
+
                 GraphicsContext* GetGraphicsContext() { return m_pGraphicsContext; }
                 ComputeContext*  GetComputeContext() { return m_pComputeContext; }
                 CopyContext*     GetCopyContext() { return m_pCopyContext; }

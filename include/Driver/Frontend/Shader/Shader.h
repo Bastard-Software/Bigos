@@ -17,6 +17,9 @@ namespace BIGOS
                 Shader();
                 ~Shader() = default;
 
+                ShaderCompilerOutput* GetCompiledShader() const { return m_pCompiledShader; }
+                Backend::ShaderHandle GetHandle() const { return m_hShader; }
+
             protected:
                 RESULT Create( const ShaderDesc& desc, RenderDevice* pDevice );
                 void   Destroy();

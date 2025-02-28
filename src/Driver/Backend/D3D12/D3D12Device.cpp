@@ -27,6 +27,29 @@ namespace BIGOS
     {
         namespace Backend
         {
+            const char* GetSemanticName( const char* input )
+            {
+                static const char*      validNames[] = { "BINORMAL", "BLENDINDICES", "BLENDWEIGHT", "COLOR",   "NORMAL",
+                                                         "POSITION", "POSITIONT",    "PSIZE",       "TANGENT", "TEXCOORD" };
+                static constexpr size_t nameCount    = sizeof( validNames ) / sizeof( validNames[ 0 ] );
+
+                size_t len = 0;
+                while( input[ len ] && !isdigit( input[ len ] ) )
+                {
+                    ++len;
+                }
+
+                for( size_t i = 0; i < nameCount; ++i )
+                {
+                    if( strncmp( input, validNames[ i ], len ) == 0 && validNames[ i ][ len ] == '\0' )
+                    {
+                        return validNames[ i ];
+                    }
+                }
+
+                return nullptr;
+            }
+
             static const uint32_t GetSemanticNdx( const char* pSemanticName )
             {
                 BGS_ASSERT( pSemanticName != nullptr );
@@ -1398,7 +1421,7 @@ namespace BIGOS
                     }
 
                     D3D12_INPUT_ELEMENT_DESC& currElem = elemDescs[ ndx ];
-                    currElem.SemanticName              = currDesc.pSemanticName;
+                    currElem.SemanticName              = GetSemanticName( currDesc.pSemanticName );
                     currElem.SemanticIndex             = GetSemanticNdx( currDesc.pSemanticName );
                     currElem.InputSlot                 = currDesc.binding;
                     currElem.Format                    = MapBigosFormatToD3D12Format( currDesc.format );

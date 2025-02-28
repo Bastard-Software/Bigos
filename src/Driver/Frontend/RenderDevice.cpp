@@ -4,6 +4,7 @@
 #include "Core/Memory/Memory.h"
 #include "Driver/Frontend/Buffer.h"
 #include "Driver/Frontend/Contexts.h"
+#include "Driver/Frontend/Pipeline.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/RenderTarget.h"
 #include "Driver/Frontend/Shader/Shader.h"
@@ -157,6 +158,62 @@ namespace BIGOS
                 Shader* pShader = ( *ppShader );
                 pShader->Destroy();
                 Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pShader );
+            }
+
+            RESULT RenderDevice::CreatePipeline( const GraphicsPipelineDesc& desc, Pipeline** ppPipeline )
+            {
+                BGS_ASSERT( ppPipeline != nullptr, "Pipeline (ppPipeline) must be a valid address." );
+                BGS_ASSERT( *ppPipeline == nullptr, "There is a valid pointer at the given address. Pipeline (*ppPipeline) must be nullptr." );
+
+                Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
+                Pipeline*           pPipeline  = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pPipeline ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pPipeline->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pPipeline );
+                    return Results::FAIL;
+                }
+
+                ( *ppPipeline ) = pPipeline;
+
+                return Results::OK;
+            }
+
+            RESULT RenderDevice::CreatePipeline( const ComputePipelineDesc& desc, Pipeline** ppPipeline )
+            {
+                BGS_ASSERT( ppPipeline != nullptr, "Pipeline (ppPipeline) must be a valid address." );
+                BGS_ASSERT( *ppPipeline == nullptr, "There is a valid pointer at the given address. Pipeline (*ppPipeline) must be nullptr." );
+
+                Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
+                Pipeline*           pPipeline  = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pPipeline ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pPipeline->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pPipeline );
+                    return Results::FAIL;
+                }
+
+                ( *ppPipeline ) = pPipeline;
+
+                return Results::OK;
+            }
+
+            void RenderDevice::DestroyPipeline( Pipeline** ppPipeline )
+            {
+                BGS_ASSERT( ppPipeline != nullptr, "Pipeline (ppPipeline) must be a valid address." );
+                BGS_ASSERT( *ppPipeline != nullptr, "Pipeline (*ppPipeline) must be a valid pointer." );
+
+                Pipeline* pPipeline = ( *ppPipeline );
+                pPipeline->Destroy();
+                Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pPipeline );
             }
 
             RESULT RenderDevice::Create( const RenderDeviceDesc& desc, Backend::IFactory* pFactory, RenderSystem* pDriverSystem )
