@@ -5,6 +5,7 @@
 #include "Driver/Frontend/Buffer.h"
 #include "Driver/Frontend/Contexts.h"
 #include "Driver/Frontend/Pipeline.h"
+#include "Driver/Frontend/RenderPass.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/RenderTarget.h"
 #include "Driver/Frontend/Shader/Shader.h"
@@ -125,6 +126,40 @@ namespace BIGOS
                 RenderTarget* pRenderTarget = ( *ppRenderTarget );
                 pRenderTarget->Destroy();
                 Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pRenderTarget );
+            }
+
+            RESULT RenderDevice::CreateRenderPass( const RenderPassDesc& desc, RenderPass** ppRenderPass )
+            {
+                BGS_ASSERT( ppRenderPass != nullptr, "Render pass (ppRenderPass) must be a valid address." );
+                BGS_ASSERT( *ppRenderPass == nullptr,
+                            "There is a valid pointer at the given address. Render target (*ppRenderPass) must be nullptr." );
+
+                Memory::IAllocator* pAllocator  = m_pParent->GetDefaultAllocator();
+                RenderPass*         pRenderPass = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pRenderPass ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pRenderPass->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pRenderPass );
+                    return Results::FAIL;
+                }
+
+                ( *ppRenderPass ) = pRenderPass;
+
+                return Results::OK;
+            }
+
+            void RenderDevice::DestroyRenderPass( RenderPass** ppRenderPass )
+            {
+                BGS_ASSERT( ppRenderPass != nullptr, "Render pass (ppRenderPass) must be a valid address." );
+                BGS_ASSERT( *ppRenderPass != nullptr, "Render pass (*ppRenderPass) must be a valid pointer." );
+
+                RenderPass* pRenderPass = ( *ppRenderPass );
+                pRenderPass->Destroy();
+                Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pRenderPass );
             }
 
             RESULT RenderDevice::CreateShader( const ShaderDesc& desc, Shader** ppShader )
