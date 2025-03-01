@@ -28,6 +28,7 @@ namespace BIGOS
             class ComputeContext;
             class CopyContext;
             class RenderTarget;
+            class RenderPass;
             class Buffer;
             class Texture;
             class Shader;
@@ -197,6 +198,13 @@ namespace BIGOS
                 Backend::SAMPLE_COUNT sampleCount;
                 bool_t                allowSampling;
                 bool_t                allowCopying;
+            };
+
+            struct RenderPassDesc
+            {
+                RenderTarget* pColorRenderTargets;
+                RenderTarget* pDepthStencilTarget;
+                uint32_t      colorRenderTargetCount;
             };
 
             struct BufferDesc

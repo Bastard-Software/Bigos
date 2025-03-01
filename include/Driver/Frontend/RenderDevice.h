@@ -26,6 +26,9 @@ namespace BIGOS
                 RESULT CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget );
                 void   DestroyRenderTarget( RenderTarget** ppRenderTarget );
 
+                RESULT CreateRenderPass( const RenderPassDesc& desc, RenderPass** ppRenderPass );
+                void   DestroyRenderPass( RenderPass** ppRenderPass );
+
                 RESULT CreateShader( const ShaderDesc& desc, Shader** ppShader );
                 void   DestroyShader( Shader** ppShader );
 
