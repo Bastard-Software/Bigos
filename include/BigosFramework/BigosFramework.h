@@ -5,6 +5,8 @@
 #include "Platform/PlatformTypes.h"
 
 #include "Core/Memory/MemorySystem.h"
+#include "Platform/Event/EventSystem.h"
+#include "Platform/Input/InputSystem.h"
 
 #ifdef CreateSemaphore
 #    undef CreateSemaphore
@@ -15,6 +17,8 @@ namespace BIGOS
     struct BigosFrameworkDesc
     {
         Core::Memory::MemorySystemDesc     memorySystemDesc;
+        Platform::Event::EventSystemDesc   eventSystemDesc;
+        Platform::Input::InputSystemDesc   inputSystemDesc;
         Driver::Frontend::RenderSystemDesc renderSystemDesc;
         Platform::WindowSystemDesc         windowSystemDesc;
     };
@@ -46,26 +50,20 @@ namespace BIGOS
         RESULT CreateWindowSystem( const Platform::WindowSystemDesc& desc, Platform::WindowSystem** ppSystem );
         void   DestroyWindowSystem( Platform::WindowSystem** ppSystem );
 
-        RESULT CreateEventSystem( const Platform::Event::EventSystemDesc& desc, Platform::Event::EventSystem** ppSystem );
-        void   DestroyEventSystem( Platform::Event::EventSystem** ppSystem );
-
-        RESULT CreateInputSystem( const Platform::Input::InputSystemDesc& desc, Platform::Input::InputSystem** ppSystem );
-        void   DestroyInputSystem( Platform::Input::InputSystem** ppSystem );
-
         Core::Memory::MemorySystem*     GetMemorySystem() { return &m_memorySystem; }
         Driver::Frontend::RenderSystem* GetRenderSystem() { return m_pRenderSystem; }
         Platform::WindowSystem*         GetWindowSystem() { return m_pWindowSystem; }
-        Platform::Event::EventSystem*   GetEventSystem() { return m_pEventSystem; }
-        Platform::Input::InputSystem*   GetInputSystem() { return m_pInputSystem; }
+        Platform::Event::EventSystem*   GetEventSystem() { return &m_eventSystem; }
+        Platform::Input::InputSystem*   GetInputSystem() { return &m_inputSystem; }
 
         RESULT Create( const BigosFrameworkDesc& desc );
         void   Destroy();
 
     private:
         Core::Memory::MemorySystem      m_memorySystem;
+        Platform::Event::EventSystem    m_eventSystem;
+        Platform::Input::InputSystem    m_inputSystem;
         Driver::Frontend::RenderSystem* m_pRenderSystem;
         Platform::WindowSystem*         m_pWindowSystem;
-        Platform::Event::EventSystem*   m_pEventSystem;
-        Platform::Input::InputSystem*   m_pInputSystem;
     };
 } // namespace BIGOS

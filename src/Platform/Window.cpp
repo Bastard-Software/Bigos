@@ -191,6 +191,12 @@ namespace BIGOS
             }
         }
 
+        void Window::SetDescSize( uint32_t width, uint32_t height )
+        {
+            m_desc.width  = width;
+            m_desc.height = height;
+        }
+
         LRESULT CALLBACK WndProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
         {
 
@@ -198,131 +204,138 @@ namespace BIGOS
             if( pWindow != nullptr )
             {
                 Event::EventSystem* pEventSystem = pWindow->GetParent()->GetParent()->GetEventSystem();
-                if( pEventSystem != nullptr )
+
+                switch( msg )
                 {
-                    BGS_ASSERT( pEventSystem != nullptr, "No event system to handle events." )
-
-                    switch( msg )
+                    case WM_CLOSE:
                     {
-                        case WM_CLOSE:
-                        {
-                            Event::WindowCloseEvent e;
-                            pEventSystem->TriggerEvent( e );
+                        Event::WindowCloseEvent e;
+                        pEventSystem->TriggerEvent( e );
 
-                            break;
-                        }
-                        case WM_DESTROY:
-                        {
-                            Event::WindowCloseEvent e;
-                            pEventSystem->TriggerEvent( e );
-                            ::PostQuitMessage( 0 );
-
-                            break;
-                        }
-                        case WM_SETFOCUS:
-                        {
-                            Event::WindowFocusEvent e;
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_KILLFOCUS:
-                        {
-                            Event::WindowLostFocusEvent e;
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_KEYDOWN:
-                        case WM_SYSKEYDOWN:
-                        {
-                            Input::KeyCode key       = static_cast<Input::KeyCode>( wParam );
-                            uint16_t       repeatCnt = LOWORD( lParam );
-
-                            Event::KeyPressedEvent e( key, repeatCnt );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_KEYUP:
-                        case WM_SYSKEYUP:
-                        {
-                            Input::KeyCode key = static_cast<Input::KeyCode>( wParam );
-
-                            Event::KeyReleasedEvent e( key );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_MOUSEMOVE:
-                        {
-                            uint32_t x = GET_X_LPARAM( lParam );
-                            uint32_t y = GET_Y_LPARAM( lParam );
-
-                            Event::MouseMovedEvent e( static_cast<float>( x ), static_cast<float>( y ) );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_LBUTTONDOWN:
-                        {
-                            SetCapture( hWnd );
-                            Event::MouseButtonPressedEvent e( Input::Mouse::ButtonLeft );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_RBUTTONDOWN:
-                        {
-                            SetCapture( hWnd );
-                            Event::MouseButtonPressedEvent e( Input::Mouse::ButtonRight );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_MBUTTONDOWN:
-                        {
-                            SetCapture( hWnd );
-                            Event::MouseButtonPressedEvent e( Input::Mouse::ButtonMiddle );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_LBUTTONUP:
-                        {
-                            ReleaseCapture();
-                            Event::MouseButtonReleasedEvent e( Input::Mouse::ButtonLeft );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_RBUTTONUP:
-                        {
-                            ReleaseCapture();
-                            Event::MouseButtonReleasedEvent e( Input::Mouse::ButtonRight );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_MBUTTONUP:
-                        {
-                            ReleaseCapture();
-                            Event::MouseButtonReleasedEvent e( Input::Mouse::ButtonMiddle );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-                        case WM_MOUSEWHEEL:
-                        {
-                            Event::MouseScrolledEvent e( 0.0f, GET_WHEEL_DELTA_WPARAM( wParam ) / 120.0f );
-                            pEventSystem->TriggerEvent( e );
-
-                            break;
-                        }
-
-                        default:
-                            return DefWindowProc( hWnd, msg, wParam, lParam );
+                        break;
                     }
+                    case WM_DESTROY:
+                    {
+                        Event::WindowCloseEvent e;
+                        pEventSystem->TriggerEvent( e );
+                        ::PostQuitMessage( 0 );
+
+                        break;
+                    }
+                    case WM_SIZE:
+                    {
+                        const uint32_t width  = LOWORD( lParam );
+                        const uint32_t height = HIWORD( lParam );
+
+                        pWindow->SetDescSize( width, height );
+
+                        Event::WindowResizeEvent e( width, height );
+                        pEventSystem->TriggerEvent( e );
+                        break;
+                    }
+                    case WM_SETFOCUS:
+                    {
+                        Event::WindowFocusEvent e;
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_KILLFOCUS:
+                    {
+                        Event::WindowLostFocusEvent e;
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_KEYDOWN:
+                    case WM_SYSKEYDOWN:
+                    {
+                        Input::KeyCode key       = static_cast<Input::KeyCode>( wParam );
+                        uint16_t       repeatCnt = LOWORD( lParam );
+
+                        Event::KeyPressedEvent e( key, repeatCnt );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_KEYUP:
+                    case WM_SYSKEYUP:
+                    {
+                        Input::KeyCode key = static_cast<Input::KeyCode>( wParam );
+
+                        Event::KeyReleasedEvent e( key );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_MOUSEMOVE:
+                    {
+                        uint32_t x = GET_X_LPARAM( lParam );
+                        uint32_t y = GET_Y_LPARAM( lParam );
+
+                        Event::MouseMovedEvent e( static_cast<float>( x ), static_cast<float>( y ) );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_LBUTTONDOWN:
+                    {
+                        SetCapture( hWnd );
+                        Event::MouseButtonPressedEvent e( Input::Mouse::ButtonLeft );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_RBUTTONDOWN:
+                    {
+                        SetCapture( hWnd );
+                        Event::MouseButtonPressedEvent e( Input::Mouse::ButtonRight );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_MBUTTONDOWN:
+                    {
+                        SetCapture( hWnd );
+                        Event::MouseButtonPressedEvent e( Input::Mouse::ButtonMiddle );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_LBUTTONUP:
+                    {
+                        ReleaseCapture();
+                        Event::MouseButtonReleasedEvent e( Input::Mouse::ButtonLeft );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_RBUTTONUP:
+                    {
+                        ReleaseCapture();
+                        Event::MouseButtonReleasedEvent e( Input::Mouse::ButtonRight );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_MBUTTONUP:
+                    {
+                        ReleaseCapture();
+                        Event::MouseButtonReleasedEvent e( Input::Mouse::ButtonMiddle );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+                    case WM_MOUSEWHEEL:
+                    {
+                        Event::MouseScrolledEvent e( 0.0f, GET_WHEEL_DELTA_WPARAM( wParam ) / 120.0f );
+                        pEventSystem->TriggerEvent( e );
+
+                        break;
+                    }
+
+                    default:
+                        return DefWindowProc( hWnd, msg, wParam, lParam );
                 }
             }
 

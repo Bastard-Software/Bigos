@@ -17,7 +17,6 @@ namespace BIGOS
             public:
                 D3D12Swapchain();
 
-                virtual RESULT Resize( const SwapchainResizeDesc& desc ) override;
                 virtual RESULT Present( const SwapchainPresentDesc& desc ) override;
                 virtual RESULT GetNextFrame( FrameInfo* pInfo ) override;
 

@@ -23,12 +23,6 @@ namespace BIGOS
             {
             }
 
-            RESULT D3D12Swapchain::Resize( const SwapchainResizeDesc& desc )
-            {
-                desc;
-                return Results::OK;
-            }
-
             RESULT D3D12Swapchain::Present( const SwapchainPresentDesc& desc )
             {
                 BGS_ASSERT( desc.pWaitSemaphores, "Semaphore array (pWaitSemaphores) must be a valid address." );
@@ -126,6 +120,7 @@ namespace BIGOS
                     for( index_t ndx = 0; ndx < m_backBuffers.size(); ++ndx )
                     {
                         m_pParent->DestroySemaphore( &m_backBuffers[ ndx ].hBackBufferAvailableSemaphore );
+                        RELEASE_COM_PTR( m_backBuffers[ ndx ].hBackBuffer.GetNativeHandle()->pNativeResource );
                     }
                     D3D12Resource* pRes = m_backBuffers[ 0 ].hBackBuffer.GetNativeHandle();
                     Core::Memory::FreeAligned( m_pParent->GetParent()->GetParent()->GetDefaultAllocator(), &pRes );
@@ -236,5 +231,5 @@ namespace BIGOS
             }
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

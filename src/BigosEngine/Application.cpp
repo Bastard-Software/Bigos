@@ -13,11 +13,13 @@ namespace BIGOS
     Application*    Application::s_pInstance  = nullptr;
     BigosFramework* Application::s_pFramework = nullptr;
 
-    Application::Application( const char* pName )
+    Application::Application( const char* pName, Driver::Backend::API_TYPE apiType )
         : m_pName( pName )
+        , m_apiType( apiType )
         , m_running( BGS_TRUE )
         , m_pWindow( nullptr )
         , m_windowCloseHandler( [ this ]( const Platform::Event::WindowCloseEvent& e ) { OnWindowClose( e ); } )
+        , m_windowResizeHandler( [ this ]( const Platform::Event::WindowResizeEvent& e ) { OnWindowResize( e ); } )
         , m_lastFrameTime( 0.0f )
         , m_renderer()
     {
@@ -52,7 +54,7 @@ namespace BIGOS
         }
 
         // Init bigos systems
-        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::D3D12 ) ) )
+        if( BGS_FAILED( s_pFramework->DefaultInit( m_apiType ) ) )
         {
             return Results::FAIL;
         }
@@ -71,14 +73,15 @@ namespace BIGOS
         }
         m_pWindow->Show();
 
-        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::D3D12 ) ) )
+        if( BGS_FAILED( s_pFramework->DefaultInit( Driver::Backend::APITypes::VULKAN ) ) )
         {
             return Results::FAIL;
         }
 
         s_pFramework->GetEventSystem()->Subscribe( &m_windowCloseHandler );
+        s_pFramework->GetEventSystem()->Subscribe( &m_windowResizeHandler );
 
-        m_renderer.Create( s_pFramework->GetRenderSystem() );
+        m_renderer.Create( s_pFramework->GetRenderSystem(), m_pWindow );
 
         return Results::OK;
     }
@@ -127,6 +130,14 @@ namespace BIGOS
     {
         e;
         m_running = BGS_FALSE;
+    }
+
+    void Application::OnWindowResize( const Platform::Event::WindowResizeEvent& e )
+    {
+        const uint32_t width  = e.GetWidth();
+        const uint32_t height = e.GetHeight();
+
+        BGS_ASSERT( BGS_SUCCESS( m_renderer.Resize( width, height ) ), "Renderer resize failed!" );
     }
 
 } // namespace BIGOS

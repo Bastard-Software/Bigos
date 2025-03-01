@@ -36,6 +36,9 @@ namespace BIGOS
                 RESULT CreatePipeline( const ComputePipelineDesc& desc, Pipeline** ppPipeline );
                 void   DestroyPipeline( Pipeline** ppPipeline );
 
+                RESULT CreateSwapchain( const SwapchainDesc& desc, Swapchain** ppSwapchain );
+                void   DestroySwapchain( Swapchain** ppSwapchain );
+
                 GraphicsContext* GetGraphicsContext() { return m_pGraphicsContext; }
                 ComputeContext*  GetComputeContext() { return m_pComputeContext; }
                 CopyContext*     GetCopyContext() { return m_pCopyContext; }

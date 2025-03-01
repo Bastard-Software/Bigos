@@ -308,13 +308,13 @@ namespace BIGOS
                 uint32_t                  vertexOffset      = 0;
                 for( index_t ndx = 0; ndx < pOutput->inputBindingCount; ++ndx )
                 {
-                    const ShaderInputBindingInfo& inputBinding = pOutput->pInputBindings[ ndx ];
-                    Backend::InputElementDesc&    elem         = inputElements[ inputElementCount++ ];
-                    elem.binding                               = 0;
-                    elem.location                              = inputBinding.location;
-                    elem.pSemanticName                         = inputBinding.pSemanticName;
-                    elem.format                                = GetInputElemFormat( inputBinding.type, inputBinding.componentCount );
-                    elem.offset                                = vertexOffset;
+                    const ShaderInputBindingInfo& currInputBinding = pOutput->pInputBindings[ ndx ];
+                    Backend::InputElementDesc&    elem             = inputElements[ inputElementCount++ ];
+                    elem.binding                                   = 0;
+                    elem.location                                  = currInputBinding.location;
+                    elem.pSemanticName                             = currInputBinding.pSemanticName;
+                    elem.format                                    = GetInputElemFormat( currInputBinding.type, currInputBinding.componentCount );
+                    elem.offset                                    = vertexOffset;
 
                     vertexOffset += Backend::GetBigosFormatSize( elem.format );
 

@@ -27,6 +27,7 @@ namespace BIGOS
             class GraphicsContext;
             class ComputeContext;
             class CopyContext;
+            class Swapchain;
             class RenderTarget;
             class RenderPass;
             class Buffer;
@@ -276,6 +277,13 @@ namespace BIGOS
             struct ComputePipelineDesc
             {
                 Shader* pComputeShader;
+            };
+
+            struct SwapchainDesc
+            {
+                Platform::Window* pWindow;
+                uint32_t          backBufferCount;
+                Backend::FORMAT   format;
             };
 
         } // namespace Frontend

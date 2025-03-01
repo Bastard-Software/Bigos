@@ -17,6 +17,8 @@ namespace BIGOS
                 GraphicsContext();
                 ~GraphicsContext() = default;
 
+                Backend::IQueue* GetQueue() const { return m_pQueue; }
+
             private:
                 RESULT Create( RenderDevice* pDevice );
                 void   Destroy();

@@ -1,5 +1,6 @@
 #include "Platform/Input/InputSystem.h"
 
+#include "BigosFramework/BigosFramework.h"
 #include "Core/Memory/Memory.h"
 #include "Platform/Event/EventSystem.h"
 
@@ -64,19 +65,18 @@ namespace BIGOS
             RESULT InputSystem::Create( const InputSystemDesc& desc, BigosFramework* pFramework )
             {
                 BGS_ASSERT( pFramework != nullptr, "Bigos framework (pFramework) must be a valid pointer." );
-                BGS_ASSERT( desc.pEventSystem != nullptr, "Event system (desc.pEventSystem) must be a valid pointer." );
 
                 m_desc    = desc;
                 m_pParent = pFramework;
 
                 // Subscribing handlers to event system
-                // TODO: Do we want to allow creating input system without event system?
-                m_desc.pEventSystem->Subscribe( &m_keyPressedHandler );
-                m_desc.pEventSystem->Subscribe( &m_keyReleasedHandler );
-                m_desc.pEventSystem->Subscribe( &m_mouseButtonPressedHandler );
-                m_desc.pEventSystem->Subscribe( &m_mouseButtonReleasedHandler );
-                m_desc.pEventSystem->Subscribe( &m_mouseMovedHandler );
-                m_desc.pEventSystem->Subscribe( &m_mouseScrolledHandler );
+                Event::EventSystem* pEventSystem = pFramework->GetEventSystem();
+                pEventSystem->Subscribe( &m_keyPressedHandler );
+                pEventSystem->Subscribe( &m_keyReleasedHandler );
+                pEventSystem->Subscribe( &m_mouseButtonPressedHandler );
+                pEventSystem->Subscribe( &m_mouseButtonReleasedHandler );
+                pEventSystem->Subscribe( &m_mouseMovedHandler );
+                pEventSystem->Subscribe( &m_mouseScrolledHandler );
 
                 // Clearing input
                 ClearKeys();
@@ -139,5 +139,5 @@ namespace BIGOS
             }
 
         } // namespace Input
-    }     // namespace Platform
+    } // namespace Platform
 } // namespace BIGOS
