@@ -139,7 +139,6 @@ namespace BIGOS
             public:
                 virtual ~ISwapchain() = default;
 
-                virtual RESULT Resize( const SwapchainResizeDesc& desc )   = 0;
                 virtual RESULT Present( const SwapchainPresentDesc& desc ) = 0;
                 virtual RESULT GetNextFrame( FrameInfo* pInfo )            = 0;
 
@@ -212,5 +211,5 @@ namespace BIGOS
             };
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

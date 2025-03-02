@@ -58,17 +58,17 @@ namespace BIGOS
             {
                 Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
 
-                if( m_pQueue != nullptr )
+                if( m_pCmdBuffer != nullptr )
                 {
-                    pAPIDevice->DestroyQueue( &m_pQueue );
+                    pAPIDevice->DestroyCommandBuffer( &m_pCmdBuffer );
                 }
                 if( m_hCmdPool != Backend::CommandPoolHandle() )
                 {
                     pAPIDevice->DestroyCommandPool( &m_hCmdPool );
                 }
-                if( m_pCmdBuffer != nullptr )
+                if( m_pQueue != nullptr )
                 {
-                    pAPIDevice->DestroyCommandBuffer( &m_pCmdBuffer );
+                    pAPIDevice->DestroyQueue( &m_pQueue );
                 }
             }
 
@@ -120,17 +120,17 @@ namespace BIGOS
             {
                 Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
 
-                if( m_pQueue != nullptr )
+                if( m_pCmdBuffer != nullptr )
                 {
-                    pAPIDevice->DestroyQueue( &m_pQueue );
+                    pAPIDevice->DestroyCommandBuffer( &m_pCmdBuffer );
                 }
                 if( m_hCmdPool != Backend::CommandPoolHandle() )
                 {
                     pAPIDevice->DestroyCommandPool( &m_hCmdPool );
                 }
-                if( m_pCmdBuffer != nullptr )
+                if( m_pQueue != nullptr )
                 {
-                    pAPIDevice->DestroyCommandBuffer( &m_pCmdBuffer );
+                    pAPIDevice->DestroyQueue( &m_pQueue );
                 }
             }
 
@@ -182,17 +182,17 @@ namespace BIGOS
             {
                 Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
 
-                if( m_pQueue != nullptr )
+                if( m_pCmdBuffer != nullptr )
                 {
-                    pAPIDevice->DestroyQueue( &m_pQueue );
+                    pAPIDevice->DestroyCommandBuffer( &m_pCmdBuffer );
                 }
                 if( m_hCmdPool != Backend::CommandPoolHandle() )
                 {
                     pAPIDevice->DestroyCommandPool( &m_hCmdPool );
                 }
-                if( m_pCmdBuffer != nullptr )
+                if( m_pQueue != nullptr )
                 {
-                    pAPIDevice->DestroyCommandBuffer( &m_pCmdBuffer );
+                    pAPIDevice->DestroyQueue( &m_pQueue );
                 }
             }
 

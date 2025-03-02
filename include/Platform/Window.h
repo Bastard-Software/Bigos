@@ -8,6 +8,7 @@ namespace BIGOS
         class BGS_API Window
         {
             friend class WindowSystem;
+            friend LRESULT CALLBACK WndProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
         public:
             Window();
@@ -25,6 +26,8 @@ namespace BIGOS
         protected:
             RESULT Create( const WindowDesc& desc, WindowSystem* pWndSystem );
             void   Destroy();
+
+            void SetDescSize( uint32_t width, uint32_t height );
 
         private:
             WindowDesc      m_desc;

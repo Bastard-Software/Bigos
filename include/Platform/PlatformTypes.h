@@ -63,7 +63,7 @@ namespace BIGOS
 
             struct InputSystemDesc
             {
-                Event::EventSystem* pEventSystem;
+                // TODO: For future use
             };
         } // namespace Input
     }     // namespace Platform

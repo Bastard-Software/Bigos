@@ -2,12 +2,21 @@
 
 #include "Driver/Frontend/RenderDevice.h"
 #include "Driver/Frontend/RenderSystem.h"
+#include "Driver/Frontend/Swapchain.h"
+#include "Platform/Window.h"
 
 namespace BIGOS
 {
     Renderer::Renderer()
         : m_pRenderSystem( nullptr )
         , m_pDevice( nullptr )
+        , m_pWindow( nullptr )
+        , m_pSwapchain( nullptr )
+        , m_frameCount( 2 )
+        , m_width( 1280 )
+        , m_height( 720 )
+        , m_rtFormat( Driver::Backend::Formats::R8G8B8A8_UNORM )
+        , m_dsFormat( Driver::Backend::Formats::D32_FLOAT )
         , m_pColorRT( nullptr )
         , m_pDepthRT( nullptr )
         , m_pVertexBuffer( nullptr )
@@ -25,10 +34,11 @@ namespace BIGOS
     {
     }
 
-    RESULT Renderer::Create( Driver::Frontend::RenderSystem* pSystem )
+    RESULT Renderer::Create( Driver::Frontend::RenderSystem* pSystem, Platform::Window* pWindow )
     {
         BGS_ASSERT( pSystem != nullptr );
         m_pRenderSystem = pSystem;
+        m_pWindow       = pWindow;
 
         Driver::Frontend::RenderDeviceDesc devDesc;
         devDesc.adapter.index = 0;
@@ -37,11 +47,24 @@ namespace BIGOS
             return Results::FAIL;
         }
 
-        const Driver::Backend::FORMAT rtFormat = Driver::Backend::Formats::R8G8B8A8_UNORM;
-        const Driver::Backend::FORMAT dsFormat = Driver::Backend::Formats::D32_FLOAT;
+        if( m_pWindow != nullptr )
+        {
+            m_width  = m_pWindow->GetDesc().width;
+            m_height = m_pWindow->GetDesc().height;
+
+            Driver::Frontend::SwapchainDesc swapchainDesc;
+            swapchainDesc.pWindow         = m_pWindow;
+            swapchainDesc.backBufferCount = m_frameCount;
+            swapchainDesc.format          = m_rtFormat;
+            if( BGS_FAILED( m_pDevice->CreateSwapchain( swapchainDesc, &m_pSwapchain ) ) )
+            {
+                Destroy();
+                return Results::FAIL;
+            }
+        }
 
         Driver::Frontend::RenderTargetDesc rtDesc;
-        rtDesc.format        = rtFormat;
+        rtDesc.format        = m_rtFormat;
         rtDesc.allowSampling = BGS_TRUE;
         rtDesc.allowCopying  = BGS_TRUE;
         rtDesc.width         = 1280;
@@ -49,10 +72,11 @@ namespace BIGOS
         rtDesc.sampleCount   = Driver::Backend::SampleCount::COUNT_2;
         if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pColorRT ) ) )
         {
+            Destroy();
             return Results::FAIL;
         }
 
-        rtDesc.format       = dsFormat;
+        rtDesc.format       = m_dsFormat;
         rtDesc.allowCopying = BGS_FALSE;
         rtDesc.sampleCount  = Driver::Backend::SampleCount::COUNT_1;
         if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pDepthRT ) ) )
@@ -182,8 +206,8 @@ namespace BIGOS
         graphicsPipelineDesc.depthStencilState.depthWriteEnable = BGS_TRUE;
         graphicsPipelineDesc.sampleCount                        = Driver::Backend::SampleCount::COUNT_1;
         graphicsPipelineDesc.renderTargetCount                  = 1;
-        graphicsPipelineDesc.pRenderTargetFormats               = &rtFormat;
-        graphicsPipelineDesc.depthStencilFormat                 = dsFormat;
+        graphicsPipelineDesc.pRenderTargetFormats               = &m_rtFormat;
+        graphicsPipelineDesc.depthStencilFormat                 = m_dsFormat;
         if( BGS_FAILED( m_pDevice->CreatePipeline( graphicsPipelineDesc, &m_pGraphicsPipeline ) ) )
         {
             Destroy();
@@ -280,6 +304,10 @@ namespace BIGOS
 
     void Renderer::Destroy()
     {
+        if( m_pSwapchain != nullptr )
+        {
+            m_pDevice->DestroySwapchain( &m_pSwapchain );
+        }
         if( m_pColorRT != nullptr )
         {
             m_pDevice->DestroyRenderTarget( &m_pColorRT );
@@ -336,6 +364,30 @@ namespace BIGOS
         {
             m_pDevice->DestroyTexture( &m_pSkyTexture );
         }
+    }
+
+    RESULT Renderer::Resize( uint32_t width, uint32_t height )
+    {
+        m_width  = width;
+        m_height = height;
+
+        DestroyResizableResources();
+        if( BGS_FAILED( CreateResizableResources() ) )
+        {
+            return Results::FAIL;
+        }
+        return m_pSwapchain->Resize( m_pWindow );
+    }
+
+    RESULT Renderer::CreateResizableResources()
+    {
+        // TODO: Implement while rendering
+        return Results::OK;
+    }
+
+    void Renderer::DestroyResizableResources()
+    {
+        // TODO: Implement while rendering
     }
 
 } // namespace BIGOS

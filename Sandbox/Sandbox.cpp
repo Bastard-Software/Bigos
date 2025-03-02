@@ -1,13 +1,12 @@
+#include "DemoLayer.h"
 #include <BigosEngine/Application.h>
 #include <BigosEngine/EntryPoint.h>
-
-#include "DemoLayer.h"
 
 class Sandbox : public BIGOS::Application
 {
 public:
     Sandbox()
-        : Application( "Sandbox" )
+        : Application( "Sandbox", BIGOS::Driver::Backend::APITypes::VULKAN )
     {
         PushLayer( new DemoLayer() );
     }

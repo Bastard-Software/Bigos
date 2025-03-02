@@ -54,19 +54,14 @@ namespace BIGOS
         : m_memorySystem()
         , m_pRenderSystem( nullptr )
         , m_pWindowSystem( nullptr )
-        , m_pEventSystem( nullptr )
-        , m_pInputSystem( nullptr )
     {
     }
 
     RESULT BigosFramework::DefaultInit( Driver::Backend::API_TYPE apiType )
     {
-        // TODO: For no we expect no fails during init
+        // TODO: For now we expect no fails during init
         Platform::WindowSystemDesc wndDesc;
         CreateWindowSystem( wndDesc, &m_pWindowSystem );
-        
-        Platform::Event::EventSystemDesc eventDesc;
-        CreateEventSystem( eventDesc, &m_pEventSystem );
 
         Driver::Frontend::RenderSystemDesc renderDesc;
         renderDesc.factoryDesc.apiType = apiType;
@@ -150,84 +145,22 @@ namespace BIGOS
         }
     }
 
-    RESULT BigosFramework::CreateEventSystem( const Platform::Event::EventSystemDesc& desc, Platform::Event::EventSystem** ppSystem )
-    {
-        BGS_ASSERT( ppSystem != nullptr, "Event system (ppSystem) must be a valid address." );
-
-        // If event system exist we return it otherwise we need to create.
-        if( m_pEventSystem == nullptr )
-        {
-            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocator(), &m_pEventSystem ) ) )
-            {
-                return Results::NO_MEMORY;
-            }
-
-            if( BGS_FAILED( m_pEventSystem->Create( desc, this ) ) )
-            {
-                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &m_pEventSystem );
-                return Results::FAIL;
-            }
-        }
-
-        *ppSystem = m_pEventSystem;
-
-        return Results::OK;
-    }
-
-    void BigosFramework::DestroyEventSystem( Platform::Event::EventSystem** ppSystem )
-    {
-        BGS_ASSERT( ppSystem != nullptr, "Event system (ppSystem) must be a valid address." );
-
-        if( ( *ppSystem != nullptr ) && ( *ppSystem == m_pEventSystem ) )
-        {
-            Platform::Event::EventSystem* pSystem = *ppSystem;
-            pSystem->Destroy();
-            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &pSystem );
-            m_pEventSystem = nullptr;
-        }
-    }
-
-    RESULT BigosFramework::CreateInputSystem( const Platform::Input::InputSystemDesc& desc, Platform::Input::InputSystem** ppSystem )
-    {
-        BGS_ASSERT( ppSystem != nullptr, "Input system (ppSystem) must be a valid address." );
-
-        // If event system exist we return it otherwise we need to create.
-        if( m_pInputSystem == nullptr )
-        {
-            if( BGS_FAILED( Core::Memory::AllocateObject( m_memorySystem.GetSystemHeapAllocator(), &m_pInputSystem ) ) )
-            {
-                return Results::NO_MEMORY;
-            }
-
-            if( BGS_FAILED( m_pInputSystem->Create( desc, this ) ) )
-            {
-                Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &m_pInputSystem );
-                return Results::FAIL;
-            }
-        }
-
-        *ppSystem = m_pInputSystem;
-
-        return Results::OK;
-    }
-
-    void BigosFramework::DestroyInputSystem( Platform::Input::InputSystem** ppSystem )
-    {
-        BGS_ASSERT( ppSystem != nullptr, "Input system (ppSystem) must be a valid address." );
-
-        if( ( *ppSystem != nullptr ) && ( *ppSystem == m_pInputSystem ) )
-        {
-            Platform::Input::InputSystem* pSystem = *ppSystem;
-            pSystem->Destroy();
-            Core::Memory::FreeObject( m_memorySystem.GetSystemHeapAllocator(), &pSystem );
-            m_pInputSystem = nullptr;
-        }
-    }
-
     RESULT BigosFramework::Create( const BigosFrameworkDesc& desc )
     {
+        // Creating core framework systems
         if( BGS_FAILED( m_memorySystem.Create( desc.memorySystemDesc ) ) )
         {
+            Destroy();
+            return Results::FAIL;
+        }
+        if( BGS_FAILED( m_eventSystem.Create( desc.eventSystemDesc, this ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+        if( BGS_FAILED( m_inputSystem.Create( desc.inputSystemDesc, this ) ) )
+        {
+            Destroy();
             return Results::FAIL;
         }
 
@@ -238,9 +171,9 @@ namespace BIGOS
     {
         DestroyRenderSystem( &m_pRenderSystem );
         DestroyWindowSystem( &m_pWindowSystem );
-        DestroyInputSystem( &m_pInputSystem );
-        DestroyEventSystem( &m_pEventSystem );
 
+        m_inputSystem.Destroy();
+        m_eventSystem.Destroy();
         m_memorySystem.Destroy();
     }
 

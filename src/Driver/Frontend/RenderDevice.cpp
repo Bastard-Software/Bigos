@@ -9,6 +9,7 @@
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/RenderTarget.h"
 #include "Driver/Frontend/Shader/Shader.h"
+#include "Driver/Frontend/Swapchain.h"
 #include "Driver/Frontend/Texture.h"
 
 namespace BIGOS
@@ -251,6 +252,39 @@ namespace BIGOS
                 Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pPipeline );
             }
 
+            RESULT RenderDevice::CreateSwapchain( const SwapchainDesc& desc, Swapchain** ppSwapchain )
+            {
+                BGS_ASSERT( ppSwapchain != nullptr, "Swapchain (ppSwapchain) must be a valid address." );
+                BGS_ASSERT( *ppSwapchain == nullptr, "There is a valid pointer at the given address. Swapchain (*ppSwapchain) must be nullptr." );
+
+                Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
+                Swapchain*          pSwapchain = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( pAllocator, &pSwapchain ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pSwapchain->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( pAllocator, &pSwapchain );
+                    return Results::FAIL;
+                }
+
+                ( *ppSwapchain ) = pSwapchain;
+
+                return Results::OK;
+            }
+
+            void RenderDevice::DestroySwapchain( Swapchain** ppSwapchain )
+            {
+                BGS_ASSERT( ppSwapchain != nullptr, "Swapchain (ppSwapchain) must be a valid address." );
+                BGS_ASSERT( *ppSwapchain != nullptr, "Swapchain (*ppSwapchain) must be a valid pointer." );
+
+                Swapchain* pSwapchain = ( *ppSwapchain );
+                pSwapchain->Destroy();
+                Memory::FreeObject( m_pParent->GetDefaultAllocator(), &pSwapchain );
+            }
+
             RESULT RenderDevice::Create( const RenderDeviceDesc& desc, Backend::IFactory* pFactory, RenderSystem* pDriverSystem )
             {
                 BGS_ASSERT( pDriverSystem != nullptr, "Render system (pRenderSystem) must be a valid pointer." );
@@ -269,6 +303,12 @@ namespace BIGOS
                     Results::FAIL;
                 }
                 m_pAPIDevice = pDevice;
+
+                if( BGS_FAILED( CreateContexts() ) )
+                {
+                    Destroy();
+                    return Results::FAIL;
+                }
 
                 return Results::OK;
             }
@@ -289,7 +329,7 @@ namespace BIGOS
             RESULT RenderDevice::CreateContexts()
             {
                 Memory::IAllocator* pAllocator = m_pParent->GetDefaultAllocator();
-                BGS_ASSERT( m_pGraphicsContext != nullptr );
+                BGS_ASSERT( m_pGraphicsContext == nullptr );
                 if( BGS_FAILED( Memory::AllocateObject( pAllocator, &m_pGraphicsContext ) ) )
                 {
                     return Results::NO_MEMORY;
@@ -300,7 +340,7 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                BGS_ASSERT( m_pComputeContext != nullptr );
+                BGS_ASSERT( m_pComputeContext == nullptr );
                 if( BGS_FAILED( Memory::AllocateObject( pAllocator, &m_pComputeContext ) ) )
                 {
                     return Results::NO_MEMORY;
@@ -312,7 +352,7 @@ namespace BIGOS
                     return Results::FAIL;
                 }
 
-                BGS_ASSERT( m_pCopyContext != nullptr );
+                BGS_ASSERT( m_pCopyContext == nullptr );
                 if( BGS_FAILED( Memory::AllocateObject( pAllocator, &m_pCopyContext ) ) )
                 {
                     return Results::NO_MEMORY;

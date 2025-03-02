@@ -254,12 +254,7 @@ void Triangle::OnDestroy()
 
 BIGOS::RESULT Triangle::InitDevice()
 {
-    BIGOS::Platform::Event::EventSystemDesc eventDesc;
-    if( BGS_FAILED( Application::GetFramework()->CreateEventSystem( eventDesc, &m_pEventSystem ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-    m_pEventSystem->Subscribe( &m_windowCloseHandler );
+    Application::GetFramework()->GetEventSystem()->Subscribe( &m_windowCloseHandler );
 
     BIGOS::Platform::WindowSystemDesc wndSystemDesc;
     if( BGS_FAILED( Application::GetFramework()->CreateWindowSystem( wndSystemDesc, &m_pWindowSystem ) ) )

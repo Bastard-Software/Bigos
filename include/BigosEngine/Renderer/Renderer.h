@@ -14,12 +14,25 @@ namespace BIGOS
         ~Renderer() = default;
 
     protected:
-        RESULT Create( Driver::Frontend::RenderSystem* pSystem );
+        RESULT Create( Driver::Frontend::RenderSystem* pSystem, Platform::Window* pWindow = nullptr );
         void   Destroy();
+
+        RESULT Resize( uint32_t width, uint32_t height );
+
+    private:
+        RESULT CreateResizableResources();
+        void   DestroyResizableResources();
 
     private:
         Driver::Frontend::RenderSystem* m_pRenderSystem;
         Driver::Frontend::RenderDevice* m_pDevice;
+        Platform::Window*               m_pWindow;
+        Driver::Frontend::Swapchain*    m_pSwapchain;
+        uint32_t                        m_frameCount;
+        uint32_t                        m_width;
+        uint32_t                        m_height;
+        Driver::Backend::FORMAT         m_rtFormat;
+        Driver::Backend::FORMAT         m_dsFormat;
         Driver::Frontend::RenderTarget* m_pColorRT;
         Driver::Frontend::RenderTarget* m_pDepthRT;
         Driver::Frontend::Buffer*       m_pVertexBuffer;

@@ -28,12 +28,6 @@ namespace BIGOS
             {
             }
 
-            RESULT VulkanSwapchain::Resize( const SwapchainResizeDesc& desc )
-            {
-                desc;
-                return Results::OK;
-            }
-
             RESULT VulkanSwapchain::Present( const SwapchainPresentDesc& desc )
             {
                 BGS_ASSERT( desc.pWaitSemaphores, "Semaphore array (pWaitSemaphores) must be a valid address." );
@@ -77,8 +71,8 @@ namespace BIGOS
                 VkSemaphore    nativeSemaphore = m_backBuffers[ m_semaphoreNdx ].hBackBufferAvailableSemaphore.GetNativeHandle();
                 uint32_t       bufferNdx;
                 // Timeout 1 ns mimics D3D12 behaviour, additionaly we do not support vulkan fences here.
-                VkResult res = m_pParent->GetDeviceAPI()->vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, 1, nativeSemaphore,
-                                                                                 VK_NULL_HANDLE, &bufferNdx );
+                VkResult res =
+                    m_pParent->GetDeviceAPI()->vkAcquireNextImageKHR( nativeDevice, nativeSwapchain, 1, nativeSemaphore, VK_NULL_HANDLE, &bufferNdx );
 
                 pInfo->hBackBufferAvailableSemaphore = m_backBuffers[ m_semaphoreNdx ].hBackBufferAvailableSemaphore;
                 pInfo->swapChainBackBufferIndex      = m_semaphoreNdx;
@@ -364,5 +358,5 @@ namespace BIGOS
             }
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

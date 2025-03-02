@@ -242,10 +242,6 @@ namespace BIGOS
                 FORMAT            format;
             };
 
-            struct SwapchainResizeDesc
-            {
-            };
-
             struct SwapchainPresentDesc
             {
                 SemaphoreHandle* pWaitSemaphores;
