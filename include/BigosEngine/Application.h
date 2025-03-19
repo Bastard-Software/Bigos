@@ -2,9 +2,9 @@
 
 #include "BigosEngine/BigosTypes.h"
 
-#include "BigosEngine/LayerStack.h"
 #include "BigosEngine/Renderer/Renderer.h"
 #include "BigosFramework/BigosFramework.h"
+#include "Core/Utils/Timestep.h"
 #include "Platform/Event/ApplicationEvent.h"
 #include "Platform/Event/EventHandler.h"
 
@@ -19,11 +19,14 @@ namespace BIGOS
         friend int ::main( int argc, char** argv );
 
     public:
+        virtual RESULT OnCreate()                     = 0;
+        virtual void   OnUpdate( Utils::Timestep ts ) = 0;
+        virtual void   OnRender( Utils::Timestep ts ) = 0;
+        virtual void   OnDestroy()                    = 0;
+
+    public:
         Application( const char* pName, Driver::Backend::API_TYPE apiType );
         virtual ~Application();
-
-        void PushLayer( Layer* pLayer );
-        void PushOverlay( Layer* pLayer );
 
         const Renderer& GetRenderer() { return m_renderer; }
 
@@ -39,19 +42,19 @@ namespace BIGOS
         void OnWindowClose( const Platform::Event::WindowCloseEvent& e );
         void OnWindowResize( const Platform::Event::WindowResizeEvent& e );
 
-    private:
-        Platform::Event::EventHandlerWraper<Platform::Event::WindowCloseEvent>  m_windowCloseHandler;
-        Platform::Event::EventHandlerWraper<Platform::Event::WindowResizeEvent> m_windowResizeHandler;
+    protected:
+        Renderer m_renderer;
 
     private:
-        LayerStack                m_layerStack;
+        float                     m_lastFrameTime;
         Platform::Window*         m_pWindow;
         const char*               m_pName;
         Driver::Backend::API_TYPE m_apiType;
         bool_t                    m_running;
-        float                     m_lastFrameTime;
 
-        Renderer m_renderer;
+    private:
+        Platform::Event::EventHandlerWraper<Platform::Event::WindowCloseEvent>  m_windowCloseHandler;
+        Platform::Event::EventHandlerWraper<Platform::Event::WindowResizeEvent> m_windowResizeHandler;
 
     private:
         static Application*    s_pInstance;

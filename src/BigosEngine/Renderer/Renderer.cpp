@@ -34,6 +34,10 @@ namespace BIGOS
     {
     }
 
+    void Renderer::Render()
+    {
+    }
+
     RESULT Renderer::Create( Driver::Frontend::RenderSystem* pSystem, Platform::Window* pWindow )
     {
         BGS_ASSERT( pSystem != nullptr );

@@ -29,17 +29,6 @@ namespace BIGOS
     {
     }
 
-    void Application::PushLayer( Layer* pLayer )
-    {
-        m_layerStack.PushLayer( pLayer );
-        pLayer->OnAttach();
-    }
-
-    void Application::PushOverlay( Layer* pLayer )
-    {
-        pLayer;
-    }
-
     RESULT Application::Create()
     {
         BGS_ASSERT( s_pInstance == nullptr, "Bigos application already exists." );
@@ -83,11 +72,19 @@ namespace BIGOS
 
         m_renderer.Create( s_pFramework->GetRenderSystem(), m_pWindow );
 
+        if( BGS_FAILED( OnCreate() ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+
         return Results::OK;
     }
 
     void Application::Destroy()
     {
+        OnDestroy();
+
         m_renderer.Destroy();
         DestroyBigosFramework( &s_pFramework );
     }
@@ -107,12 +104,12 @@ namespace BIGOS
             Core::Utils::Timestep ts   = time - m_lastFrameTime;
             m_lastFrameTime            = time;
 
+            // Application updates
             m_pWindow->Update();
+            OnUpdate( ts );
 
-            for( Layer* pLayer: m_layerStack )
-            {
-                pLayer->OnUpdate( ts );
-            }
+            // Application render
+            OnRender( ts );
             fps++;
 
             // Display fps on window title
