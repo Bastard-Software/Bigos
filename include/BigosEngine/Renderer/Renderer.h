@@ -13,6 +13,8 @@ namespace BIGOS
         Renderer();
         ~Renderer() = default;
 
+        void Render();
+
     protected:
         RESULT Create( Driver::Frontend::RenderSystem* pSystem, Platform::Window* pWindow = nullptr );
         void   Destroy();

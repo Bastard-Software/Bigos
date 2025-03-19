@@ -1,4 +1,4 @@
-#include "DemoLayer.h"
+
 #include <BigosEngine/Application.h>
 #include <BigosEngine/EntryPoint.h>
 
@@ -8,13 +8,37 @@ public:
     Sandbox()
         : Application( "Sandbox", BIGOS::Driver::Backend::APITypes::VULKAN )
     {
-        PushLayer( new DemoLayer() );
     }
 
     ~Sandbox() {}
+
+    virtual BIGOS::RESULT OnCreate() override;
+    virtual void          OnUpdate( BIGOS::Utils::Timestep ts ) override;
+    virtual void          OnRender( BIGOS::Utils::Timestep ts ) override;
+    virtual void          OnDestroy() override;
 };
 
 BIGOS::Application* BIGOS::CreateApplication()
 {
     return new Sandbox();
+}
+
+BIGOS::RESULT Sandbox::OnCreate()
+{
+    printf( "Startup\n" );
+    return BIGOS::Results::OK;
+}
+
+void Sandbox::OnUpdate( BIGOS::Utils::Timestep ts )
+{
+}
+
+void Sandbox::OnRender( BIGOS::Utils::Timestep ts )
+{
+    m_renderer.Render();
+}
+
+void Sandbox::OnDestroy()
+{
+    printf( "Shutdown\n" );
 }
