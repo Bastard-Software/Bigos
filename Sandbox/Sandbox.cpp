@@ -31,10 +31,12 @@ BIGOS::RESULT Sandbox::OnCreate()
 
 void Sandbox::OnUpdate( BIGOS::Utils::Timestep ts )
 {
+    ts;
 }
 
 void Sandbox::OnRender( BIGOS::Utils::Timestep ts )
 {
+    ts;
     m_renderer.Render();
 }
 

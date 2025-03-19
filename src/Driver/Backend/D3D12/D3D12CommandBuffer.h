@@ -47,6 +47,8 @@ namespace BIGOS
                 virtual void CopyBuferToTexture( const CopyBufferTextureDesc& desc ) override;
                 virtual void CopyTextureToBuffer( const CopyBufferTextureDesc& desc ) override;
 
+                virtual void Resolve( const ResolveDesc& desc ) override;
+
                 virtual void SetPipeline( PipelineHandle handle, PIPELINE_TYPE type ) override;
                 virtual void SetBindingHeaps( uint32_t heapCount, const BindingHeapHandle* pHandle ) override;
                 virtual void SetBindings( const SetBindingsDesc& desc ) override;
@@ -75,5 +77,5 @@ namespace BIGOS
                 D3D12Device* m_pParent;
             };
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

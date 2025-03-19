@@ -6,6 +6,7 @@ namespace BIGOS::Driver::Backend
 {
     struct VulkanResource
     {
+        VkExtent3D extent;
         union
         {
             VkImage  image;
