@@ -12,6 +12,7 @@ namespace BIGOS
             class BGS_API Swapchain final
             {
                 friend class RenderDevice;
+                friend class GraphicsContext;
 
             public:
                 Swapchain();
@@ -23,10 +24,18 @@ namespace BIGOS
                 RESULT Create( const SwapchainDesc& desc, RenderDevice* pDevice );
                 void   Destroy();
 
+                RESULT Present( RenderTarget* pRenderTarget );
+
             private:
-                Backend::SwapchainDesc m_desc;
-                Backend::ISwapchain*   m_pSwapchain;
-                RenderDevice*          m_pParent;
+                Backend::SwapchainDesc                m_desc;
+                Backend::ISwapchain*                  m_pSwapchain;
+                HeapArray<Backend::SemaphoreHandle>   m_hCpySemaphores;
+                Backend::FenceHandle                  m_hFence;
+                uint64_t                              m_fenceVal;
+                HeapArray<Backend::CommandPoolHandle> m_hCmdPools;
+                HeapArray<Backend::ICommandBuffer*>   m_pCmdBuffers;
+                RenderDevice*                         m_pParent;
+                uint32_t                              m_frameNdx;
             };
 
         } // namespace Frontend
