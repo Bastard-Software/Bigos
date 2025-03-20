@@ -1228,6 +1228,14 @@ namespace BIGOS
                 FORMAT           textureFormat;
             };
 
+            struct ResolveDesc
+            {
+                TextureRangeDesc srcRange;
+                TextureRangeDesc dstRange;
+                ResourceHandle   hSrcTexture;
+                ResourceHandle   hDstTexture;
+            };
+
             enum class QueryTypes : uint8_t
             {
                 OCCLUSION,

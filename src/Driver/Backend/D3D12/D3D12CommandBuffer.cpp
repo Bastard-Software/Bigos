@@ -566,6 +566,27 @@ namespace BIGOS
                 pNativeCommandList->CopyTextureRegion( &dstBuff, desc.textureOffset.x, desc.textureOffset.y, desc.textureOffset.z, &srcTex, &region );
             }
 
+            void D3D12CommandBuffer::Resolve( const ResolveDesc& desc )
+            {
+                BGS_ASSERT( desc.hSrcTexture != ResourceHandle(), "Texture (desc.hSrcTexture) must be a valid handle." );
+                BGS_ASSERT( desc.hDstTexture != ResourceHandle(), "Texture (desc.hDstTexture) must be a valid handle." );
+
+                const uint32_t srcNdx = D3D12CalcSubresource( desc.srcRange.mipLevel, desc.srcRange.arrayLayer,
+                                                              MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.srcRange.components ),
+                                                              desc.srcRange.mipLevelCount, desc.srcRange.arrayLayerCount );
+
+                const uint32_t dstNdx = D3D12CalcSubresource( desc.dstRange.mipLevel, desc.dstRange.arrayLayer,
+                                                              MapBigosTextureComponentFlagsToD3D12PlaneSlice( desc.dstRange.components ),
+                                                              desc.dstRange.mipLevelCount, desc.dstRange.arrayLayerCount );
+
+                BGS_ASSERT( desc.hSrcTexture.GetNativeHandle()->desc.Format == desc.hDstTexture.GetNativeHandle()->desc.Format );
+                ID3D12GraphicsCommandList7* pNativeCommandList = m_handle.GetNativeHandle();
+
+                pNativeCommandList->ResolveSubresource( desc.hDstTexture.GetNativeHandle()->pNativeResource, dstNdx,
+                                                        desc.hSrcTexture.GetNativeHandle()->pNativeResource, srcNdx,
+                                                        desc.hSrcTexture.GetNativeHandle()->desc.Format );
+            }
+
             void D3D12CommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
             {
                 BGS_ASSERT( handle != PipelineHandle(), "Pipeline (handle) must be a valid handle." );
@@ -671,5 +692,5 @@ namespace BIGOS
             }
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

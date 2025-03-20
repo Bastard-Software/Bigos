@@ -816,10 +816,13 @@ namespace BIGOS
                     pRes->type  = VulkanResourceTypes::IMAGE;
                     pRes->image = nativeImage;
                 }
-                pRes->pMemory      = nullptr;
-                pRes->memoryOffset = INVALID_OFFSET;
-                pRes->usage        = desc.resourceUsage;
-                *pHandle           = ResourceHandle( pRes );
+                pRes->extent.width  = desc.size.width;
+                pRes->extent.height = desc.size.height;
+                pRes->extent.depth  = desc.size.depth;
+                pRes->pMemory       = nullptr;
+                pRes->memoryOffset  = INVALID_OFFSET;
+                pRes->usage         = desc.resourceUsage;
+                *pHandle            = ResourceHandle( pRes );
 
                 return Results::OK;
             }

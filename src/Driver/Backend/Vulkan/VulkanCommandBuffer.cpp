@@ -603,6 +603,31 @@ namespace BIGOS
                                                                    &buffTexCpy );
             }
 
+            void VulkanCommandBuffer::Resolve( const ResolveDesc& desc )
+            {
+                BGS_ASSERT( desc.hSrcTexture != ResourceHandle(), "Texture (desc.hSrcTexture) must be a valid handle." );
+                BGS_ASSERT( desc.hDstTexture != ResourceHandle(), "Texture (desc.hDstTexture) must be a valid handle." );
+
+                VkImageResolve imgRes;
+                imgRes.srcOffset                     = { 0, 0, 0 };
+                imgRes.dstOffset                     = { 0, 0, 0 };
+                imgRes.extent                        = desc.hSrcTexture.GetNativeHandle()->extent;
+                imgRes.srcSubresource.aspectMask     = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.srcRange.components );
+                imgRes.srcSubresource.mipLevel       = desc.srcRange.mipLevel;
+                imgRes.srcSubresource.baseArrayLayer = desc.srcRange.arrayLayer;
+                imgRes.srcSubresource.layerCount     = 1; // Mimic D3D12 behavior
+                imgRes.dstSubresource.aspectMask     = MapBigosTextureComponentFlagsToVulkanImageAspectFlags( desc.dstRange.components );
+                imgRes.dstSubresource.mipLevel       = desc.dstRange.mipLevel;
+                imgRes.dstSubresource.baseArrayLayer = desc.dstRange.arrayLayer;
+                imgRes.dstSubresource.layerCount     = 1; // Mimic D3D12 behavior
+
+                VkCommandBuffer nativeCommandBuffer = m_handle.GetNativeHandle();
+
+                m_pParent->GetDeviceAPI()->vkCmdResolveImage( nativeCommandBuffer, desc.hSrcTexture.GetNativeHandle()->image,
+                                                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, desc.hDstTexture.GetNativeHandle()->image,
+                                                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgRes );
+            }
+
             void VulkanCommandBuffer::SetPipeline( PipelineHandle handle, PIPELINE_TYPE type )
             {
                 BGS_ASSERT( handle != PipelineHandle(), "Pipeline (handle) must be a valid handle." );
@@ -717,5 +742,5 @@ namespace BIGOS
             }
 
         } // namespace Backend
-    }     // namespace Driver
+    } // namespace Driver
 } // namespace BIGOS

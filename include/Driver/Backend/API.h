@@ -196,6 +196,8 @@ namespace BIGOS
                 virtual void CopyBuferToTexture( const CopyBufferTextureDesc& desc )  = 0;
                 virtual void CopyTextureToBuffer( const CopyBufferTextureDesc& desc ) = 0;
 
+                virtual void Resolve( const ResolveDesc& desc ) = 0;
+
                 virtual void BeginQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )           = 0;
                 virtual void EndQuery( QueryPoolHandle handle, uint32_t queryNdx, QUERY_TYPE type )             = 0;
                 virtual void Timestamp( QueryPoolHandle handle, uint32_t queryNdx )                             = 0;
