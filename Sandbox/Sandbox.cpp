@@ -6,7 +6,7 @@ class Sandbox : public BIGOS::Application
 {
 public:
     Sandbox()
-        : Application( "Sandbox", BIGOS::Driver::Backend::APITypes::VULKAN )
+        : Application( "Sandbox", BIGOS::Driver::Backend::APITypes::D3D12 )
     {
     }
 

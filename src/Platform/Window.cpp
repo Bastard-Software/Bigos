@@ -187,7 +187,10 @@ namespace BIGOS
                     ::ReleaseDC( m_internals.hWnd, m_internals.hDC );
                 }
                 ::DestroyWindow( m_internals.hWnd );
-                UnregisterClass( m_desc.pTitle, m_internals.hModule );
+            }
+            if( m_internals.hModule != nullptr )
+            {
+                ::UnregisterClass( m_desc.pTitle, m_internals.hModule );
             }
         }
 

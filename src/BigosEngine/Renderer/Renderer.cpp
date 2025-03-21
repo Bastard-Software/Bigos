@@ -1,5 +1,6 @@
 #include "BigosEngine/Renderer/Renderer.h"
 
+#include "Driver/Frontend/Contexts.h"
 #include "Driver/Frontend/RenderDevice.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Swapchain.h"
@@ -12,12 +13,13 @@ namespace BIGOS
         , m_pDevice( nullptr )
         , m_pWindow( nullptr )
         , m_pSwapchain( nullptr )
-        , m_frameCount( 2 )
+        , m_frameCount( 3 )
         , m_width( 1280 )
         , m_height( 720 )
         , m_rtFormat( Driver::Backend::Formats::R8G8B8A8_UNORM )
         , m_dsFormat( Driver::Backend::Formats::D32_FLOAT )
-        , m_pColorRT( nullptr )
+        , m_frameNdx( 0 )
+        , m_pColorRTs()
         , m_pDepthRT( nullptr )
         , m_pVertexBuffer( nullptr )
         , m_pIndexBuffer( nullptr )
@@ -36,6 +38,10 @@ namespace BIGOS
 
     void Renderer::Render()
     {
+        Driver::Frontend::RenderTarget* pCurrRT = m_pColorRTs[ m_frameNdx++ ];
+        m_frameNdx                              = m_frameNdx % m_frameCount;
+
+        m_pDevice->GetGraphicsContext()->Present( m_pSwapchain, pCurrRT );
     }
 
     RESULT Renderer::Create( Driver::Frontend::RenderSystem* pSystem, Platform::Window* pWindow )
@@ -66,24 +72,8 @@ namespace BIGOS
                 return Results::FAIL;
             }
         }
-
-        Driver::Frontend::RenderTargetDesc rtDesc;
-        rtDesc.format        = m_rtFormat;
-        rtDesc.allowSampling = BGS_TRUE;
-        rtDesc.allowCopying  = BGS_TRUE;
-        rtDesc.width         = 1280;
-        rtDesc.height        = 720;
-        rtDesc.sampleCount   = Driver::Backend::SampleCount::COUNT_2;
-        if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pColorRT ) ) )
-        {
-            Destroy();
-            return Results::FAIL;
-        }
-
-        rtDesc.format       = m_dsFormat;
-        rtDesc.allowCopying = BGS_FALSE;
-        rtDesc.sampleCount  = Driver::Backend::SampleCount::COUNT_1;
-        if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pDepthRT ) ) )
+        m_pColorRTs.resize( m_frameCount );
+        if( BGS_FAILED( CreateResizableResources() ) )
         {
             Destroy();
             return Results::FAIL;
@@ -312,14 +302,9 @@ namespace BIGOS
         {
             m_pDevice->DestroySwapchain( &m_pSwapchain );
         }
-        if( m_pColorRT != nullptr )
-        {
-            m_pDevice->DestroyRenderTarget( &m_pColorRT );
-        }
-        if( m_pDepthRT != nullptr )
-        {
-            m_pDevice->DestroyRenderTarget( &m_pDepthRT );
-        }
+
+        DestroyResizableResources();
+
         if( m_pVertexBuffer != nullptr )
         {
             m_pDevice->DestroyBuffer( &m_pVertexBuffer );
@@ -375,23 +360,59 @@ namespace BIGOS
         m_width  = width;
         m_height = height;
 
-        DestroyResizableResources();
-        if( BGS_FAILED( CreateResizableResources() ) )
+        if( BGS_FAILED( m_pSwapchain->Resize( m_pWindow ) ) )
         {
             return Results::FAIL;
         }
-        return m_pSwapchain->Resize( m_pWindow );
+        DestroyResizableResources();
+        return CreateResizableResources();
     }
 
     RESULT Renderer::CreateResizableResources()
     {
-        // TODO: Implement while rendering
+        Driver::Frontend::RenderTargetDesc rtDesc;
+        rtDesc.format        = m_rtFormat;
+        rtDesc.allowSampling = BGS_FALSE;
+        rtDesc.allowCopying  = BGS_TRUE;
+        rtDesc.width         = m_width;
+        rtDesc.height        = m_height;
+        rtDesc.sampleCount   = Driver::Backend::SampleCount::COUNT_1;
+        for( index_t ndx = 0; ndx < static_cast<index_t>( m_frameCount ); ++ndx )
+        {
+            if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pColorRTs[ ndx ] ) ) )
+            {
+                Destroy();
+                return Results::FAIL;
+            }
+        }
+
+        rtDesc.format       = m_dsFormat;
+        rtDesc.allowCopying = BGS_FALSE;
+        rtDesc.sampleCount  = Driver::Backend::SampleCount::COUNT_1;
+        if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pDepthRT ) ) )
+        {
+            Destroy();
+            return Results::FAIL;
+        }
+
         return Results::OK;
     }
 
     void Renderer::DestroyResizableResources()
     {
-        // TODO: Implement while rendering
+        for( index_t ndx = 0; ndx < static_cast<index_t>( m_frameCount ); ++ndx )
+        {
+            if( m_pColorRTs[ ndx ] != nullptr )
+            {
+                m_pDevice->DestroyRenderTarget( &m_pColorRTs[ ndx ] );
+                m_pColorRTs[ ndx ] = nullptr;
+            }
+        }
+        if( m_pDepthRT != nullptr )
+        {
+            m_pDevice->DestroyRenderTarget( &m_pDepthRT );
+            m_pDepthRT = nullptr;
+        }
     }
 
 } // namespace BIGOS
