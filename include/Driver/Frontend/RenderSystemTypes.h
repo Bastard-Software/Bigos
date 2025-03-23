@@ -7,8 +7,6 @@
 
 namespace BIGOS
 {
-    class BigosFramework;
-
     namespace Driver
     {
         namespace Backend
@@ -189,6 +187,10 @@ namespace BIGOS
                     const char*  pText = nullptr;
                     */
                 } adapter;
+                struct
+                {
+                    uint32_t frameCount = 3;
+                } graphicsContext;
             };
 
             struct RenderTargetDesc

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Driver/Frontend/RenderDevice.h"
-#include "Platform/WindowSystem.h"
+#include "Platform/Window/WindowSystem.h"
 #include "Sample.h"
 
 using namespace BIGOS::Driver;
@@ -33,7 +33,6 @@ private:
     } m_storageBufferData;
 
     // Core objects
-    Frontend::RenderSystem* m_pRenderSystem;
     Frontend::RenderDevice* m_pDevice;
     Backend::IDevice*       m_pAPIDevice;
     Backend::IQueue*        m_pQueue;

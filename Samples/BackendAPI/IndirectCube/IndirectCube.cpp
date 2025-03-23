@@ -4,14 +4,12 @@
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/IShaderCompiler.h"
 #include "Platform/Event/EventSystem.h"
-#include "Platform/Window.h"
+#include "Platform/Window/Window.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 IndirectCube::IndirectCube( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )
     , m_pEventSystem( nullptr )
-    , m_pWindowSystem( nullptr )
-    , m_pRenderSystem( nullptr )
     , m_pWindow( nullptr )
     , m_pDevice( nullptr )
     , m_pAPIDevice( nullptr )
@@ -355,13 +353,7 @@ void IndirectCube::OnDestroy()
 
 BIGOS::RESULT IndirectCube::InitDevice()
 {
-    Application::GetFramework()->GetEventSystem()->Subscribe( &m_windowCloseHandler );
-
-    BIGOS::Platform::WindowSystemDesc wndSystemDesc;
-    if( BGS_FAILED( Application::GetFramework()->CreateWindowSystem( wndSystemDesc, &m_pWindowSystem ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
+    Application::GetFramework()->GetEventSystem().Subscribe( &m_windowCloseHandler );
 
     BIGOS::Platform::WindowDesc wndDesc;
     wndDesc.pTitle    = m_pName;
@@ -370,24 +362,16 @@ BIGOS::RESULT IndirectCube::InitDevice()
     wndDesc.yPosition = 100;
     wndDesc.width     = m_width;
     wndDesc.height    = m_height;
-    if( BGS_FAILED( m_pWindowSystem->CreateWindow( wndDesc, &m_pWindow ) ) )
+    if( BGS_FAILED( Application::GetFramework()->GetWindowSystem().CreateWindow( wndDesc, &m_pWindow ) ) )
     {
         return BIGOS::Results::FAIL;
     }
     m_pWindow->Show();
 
     // Creating device
-    BIGOS::Driver::Frontend::RenderSystemDesc renderDesc;
-    renderDesc.factoryDesc.apiType = m_APIType;
-    renderDesc.factoryDesc.flags   = BGS_FLAG( BIGOS::Driver::Backend::FactoryFlagBits::ENABLE_DEBUG_LAYERS_IF_AVAILABLE );
-    if( BGS_FAILED( Application::GetFramework()->CreateRenderSystem( renderDesc, &m_pRenderSystem ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
     BIGOS::Driver::Frontend::RenderDeviceDesc devDesc;
     devDesc.adapter.index = 0;
-    if( BGS_FAILED( m_pRenderSystem->CreateDevice( devDesc, &m_pDevice ) ) )
+    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().CreateDevice( devDesc, &m_pDevice ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -877,13 +861,13 @@ BIGOS::RESULT IndirectCube::CreateApplicationResources()
     shaderDesc.source.sourceSize  = m_shaderSourceSize;
     shaderDesc.type               = BIGOS::Driver::Backend::ShaderTypes::VERTEX;
     shaderDesc.pEntryPoint        = "VSMain";
-    if( BGS_FAILED( m_pRenderSystem->GetDefaultCompiler()->Compile( shaderDesc, &pVSBlob ) ) )
+    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().GetDefaultCompiler()->Compile( shaderDesc, &pVSBlob ) ) )
     {
         return BIGOS::Results::FAIL;
     }
     shaderDesc.type        = BIGOS::Driver::Backend::ShaderTypes::PIXEL;
     shaderDesc.pEntryPoint = "PSMain";
-    if( BGS_FAILED( m_pRenderSystem->GetDefaultCompiler()->Compile( shaderDesc, &pPSBlob ) ) )
+    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().GetDefaultCompiler()->Compile( shaderDesc, &pPSBlob ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -903,8 +887,8 @@ BIGOS::RESULT IndirectCube::CreateApplicationResources()
         return BIGOS::Results::FAIL;
     }
 
-    m_pRenderSystem->GetDefaultCompiler()->DestroyOutput( &pVSBlob );
-    m_pRenderSystem->GetDefaultCompiler()->DestroyOutput( &pPSBlob );
+    Application::GetFramework()->GetRenderSystem().GetDefaultCompiler()->DestroyOutput( &pVSBlob );
+    Application::GetFramework()->GetRenderSystem().GetDefaultCompiler()->DestroyOutput( &pPSBlob );
 
     delete[] m_pShaderSource;
 

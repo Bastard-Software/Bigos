@@ -9,7 +9,7 @@
 #include "D3D12Factory.h"
 #include "D3D12Resource.h"
 #include "Driver/Frontend/RenderSystem.h"
-#include "Platform/Window.h"
+#include "Platform/Window/Window.h"
 
 namespace BIGOS
 {

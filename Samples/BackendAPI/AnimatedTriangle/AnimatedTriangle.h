@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Driver/Frontend/RenderDevice.h"
-#include "Platform/WindowSystem.h"
+#include "Platform/Window/WindowSystem.h"
 #include "Sample.h"
 
 using namespace BIGOS::Driver;
@@ -36,9 +36,7 @@ private:
 
     // Core objects
     BIGOS::Platform::Event::EventSystem* m_pEventSystem;
-    BIGOS::Platform::WindowSystem*       m_pWindowSystem;
     BIGOS::Platform::Window*             m_pWindow;
-    Frontend::RenderSystem*              m_pRenderSystem;
     Frontend::RenderDevice*              m_pDevice;
     Backend::IDevice*                    m_pAPIDevice;
     Backend::IQueue*                     m_pQueue;

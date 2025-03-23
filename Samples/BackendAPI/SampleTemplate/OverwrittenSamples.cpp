@@ -2,7 +2,7 @@
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/IShaderCompiler.h"
 #include "OverwrittenSample.h"
-#include "Platform/Window.h"
+#include "Platform/Window/Window.h"
 
 OverwrittenSample::OverwrittenSample( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )

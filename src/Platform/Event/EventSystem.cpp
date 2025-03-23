@@ -8,6 +8,13 @@ namespace BIGOS
     {
         namespace Event
         {
+            EventSystem::EventSystem()
+                : m_desc()
+                , m_handlers()
+                , m_pParent( nullptr )
+            {
+            }
+
             void EventSystem::Subscribe( IEventHandlerWraper* pHandler )
             {
                 BGS_ASSERT( pHandler != nullptr, "IEventHandlerWraper (pHandler) must be a valis pointer." );
@@ -48,12 +55,12 @@ namespace BIGOS
                 }
             }
 
-            RESULT EventSystem::Create( const EventSystemDesc& desc, BigosFramework* pFramework )
+            RESULT EventSystem::Create( const EventSystemDesc& desc, BigosEngine* pEngine )
             {
-                BGS_ASSERT( pFramework != nullptr, "Bigos framework (pFramework) must be a valid pointer." );
+                BGS_ASSERT( pEngine != nullptr, "Bigos engine (pEngine) must be a valid pointer." );
 
                 m_desc    = desc;
-                m_pParent = pFramework;
+                m_pParent = pEngine;
                 m_handlers.resize( 0 );
 
                 return Results::OK;
@@ -66,5 +73,5 @@ namespace BIGOS
             }
 
         } // namespace Event
-    }     // namespace Platform
+    } // namespace Platform
 } // namespace BIGOS

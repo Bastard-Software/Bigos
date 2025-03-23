@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BigosFramework/BigosFramework.h"
+
 #include "Platform/Event/ApplicationEvent.h"
 #include "Platform/Event/EventHandler.h"
 #include "SampleHelper.h"

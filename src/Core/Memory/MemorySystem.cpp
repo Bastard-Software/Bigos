@@ -6,9 +6,20 @@ namespace BIGOS
     {
         namespace Memory
         {
-            RESULT MemorySystem::Create( const MemorySystemDesc& desc )
+            MemorySystem::MemorySystem()
+                : m_desc()
+                , m_allocators()
+                , m_systemHeapAllocator()
+#if( BGS_MEMORY_DEBUG )
+                , m_memoryBlockInfos()
+#endif // ( BGS_MEMORY_DEBUG )
+                , m_pParent( nullptr )
             {
-                m_desc = desc;
+            }
+            RESULT MemorySystem::Create( const MemorySystemDesc& desc, BigosEngine* pEngine )
+            {
+                m_desc    = desc;
+                m_pParent = pEngine;
 
                 AllocatorDesc heapAllocatorDesc;
                 heapAllocatorDesc.type    = AllocatorTypes::SYSTEM_HEAP;
@@ -42,6 +53,7 @@ namespace BIGOS
 
                 m_memoryBlockInfos.clear();
 #endif // ( BGS_MEMORY_DEBUG )
+                m_pParent = nullptr;
             }
 
 #if( BGS_MEMORY_DEBUG )
@@ -67,7 +79,7 @@ namespace BIGOS
                     }
                 }
             }
-#endif    // ( BGS_MEMORY_DEBUG )
+#endif // ( BGS_MEMORY_DEBUG )
         } // namespace Memory
-    }     // namespace Core
+    } // namespace Core
 } // namespace BIGOS

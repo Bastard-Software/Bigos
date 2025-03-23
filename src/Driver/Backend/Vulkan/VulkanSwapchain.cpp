@@ -7,7 +7,7 @@
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Driver/Frontend/RenderSystem.h"
-#include "Platform/Window.h"
+#include "Platform/Window/Window.h"
 #include "VulkanCommon.h"
 #include "VulkanDevice.h"
 #include "VulkanFactory.h"

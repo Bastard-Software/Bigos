@@ -1,6 +1,5 @@
 #pragma once
 
-#include "BigosFramework/BigosFramework.h"
 #include "SampleHelper.h"
 
 using namespace BIGOS::Driver::Backend;

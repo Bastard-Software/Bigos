@@ -10,9 +10,7 @@ namespace BIGOS
         {
             class BGS_API RenderSystem final
             {
-                friend class BigosFramework;
-                friend class Backend::VulkanFactory;
-                friend class Backend::D3D12Factory;
+                friend class BigosEngine;
 
             public:
                 RenderSystem();
@@ -22,11 +20,11 @@ namespace BIGOS
                 void   DestroyDevice( RenderDevice** ppDevice );
 
                 RESULT CreateCamera( const CameraDesc& desc, Camera** ppCamera );
-                void   DestroyCamera( Camera** ppCamera);
+                void   DestroyCamera( Camera** ppCamera );
 
                 void SetDefaultCompiler( IShaderCompiler* pCompiler ) { m_pCompiler = pCompiler; }
 
-                BigosFramework*     GetParent() { return m_pParent; }
+                BigosEngine*        GetParent() { return m_pParent; }
                 Memory::IAllocator* GetDefaultAllocator() { return m_pDefaultAllocator; }
                 Backend::IFactory*  GetFactory() { return m_pFactory; }
                 IShaderCompiler*    GetDefaultCompiler() { return m_pCompiler; }
@@ -38,7 +36,7 @@ namespace BIGOS
                 const RenderSystemDesc& GetDesc() const { return m_desc; }
 
             protected:
-                RESULT Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pFramework );
+                RESULT Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosEngine* pEngine );
                 void   Destroy();
 
             private:
@@ -54,7 +52,7 @@ namespace BIGOS
                 AdapterArray           m_adapters;
                 RenderDeviceArray      m_devices;
                 CameraArray            m_cameras;
-                BigosFramework*        m_pParent;
+                BigosEngine*           m_pParent;
                 ShaderCompilerFactory* m_pShaderCompilerFactory;
                 Memory::IAllocator*    m_pDefaultAllocator;
                 IShaderCompiler*       m_pCompiler;

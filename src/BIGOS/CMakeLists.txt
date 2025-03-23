@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(BigosFramework)
+project(BIGOS)
 
 include ("${ROOT_DIR}/CMakeScripts/CompilerSettings.cmake" NO_POLICY_SCOPE)
 include ("${ROOT_DIR}/CMakeScripts/CompilerDefinitions.cmake" NO_POLICY_SCOPE)
@@ -28,7 +28,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${THIRD_PARTY_DIR}/glm/
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
+target_link_libraries(${PROJECT_NAME} PRIVATE
     Core
     Driver
     Platform

@@ -3,11 +3,10 @@
 #include "Application.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/IShaderCompiler.h"
-#include "Platform/Window.h"
+#include "Platform/Window/Window.h"
 
 Fibonacci::Fibonacci( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )
-    , m_pRenderSystem( nullptr )
     , m_pDevice( nullptr )
     , m_pAPIDevice( nullptr )
     , m_pQueue( nullptr )
@@ -91,17 +90,9 @@ void Fibonacci::OnDestroy()
 BIGOS::RESULT Fibonacci::InitDevice()
 {
     // Creating device
-    BIGOS::Driver::Frontend::RenderSystemDesc renderDesc;
-    renderDesc.factoryDesc.apiType = m_APIType;
-    renderDesc.factoryDesc.flags   = BGS_FLAG( BIGOS::Driver::Backend::FactoryFlagBits::ENABLE_DEBUG_LAYERS_IF_AVAILABLE );
-    if( BGS_FAILED( Application::GetFramework()->CreateRenderSystem( renderDesc, &m_pRenderSystem ) ) )
-    {
-        return BIGOS::Results::FAIL;
-    }
-
     BIGOS::Driver::Frontend::RenderDeviceDesc devDesc;
     devDesc.adapter.index = 0;
-    if( BGS_FAILED( m_pRenderSystem->CreateDevice( devDesc, &m_pDevice ) ) )
+    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().CreateDevice( devDesc, &m_pDevice ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -240,7 +231,7 @@ BIGOS::RESULT Fibonacci::CreatePipeline()
     shaderDesc.type               = BIGOS::Driver::Backend::ShaderTypes::COMPUTE;
     shaderDesc.pEntryPoint        = "CSMain";
     shaderDesc.compileDebug       = BIGOS::BGS_FALSE;
-    if( BGS_FAILED( m_pRenderSystem->GetDefaultCompiler()->Compile( shaderDesc, &pCSBlob ) ) )
+    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().GetDefaultCompiler()->Compile( shaderDesc, &pCSBlob ) ) )
     {
         return BIGOS::Results::FAIL;
     }
@@ -253,7 +244,7 @@ BIGOS::RESULT Fibonacci::CreatePipeline()
         return BIGOS::Results::FAIL;
     }
 
-    m_pRenderSystem->GetDefaultCompiler()->DestroyOutput( &pCSBlob );
+    Application::GetFramework()->GetRenderSystem().GetDefaultCompiler()->DestroyOutput( &pCSBlob );
 
     delete[] pShader;
 

@@ -24,7 +24,7 @@ namespace BIGOS
 
                 void                 SetState( const ResourceState& state ) { m_state = state; }
                 const ResourceState& GetState() const { return m_state; }
-                const Size2D&        GetSize() const { return { m_desc.width, m_desc.height }; }
+                Size2D               GetSize() const { return { m_desc.width, m_desc.height }; }
                 uint32_t             GetWidth() const { return m_desc.width; }
                 uint32_t             GetHeight() const { return m_desc.height; }
 

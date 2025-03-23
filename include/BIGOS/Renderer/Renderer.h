@@ -1,13 +1,13 @@
 #pragma once
 
-#include "BigosEngine/BigosTypes.h"
 #include "Driver/Frontend/RenderSystemTypes.h"
 
 namespace BIGOS
 {
     class BGS_API Renderer
     {
-        friend class Application;
+        friend class IApplication;
+        friend class WindowedApplication;
 
     public:
         Renderer();
@@ -28,6 +28,7 @@ namespace BIGOS
     private:
         Driver::Frontend::RenderSystem*            m_pRenderSystem;
         Driver::Frontend::RenderDevice*            m_pDevice;
+        Driver::Frontend::GraphicsContext*         m_pGraphicsContext;
         Platform::Window*                          m_pWindow;
         Driver::Frontend::Swapchain*               m_pSwapchain;
         uint32_t                                   m_frameCount;

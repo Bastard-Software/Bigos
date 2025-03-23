@@ -1,5 +1,5 @@
 #pragma once
-#include "BigosFramework/BigosFramework.h"
+#include "BIGOS/BigosEngine.h"
 #include <fstream>
 
 inline BIGOS::RESULT readDataFromFile( const char* pPath, void** ppData, uint32_t* pSize )

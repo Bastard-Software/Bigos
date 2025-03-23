@@ -15,10 +15,11 @@ namespace BIGOS
             class BGS_API MemorySystem final
             {
                 friend class BigosFramework;
+                friend class BigosEngine;
                 friend class SystemHeapAllocator;
 
             public:
-                MemorySystem()  = default;
+                MemorySystem();
                 ~MemorySystem() = default;
 
                 SystemHeapAllocator* GetSystemHeapAllocator() { return &m_systemHeapAllocator; }
@@ -30,7 +31,7 @@ namespace BIGOS
 #endif // ( BGS_MEMORY_DEBUG )
 
             protected:
-                RESULT Create( const MemorySystemDesc& desc );
+                RESULT Create( const MemorySystemDesc& desc, BigosEngine* pEngine );
                 void   Destroy();
 
 #if( BGS_MEMORY_DEBUG )
@@ -48,6 +49,7 @@ namespace BIGOS
                 MemoryBlockInfoArray m_memoryBlockInfos;
 
 #endif // ( BGS_MEMORY_DEBUG )
+                BigosEngine* m_pParent;
             };
         } // namespace Memory
     }     // namespace Core

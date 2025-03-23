@@ -1,7 +1,6 @@
 #pragma once
 
-#include "BigosFramework/BigosFramework.h"
-
+#include "BIGOS/BigosEngine.h"
 #include "Sample.h"
 
 class Application
@@ -9,8 +8,8 @@ class Application
 public:
     static int Run( Sample* pSample );
 
-    static BIGOS::BigosFramework* GetFramework() { return m_pFramework; }
+    static BIGOS::BigosEngine* GetFramework() { return m_pFramework; }
 
 private:
-    static BIGOS::BigosFramework* m_pFramework;
+    static BIGOS::BigosEngine* m_pFramework;
 };

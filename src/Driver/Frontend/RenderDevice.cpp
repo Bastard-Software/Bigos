@@ -3,7 +3,9 @@
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Driver/Frontend/Buffer.h"
-#include "Driver/Frontend/Contexts.h"
+#include "Driver/Frontend/ComputeContext.h"
+#include "Driver/Frontend/CopyContext.h"
+#include "Driver/Frontend/GraphicsContext.h"
 #include "Driver/Frontend/Pipeline.h"
 #include "Driver/Frontend/RenderPass.h"
 #include "Driver/Frontend/RenderSystem.h"
@@ -334,7 +336,7 @@ namespace BIGOS
                 {
                     return Results::NO_MEMORY;
                 }
-                if( BGS_FAILED( m_pGraphicsContext->Create( this ) ) )
+                if( BGS_FAILED( m_pGraphicsContext->Create( m_desc.graphicsContext.frameCount, this ) ) )
                 {
                     Memory::FreeObject( pAllocator, &m_pGraphicsContext );
                     return Results::FAIL;

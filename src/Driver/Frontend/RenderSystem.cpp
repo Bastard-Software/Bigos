@@ -168,14 +168,14 @@ namespace BIGOS
                 }
             }
 
-            RESULT RenderSystem::Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosFramework* pFramework )
+            RESULT RenderSystem::Create( const RenderSystemDesc& desc, Core::Memory::IAllocator* pAllocator, BigosEngine* pEngine )
             {
-                BGS_ASSERT( pFramework != nullptr, "Bigos framework (pFramework) must be a valid pointer." );
+                BGS_ASSERT( pEngine != nullptr, "Bigos engine (pEngine) must be a valid pointer." );
                 BGS_ASSERT( pAllocator != nullptr, "Allocator (pAllocator) must be a valid pointer." );
 
                 m_desc              = desc;
                 m_pDefaultAllocator = pAllocator;
-                m_pParent           = pFramework;
+                m_pParent           = pEngine;
 
                 if( BGS_FAILED( CreateFactory( desc.factoryDesc, &m_pFactory ) ) )
                 {

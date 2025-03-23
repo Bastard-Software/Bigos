@@ -2,7 +2,6 @@
 
 #include "D3D12CommandBuffer.h"
 
-#include "BigosFramework/Config.h"
 #include "Core/Memory/Memory.h"
 #include "D3D12Common.h"
 #include "D3D12Device.h"

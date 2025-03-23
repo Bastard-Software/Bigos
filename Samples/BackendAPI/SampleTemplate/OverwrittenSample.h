@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Driver/Frontend/RenderDevice.h"
-#include "Platform/WindowSystem.h"
+#include "Platform/Window/WindowSystem.h"
 #include "Sample.h"
 
 using namespace BIGOS::Driver;

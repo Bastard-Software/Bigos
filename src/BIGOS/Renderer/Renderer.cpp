@@ -1,16 +1,19 @@
-#include "BigosEngine/Renderer/Renderer.h"
+#include "BIGOS/Renderer/Renderer.h"
 
-#include "Driver/Frontend/Contexts.h"
+#include "Driver/Frontend/ComputeContext.h"
+#include "Driver/Frontend/CopyContext.h"
+#include "Driver/Frontend/GraphicsContext.h"
 #include "Driver/Frontend/RenderDevice.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Swapchain.h"
-#include "Platform/Window.h"
+#include "Platform/Window/Window.h"
 
 namespace BIGOS
 {
     Renderer::Renderer()
         : m_pRenderSystem( nullptr )
         , m_pDevice( nullptr )
+        , m_pGraphicsContext( nullptr )
         , m_pWindow( nullptr )
         , m_pSwapchain( nullptr )
         , m_frameCount( 3 )
@@ -38,10 +41,14 @@ namespace BIGOS
 
     void Renderer::Render()
     {
-        Driver::Frontend::RenderTarget* pCurrRT = m_pColorRTs[ m_frameNdx++ ];
-        m_frameNdx                              = m_frameNdx % m_frameCount;
+        Driver::Frontend::RenderTarget* pCurrRT = m_pColorRTs[ m_frameNdx ];
 
-        m_pDevice->GetGraphicsContext()->Present( m_pSwapchain, pCurrRT );
+        m_pGraphicsContext->BeginFrame();
+        m_pGraphicsContext->SubmitFrame();
+
+        m_pGraphicsContext->Present( m_pSwapchain, pCurrRT );
+
+        m_frameNdx = ( m_frameNdx + 1 ) % m_frameCount;
     }
 
     RESULT Renderer::Create( Driver::Frontend::RenderSystem* pSystem, Platform::Window* pWindow )
@@ -51,11 +58,13 @@ namespace BIGOS
         m_pWindow       = pWindow;
 
         Driver::Frontend::RenderDeviceDesc devDesc;
-        devDesc.adapter.index = 0;
+        devDesc.adapter.index              = 0;
+        devDesc.graphicsContext.frameCount = m_frameCount;
         if( BGS_FAILED( m_pRenderSystem->CreateDevice( devDesc, &m_pDevice ) ) )
         {
             return Results::FAIL;
         }
+        m_pGraphicsContext = m_pDevice->GetGraphicsContext();
 
         if( m_pWindow != nullptr )
         {

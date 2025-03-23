@@ -65,7 +65,7 @@
 
 namespace BIGOS
 {
-    class BigosFramework;
+    class BigosEngine;
 
     inline namespace Core
     {
