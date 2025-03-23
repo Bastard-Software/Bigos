@@ -18,8 +18,7 @@ add_subdirectory(${SOURCE_DIR}/Core)
 add_subdirectory(${SOURCE_DIR}/Driver)
 add_subdirectory(${SOURCE_DIR}/Platform)
 
-add_subdirectory(${SOURCE_DIR}/BigosFramework)
-add_subdirectory(${SOURCE_DIR}/BigosEngine)
+add_subdirectory(${SOURCE_DIR}/BIGOS)
 
 add_subdirectory(${SAMPLES_DIR}/BackendAPI/SampleTemplate)
 add_subdirectory(${SAMPLES_DIR}/BackendAPI/VertexlessTriangle)

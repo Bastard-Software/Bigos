@@ -4,7 +4,7 @@
 #include "Core/CoreTypes.h"
 #include "Platform/PlatformTypes.h"
 
-#include "BigosFramework/Config.h"
+#include "BIGOS/Config.h"
 
 #if defined DOMAIN
 #    undef DOMAIN

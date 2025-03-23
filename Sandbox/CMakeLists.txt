@@ -13,8 +13,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 ) 
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
-  BigosEngine
-  BigosFramework
+    BIGOS
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME_DEBUG ${PROJECT_NAME}_d)

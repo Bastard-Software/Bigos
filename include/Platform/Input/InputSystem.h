@@ -3,6 +3,7 @@
 #include "Core/CoreTypes.h"
 #include "Platform/PlatformTypes.h"
 
+#include "BIGOS/Config.h"
 #include "Platform/Event/EventHandler.h"
 #include "Platform/Event/KeyEvent.h"
 #include "Platform/Event/MouseEvent.h"
@@ -15,12 +16,9 @@ namespace BIGOS
     {
         namespace Input
         {
-            constexpr uint32_t MAX_KEYS    = 512;
-            constexpr uint32_t MAX_BUTTONS = 16;
-
             class BGS_API InputSystem final
             {
-                friend class BigosFramework;
+                friend class BigosEngine;
 
             public:
                 InputSystem();
@@ -36,7 +34,7 @@ namespace BIGOS
                 float GetMouseScrollOffsetY() const;
 
             protected:
-                RESULT Create( const InputSystemDesc& desc, BigosFramework* pFramework );
+                RESULT Create( const InputSystemDesc& desc, BigosEngine* pEngine );
                 void   Destroy();
 
             private:
@@ -52,10 +50,10 @@ namespace BIGOS
 
             private:
                 InputSystemDesc m_desc;
-                BigosFramework* m_pParent;
+                BigosEngine*    m_pParent;
                 // Input states
-                bool_t m_keyState[ MAX_KEYS ];
-                bool_t m_mouseButtonState[ MAX_BUTTONS ];
+                bool_t m_keyState[ Config::Platform::Input::MAX_KEYS ];
+                bool_t m_mouseButtonState[ Config::Platform::Input::MAX_BUTTONS ];
                 float  m_mouseX;
                 float  m_mouseY;
                 float  m_mouseScrolledX;
@@ -69,5 +67,5 @@ namespace BIGOS
                 Event::EventHandlerWraper<Event::MouseScrolledEvent>       m_mouseScrolledHandler;
             };
         } // namespace Input
-    }     // namespace Platform
+    } // namespace Platform
 } // namespace BIGOS

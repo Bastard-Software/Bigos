@@ -2,7 +2,6 @@
 
 #include "D3D12Device.h"
 
-#include "BigosFramework/Config.h"
 #include "Core/Memory/IAllocator.h"
 #include "Core/Memory/Memory.h"
 #include "Core/Utils/String.h"

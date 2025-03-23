@@ -13,10 +13,10 @@ namespace BIGOS
         {
             class BGS_API EventSystem final
             {
-                friend class BigosFramework;
+                friend class BigosEngine;
 
             public:
-                EventSystem()  = default;
+                EventSystem();
                 ~EventSystem() = default;
 
                 void Subscribe( IEventHandlerWraper* pHandler );
@@ -25,15 +25,15 @@ namespace BIGOS
                 void TriggerEvent( const IEvent& event );
 
             protected:
-                RESULT Create( const EventSystemDesc& desc, BigosFramework* pFramework );
+                RESULT Create( const EventSystemDesc& desc, BigosEngine* pEngine );
                 void   Destroy();
 
             private:
                 EventSystemDesc   m_desc;
                 EventHandlerArray m_handlers;
-                BigosFramework*   m_pParent;
+                BigosEngine*      m_pParent;
             };
 
         } // namespace Event
-    }     // namespace Platform
+    } // namespace Platform
 } // namespace BIGOS

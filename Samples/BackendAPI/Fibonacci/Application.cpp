@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-BIGOS::BigosFramework* Application::m_pFramework = nullptr;
+BIGOS::BigosEngine* Application::m_pFramework = nullptr;
 
 int Application::Run( Sample* pSample )
 {
@@ -12,8 +12,10 @@ int Application::Run( Sample* pSample )
         return -1;
     }
 
-    BIGOS::BigosFrameworkDesc frameworkDesc;
-    if( BGS_FAILED( CreateBigosFramework( frameworkDesc, &m_pFramework ) ) )
+    BIGOS::BigosEngineDesc frameworkDesc;
+    frameworkDesc.renderSystemDesc.factoryDesc.apiType = pSample->GetAPIType();
+    frameworkDesc.renderSystemDesc.factoryDesc.flags   = BGS_FLAG( BIGOS::Driver::Backend::FactoryFlagBits::ENABLE_DEBUG_LAYERS_IF_AVAILABLE );
+    if( BGS_FAILED( CreateBigosEngine( frameworkDesc, &m_pFramework ) ) )
     {
         printf( "Framework initialization failed." );
         return -1;
@@ -31,7 +33,7 @@ int Application::Run( Sample* pSample )
 
     pSample->OnDestroy();
 
-    DestroyBigosFramework( &m_pFramework );
+    DestroyBigosEngine( &m_pFramework );
 
     return 0;
 }

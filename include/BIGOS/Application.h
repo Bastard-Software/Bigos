@@ -1,9 +1,9 @@
 #pragma once
 
-#include "BigosEngine/BigosTypes.h"
+#include "Core/CoreTypes.h"
+#include "Driver/Backend/APITypes.h"
 
-#include "BigosEngine/Renderer/Renderer.h"
-#include "BigosFramework/BigosFramework.h"
+#include "BIGOS/Renderer/Renderer.h"
 #include "Core/Utils/Timestep.h"
 #include "Platform/Event/ApplicationEvent.h"
 #include "Platform/Event/EventHandler.h"
@@ -12,31 +12,38 @@ int main( int argc, char** argv );
 
 namespace BIGOS
 {
-    BGS_API Application* CreateApplication();
-
-    class BGS_API Application
+    class BGS_API BGS_API_INTERFACE IApplication
     {
         friend int ::main( int argc, char** argv );
 
     public:
+        virtual ~IApplication() = default;
+
         virtual RESULT OnCreate()                     = 0;
         virtual void   OnUpdate( Utils::Timestep ts ) = 0;
         virtual void   OnRender( Utils::Timestep ts ) = 0;
         virtual void   OnDestroy()                    = 0;
 
-    public:
-        Application( const char* pName, Driver::Backend::API_TYPE apiType );
-        virtual ~Application();
-
-        const Renderer& GetRenderer() { return m_renderer; }
-
-        static Application&    Get() { return *s_pInstance; }
-        static BigosFramework& GetFramework() { return *s_pFramework; }
-
     protected:
-        RESULT Create();
-        void   Destroy();
-        void   Run();
+        virtual RESULT Create()  = 0;
+        virtual void   Destroy() = 0;
+        virtual void   Run()     = 0;
+    };
+
+    class BGS_API WindowedApplication : public IApplication
+    {
+    public:
+        WindowedApplication( const char* pName, Driver::Backend::API_TYPE apiType );
+        virtual ~WindowedApplication();
+
+        virtual RESULT OnCreate()                     = 0;
+        virtual void   OnUpdate( Utils::Timestep ts ) = 0;
+        virtual void   OnRender( Utils::Timestep ts ) = 0;
+        virtual void   OnDestroy()                    = 0;
+
+        virtual RESULT Create();
+        virtual void   Destroy();
+        virtual void   Run();
 
     private:
         void OnWindowClose( const Platform::Event::WindowCloseEvent& e );
@@ -55,9 +62,8 @@ namespace BIGOS
     private:
         Platform::Event::EventHandlerWraper<Platform::Event::WindowCloseEvent>  m_windowCloseHandler;
         Platform::Event::EventHandlerWraper<Platform::Event::WindowResizeEvent> m_windowResizeHandler;
-
-    private:
-        static Application*    s_pInstance;
-        static BigosFramework* s_pFramework;
     };
+
+    BGS_API IApplication* CreateApplication();
+
 } // namespace BIGOS

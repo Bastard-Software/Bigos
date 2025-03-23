@@ -1,6 +1,6 @@
 #include "Platform/Input/InputSystem.h"
 
-#include "BigosFramework/BigosFramework.h"
+#include "BIGOS/BigosEngine.h"
 #include "Core/Memory/Memory.h"
 #include "Platform/Event/EventSystem.h"
 
@@ -30,14 +30,14 @@ namespace BIGOS
 
             bool_t InputSystem::IsKeyPressed( KeyCode key ) const
             {
-                BGS_ASSERT( key < MAX_KEYS );
+                BGS_ASSERT( key < Config::Platform::Input::MAX_KEYS );
 
                 return m_keyState[ key ];
             }
 
             bool_t InputSystem::IsMouseButtonPressed( MouseCode button ) const
             {
-                BGS_ASSERT( button < MAX_BUTTONS );
+                BGS_ASSERT( button < Config::Platform::Input::MAX_BUTTONS );
 
                 return m_mouseButtonState[ button ];
             }
@@ -62,21 +62,21 @@ namespace BIGOS
                 return m_mouseScrolledY;
             }
 
-            RESULT InputSystem::Create( const InputSystemDesc& desc, BigosFramework* pFramework )
+            RESULT InputSystem::Create( const InputSystemDesc& desc, BigosEngine* pEngine )
             {
-                BGS_ASSERT( pFramework != nullptr, "Bigos framework (pFramework) must be a valid pointer." );
+                BGS_ASSERT( pEngine != nullptr, "Bigos framework (pEngine) must be a valid pointer." );
 
                 m_desc    = desc;
-                m_pParent = pFramework;
+                m_pParent = pEngine;
 
                 // Subscribing handlers to event system
-                Event::EventSystem* pEventSystem = pFramework->GetEventSystem();
-                pEventSystem->Subscribe( &m_keyPressedHandler );
-                pEventSystem->Subscribe( &m_keyReleasedHandler );
-                pEventSystem->Subscribe( &m_mouseButtonPressedHandler );
-                pEventSystem->Subscribe( &m_mouseButtonReleasedHandler );
-                pEventSystem->Subscribe( &m_mouseMovedHandler );
-                pEventSystem->Subscribe( &m_mouseScrolledHandler );
+                Event::EventSystem& eventSystem = m_pParent->GetEventSystem();
+                eventSystem.Subscribe( &m_keyPressedHandler );
+                eventSystem.Subscribe( &m_keyReleasedHandler );
+                eventSystem.Subscribe( &m_mouseButtonPressedHandler );
+                eventSystem.Subscribe( &m_mouseButtonReleasedHandler );
+                eventSystem.Subscribe( &m_mouseMovedHandler );
+                eventSystem.Subscribe( &m_mouseScrolledHandler );
 
                 // Clearing input
                 ClearKeys();

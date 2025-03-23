@@ -1,12 +1,12 @@
+#include <BIGOS/Application.h>
+#include <BIGOS/BIGOS.h>
+#include <BIGOS/EntryPoint.h>
 
-#include <BigosEngine/Application.h>
-#include <BigosEngine/EntryPoint.h>
-
-class Sandbox : public BIGOS::Application
+class Sandbox : public BIGOS::WindowedApplication
 {
 public:
     Sandbox()
-        : Application( "Sandbox", BIGOS::Driver::Backend::APITypes::D3D12 )
+        : WindowedApplication( "Sandbox", BIGOS::Driver::Backend::APITypes::D3D12 )
     {
     }
 
@@ -18,7 +18,7 @@ public:
     virtual void          OnDestroy() override;
 };
 
-BIGOS::Application* BIGOS::CreateApplication()
+BIGOS::IApplication* BIGOS::CreateApplication()
 {
     return new Sandbox();
 }
