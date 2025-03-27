@@ -11,7 +11,6 @@ IndirectCube::IndirectCube( APITypes APIType, uint32_t width, uint32_t height, c
     : Sample( APIType, width, height, pName )
     , m_pEventSystem( nullptr )
     , m_pWindow( nullptr )
-    , m_pDevice( nullptr )
     , m_pAPIDevice( nullptr )
     , m_pQueue( nullptr )
     , m_pSwapchain( nullptr )
@@ -369,13 +368,14 @@ BIGOS::RESULT IndirectCube::InitDevice()
     m_pWindow->Show();
 
     // Creating device
-    BIGOS::Driver::Frontend::RenderDeviceDesc devDesc;
-    devDesc.adapter.index = 0;
-    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().CreateDevice( devDesc, &m_pDevice ) ) )
+    BIGOS::Driver::Frontend::DriverDesc driverDesc;
+    driverDesc.apiType = m_APIType;
+    driverDesc.debug   = true;
+    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().InitializeDriver( driverDesc ) ) )
     {
         return BIGOS::Results::FAIL;
     }
-    m_pAPIDevice = m_pDevice->GetNativeAPIDevice();
+    m_pAPIDevice = Application::GetFramework()->GetRenderSystem().GetDevice();
 
     // Synchronization objects
     for( uint32_t ndx = 0; ndx < FRAME_COUNT; ++ndx )

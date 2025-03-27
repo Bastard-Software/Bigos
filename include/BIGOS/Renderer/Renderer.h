@@ -27,7 +27,6 @@ namespace BIGOS
 
     private:
         Driver::Frontend::RenderSystem*            m_pRenderSystem;
-        Driver::Frontend::RenderDevice*            m_pDevice;
         Driver::Frontend::GraphicsContext*         m_pGraphicsContext;
         Platform::Window*                          m_pWindow;
         Driver::Frontend::Swapchain*               m_pSwapchain;

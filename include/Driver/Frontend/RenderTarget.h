@@ -13,7 +13,7 @@ namespace BIGOS
 
             class BGS_API RenderTarget final
             {
-                friend class RenderDevice;
+                friend class RenderSystem;
                 friend class Swapchain;
 
             public:
@@ -29,7 +29,7 @@ namespace BIGOS
                 uint32_t             GetHeight() const { return m_desc.height; }
 
             protected:
-                RESULT Create( const RenderTargetDesc& desc, RenderDevice* pDevice );
+                RESULT Create( const RenderTargetDesc& desc, RenderSystem* pSystem );
                 void   Destroy();
 
                 Backend::ResourceHandle GetResource() const { return m_hResource; };
@@ -38,7 +38,7 @@ namespace BIGOS
                 RenderTargetDesc            m_desc;
                 Backend::ResourceDesc       m_targetDesc;
                 ResourceState               m_state;
-                RenderDevice*               m_pParent;
+                RenderSystem*               m_pParent;
                 Backend::MemoryHandle       m_hMemory;
                 Backend::ResourceHandle     m_hResource;
                 Backend::ResourceViewHandle m_hView;

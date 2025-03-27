@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Driver/Frontend/RenderDevice.h"
 #include "Platform/Window/WindowSystem.h"
 #include "Sample.h"
 
@@ -34,7 +33,6 @@ private:
 
     // Core objects
     BIGOS::Platform::Window*             m_pWindow;
-    Frontend::RenderDevice*              m_pDevice;
     Backend::IDevice*                    m_pAPIDevice;
     Backend::IQueue*                     m_pQueue;
 

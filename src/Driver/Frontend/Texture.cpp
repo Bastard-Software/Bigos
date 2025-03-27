@@ -2,7 +2,7 @@
 
 #include "Driver/Frontend/Texture.h"
 
-#include "Driver/Frontend/RenderDevice.h"
+#include "Driver/Frontend/RenderSystem.h"
 
 namespace BIGOS
 {
@@ -50,13 +50,13 @@ namespace BIGOS
             static const Backend::TEXTURE_TYPE GetTextureViewType( const TextureDesc& desc )
             {
                 Backend::TEXTURE_TYPE type = Backend::TextureTypes::_MAX_ENUM;
-                if (desc.type == TextureTypes::TEXTURE_CUBE)
+                if( desc.type == TextureTypes::TEXTURE_CUBE )
                 {
                     type = Backend::TextureTypes::TEXTURE_CUBE;
                 }
                 else
                 {
-                    if (desc.arrayLayerCount == 1)
+                    if( desc.arrayLayerCount == 1 )
                     {
                         type = MapTextureTypeToBackendTextureType( desc.type );
                     }
@@ -81,12 +81,12 @@ namespace BIGOS
             {
             }
 
-            RESULT Texture::Create( const TextureDesc& desc, RenderDevice* pDevice )
+            RESULT Texture::Create( const TextureDesc& desc, RenderSystem* pSystem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent                    = pDevice;
+                BGS_ASSERT( pSystem != nullptr, "Render device (pDevice) must be a valid pointer." );
+                m_pParent                    = pSystem;
                 m_desc                       = desc;
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 Backend::ResourceUsageFlags usage = BGS_FLAG( Backend::ResourceUsageFlagBits::TRANSFER_DST );
                 if( m_desc.usage & BGS_FLAG( TextureUsageFlagBits::SAMPLED ) )
@@ -169,7 +169,7 @@ namespace BIGOS
 
             void Texture::Destroy()
             {
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 if( m_hSampleAccess != Backend::ResourceViewHandle() )
                 {

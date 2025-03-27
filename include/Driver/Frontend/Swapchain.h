@@ -11,7 +11,7 @@ namespace BIGOS
 
             class BGS_API Swapchain final
             {
-                friend class RenderDevice;
+                friend class RenderSystem;
                 friend class GraphicsContext;
 
             public:
@@ -21,7 +21,7 @@ namespace BIGOS
                 RESULT Resize( Platform::Window* pWindow );
 
             protected:
-                RESULT Create( const SwapchainDesc& desc, RenderDevice* pDevice );
+                RESULT Create( const SwapchainDesc& desc, RenderSystem* pSystem );
                 void   Destroy();
 
                 RESULT Present( RenderTarget* pRenderTarget );
@@ -34,7 +34,7 @@ namespace BIGOS
                 uint64_t                              m_fenceVal;
                 HeapArray<Backend::CommandPoolHandle> m_hCmdPools;
                 HeapArray<Backend::ICommandBuffer*>   m_pCmdBuffers;
-                RenderDevice*                         m_pParent;
+                RenderSystem*                         m_pParent;
                 uint32_t                              m_frameNdx;
             };
 

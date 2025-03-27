@@ -7,7 +7,6 @@
 
 Fibonacci::Fibonacci( APITypes APIType, uint32_t width, uint32_t height, const char* pName )
     : Sample( APIType, width, height, pName )
-    , m_pDevice( nullptr )
     , m_pAPIDevice( nullptr )
     , m_pQueue( nullptr )
     , m_hComputeShader()
@@ -90,13 +89,14 @@ void Fibonacci::OnDestroy()
 BIGOS::RESULT Fibonacci::InitDevice()
 {
     // Creating device
-    BIGOS::Driver::Frontend::RenderDeviceDesc devDesc;
-    devDesc.adapter.index = 0;
-    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().CreateDevice( devDesc, &m_pDevice ) ) )
+    BIGOS::Driver::Frontend::DriverDesc driverDesc;
+    driverDesc.apiType = m_APIType;
+    driverDesc.debug   = true;
+    if( BGS_FAILED( Application::GetFramework()->GetRenderSystem().InitializeDriver( driverDesc ) ) )
     {
         return BIGOS::Results::FAIL;
     }
-    m_pAPIDevice = m_pDevice->GetNativeAPIDevice();
+    m_pAPIDevice = Application::GetFramework()->GetRenderSystem().GetDevice();
 
     // Synchronization objects
     BIGOS::Driver::Backend::FenceDesc fenceDesc;

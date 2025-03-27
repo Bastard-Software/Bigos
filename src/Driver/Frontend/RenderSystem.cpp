@@ -4,8 +4,15 @@
 #include "Core/Memory/Memory.h"
 #include "Driver/Backend/D3D12/D3D12Factory.h"
 #include "Driver/Backend/Vulkan/VulkanFactory.h"
+#include "Driver/Frontend/Buffer.h"
 #include "Driver/Frontend/Camera/Camera.h"
-#include "Driver/Frontend/RenderDevice.h"
+#include "Driver/Frontend/Context.h"
+#include "Driver/Frontend/Pipeline.h"
+#include "Driver/Frontend/RenderPass.h"
+#include "Driver/Frontend/RenderTarget.h"
+#include "Driver/Frontend/Shader/Shader.h"
+#include "Driver/Frontend/Swapchain.h"
+#include "Driver/Frontend/Texture.h"
 #include "Shader/ShaderCompilerFactory.h"
 
 namespace BIGOS
@@ -17,9 +24,13 @@ namespace BIGOS
 
             RenderSystem::RenderSystem()
                 : m_desc()
+                , m_driverDesc()
                 , m_pFactory( nullptr )
+                , m_pDevice( nullptr )
                 , m_adapters()
-                , m_devices()
+                , m_pGraphicsContext( nullptr )
+                , m_pComputeContext( nullptr )
+                , m_pCopyContext( nullptr )
                 , m_cameras()
                 , m_pParent( nullptr )
                 , m_pShaderCompilerFactory( nullptr )
@@ -28,78 +39,287 @@ namespace BIGOS
             {
             }
 
-            RESULT RenderSystem::CreateDevice( const RenderDeviceDesc& desc, RenderDevice** ppDevice )
+            RESULT RenderSystem::InitializeDriver( const DriverDesc& desc )
             {
-                BGS_ASSERT( m_pFactory != nullptr,
-                            "Invalid factory (m_pFactory) pointer. Factory hasn't been created properly or has been destroyed during runtime." );
-                BGS_ASSERT( ppDevice != nullptr, "ppDevice must be a valid address." );
+                if( ( desc == m_driverDesc ) && ( m_pFactory != nullptr ) && ( m_pDevice != nullptr ) )
+                {
+                    return Results::OK;
+                }
 
-                if( m_pFactory == nullptr )
+                m_driverDesc = desc;
+                FreeDriver();
+
+                Backend::FactoryDesc factoryDesc;
+                factoryDesc.apiType = m_driverDesc.apiType;
+                factoryDesc.flags   = m_driverDesc.debug ? BGS_FLAG( Backend::FactoryFlagBits::ENABLE_DEBUG_LAYERS_IF_AVAILABLE )
+                                                         : BGS_FLAG( Backend::FactoryFlagBits::NONE );
+                if( BGS_FAILED( CreateFactory( factoryDesc, &m_pFactory ) ) )
                 {
                     return Results::FAIL;
                 }
 
-                RenderDevice* pDevice = ( *ppDevice );
-                if( pDevice != nullptr )
+                Backend::DeviceDesc deviceDesc;
+                deviceDesc.pAdapter = m_adapters[ 0 ];
+                if( BGS_FAILED( m_pFactory->CreateDevice( deviceDesc, &m_pDevice ) ) )
                 {
-                    for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
-                    {
-                        // TODO: Find device in array using hash
-                        if( m_devices[ ndx ] == pDevice )
-                        {
-                            return Results::OK;
-                        }
-                    }
-
-                    // TDOD: Warrning that device wasn't created by framework?
-                    m_devices.push_back( pDevice );
-
-                    return Results::OK;
+                    FreeDriver();
+                    return Results::FAIL;
                 }
-                else
+                if( BGS_FAILED( CreateContexts() ) )
                 {
-                    if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pDevice ) ) )
-                    {
-                        return Results::NO_MEMORY;
-                    }
-
-                    if( BGS_FAILED( pDevice->Create( desc, m_pFactory, this ) ) )
-                    {
-                        Memory::FreeObject( m_pDefaultAllocator, &pDevice );
-                        return Results::FAIL;
-                    }
+                    FreeDriver();
+                    return Results::FAIL;
                 }
-
-                BGS_ASSERT( pDevice != nullptr );
-                m_devices.push_back( pDevice );
-                ( *ppDevice ) = pDevice;
 
                 return Results::OK;
             }
 
-            void RenderSystem::DestroyDevice( RenderDevice** ppDevice )
+            RESULT RenderSystem::CreateBuffer( const BufferDesc& desc, Buffer** ppBuffer )
             {
-                BGS_ASSERT( ( ppDevice != nullptr ) && ( *ppDevice != nullptr ), "ppDevice must be an valid address of a valid pointer." );
+                BGS_ASSERT( ppBuffer != nullptr, "Buffer (ppBuffer) must be a valid address." );
+                BGS_ASSERT( *ppBuffer == nullptr, "There is a valid pointer at the given address. Buffer (*ppBuffer) must be nullptr." );
 
-                if( ppDevice != nullptr )
+                Buffer* pBuffer = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pBuffer ) ) )
                 {
-
-                    RenderDevice* pDevice = ( *ppDevice );
-
-                    for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
-                    {
-                        // TODO: Find device in array using hash
-                        if( m_devices[ ndx ] == pDevice )
-                        {
-                            m_devices[ ndx ] = m_devices.back();
-                            m_devices.pop_back();
-                            pDevice->Destroy();
-                            Memory::FreeObject( m_pDefaultAllocator, &pDevice );
-                            ppDevice = nullptr;
-                            break;
-                        }
-                    }
+                    return Results::NO_MEMORY;
                 }
+
+                if( BGS_FAILED( pBuffer->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pBuffer );
+                    return Results::FAIL;
+                }
+
+                ( *ppBuffer ) = pBuffer;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyBuffer( Buffer** ppBuffer )
+            {
+                BGS_ASSERT( ppBuffer != nullptr, "Buffer (ppBuffer) must be a valid address." );
+                BGS_ASSERT( *ppBuffer != nullptr, "Buffer (*ppBuffer) must be a valid pointer." );
+
+                Buffer* pBuffer = ( *ppBuffer );
+                pBuffer->Destroy();
+                Memory::FreeObject( m_pDefaultAllocator, &pBuffer );
+            }
+
+            RESULT RenderSystem::CreateTexture( const TextureDesc& desc, Texture** ppTexture )
+            {
+                BGS_ASSERT( ppTexture != nullptr, "Texture (ppTexture) must be a valid address." );
+                BGS_ASSERT( *ppTexture == nullptr, "There is a valid pointer at the given address. Texture (*ppTExture) must be nullptr." );
+
+                Texture* pTexture = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pTexture ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pTexture->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pTexture );
+                    return Results::FAIL;
+                }
+
+                ( *ppTexture ) = pTexture;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyTexture( Texture** ppTexture )
+            {
+                BGS_ASSERT( ppTexture != nullptr, "Texture (ppTexture) must be a valid address." );
+                BGS_ASSERT( *ppTexture != nullptr, "Texture (*ppTexture) must be a valid pointer." );
+
+                Texture* pTexture = ( *ppTexture );
+                pTexture->Destroy();
+                Memory::FreeObject( m_pDefaultAllocator, &pTexture );
+            }
+
+            RESULT RenderSystem::CreateRenderTarget( const RenderTargetDesc& desc, RenderTarget** ppRenderTarget )
+            {
+                BGS_ASSERT( ppRenderTarget != nullptr, "Render target (ppRenderTarget) must be a valid address." );
+                BGS_ASSERT( *ppRenderTarget == nullptr,
+                            "There is a valid pointer at the given address. Render target (*ppRenderTarget) must be nullptr." );
+
+                RenderTarget* pRenderTarget = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pRenderTarget ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pRenderTarget->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pRenderTarget );
+                    return Results::FAIL;
+                }
+
+                ( *ppRenderTarget ) = pRenderTarget;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyRenderTarget( RenderTarget** ppRenderTarget )
+            {
+                BGS_ASSERT( ppRenderTarget != nullptr, "Render target (ppRenderTarget) must be a valid address." );
+                BGS_ASSERT( *ppRenderTarget != nullptr, "Render target (*ppRenderTarget) must be a valid pointer." );
+
+                RenderTarget* pRenderTarget = ( *ppRenderTarget );
+                pRenderTarget->Destroy();
+                Memory::FreeObject( m_pDefaultAllocator, &pRenderTarget );
+            }
+
+            RESULT RenderSystem::CreateRenderPass( const RenderPassDesc& desc, RenderPass** ppRenderPass )
+            {
+                BGS_ASSERT( ppRenderPass != nullptr, "Render pass (ppRenderPass) must be a valid address." );
+                BGS_ASSERT( *ppRenderPass == nullptr,
+                            "There is a valid pointer at the given address. Render target (*ppRenderPass) must be nullptr." );
+
+                RenderPass* pRenderPass = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pRenderPass ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pRenderPass->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pRenderPass );
+                    return Results::FAIL;
+                }
+
+                ( *ppRenderPass ) = pRenderPass;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyRenderPass( RenderPass** ppRenderPass )
+            {
+                BGS_ASSERT( ppRenderPass != nullptr, "Render pass (ppRenderPass) must be a valid address." );
+                BGS_ASSERT( *ppRenderPass != nullptr, "Render pass (*ppRenderPass) must be a valid pointer." );
+
+                RenderPass* pRenderPass = ( *ppRenderPass );
+                pRenderPass->Destroy();
+                Memory::FreeObject( m_pDefaultAllocator, &pRenderPass );
+            }
+
+            RESULT RenderSystem::CreateShader( const ShaderDesc& desc, Shader** ppShader )
+            {
+                BGS_ASSERT( ppShader != nullptr, "Shader (ppShader) must be a valid address." );
+                BGS_ASSERT( *ppShader == nullptr, "There is a valid pointer at the given address. Shader (*ppShader) must be nullptr." );
+
+                Shader* pShader = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pShader ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pShader->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pShader );
+                    return Results::FAIL;
+                }
+
+                ( *ppShader ) = pShader;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyShader( Shader** ppShader )
+            {
+                BGS_ASSERT( ppShader != nullptr, "Shader (ppShader) must be a valid address." );
+                BGS_ASSERT( *ppShader != nullptr, "Buffer (*ppShader) must be a valid pointer." );
+
+                Shader* pShader = ( *ppShader );
+                pShader->Destroy();
+                Memory::FreeObject( m_pDefaultAllocator, &pShader );
+            }
+
+            RESULT RenderSystem::CreatePipeline( const GraphicsPipelineDesc& desc, Pipeline** ppPipeline )
+            {
+                BGS_ASSERT( ppPipeline != nullptr, "Pipeline (ppPipeline) must be a valid address." );
+                BGS_ASSERT( *ppPipeline == nullptr, "There is a valid pointer at the given address. Pipeline (*ppPipeline) must be nullptr." );
+
+                Pipeline* pPipeline = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pPipeline ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pPipeline->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pPipeline );
+                    return Results::FAIL;
+                }
+
+                ( *ppPipeline ) = pPipeline;
+
+                return Results::OK;
+            }
+
+            RESULT RenderSystem::CreatePipeline( const ComputePipelineDesc& desc, Pipeline** ppPipeline )
+            {
+                BGS_ASSERT( ppPipeline != nullptr, "Pipeline (ppPipeline) must be a valid address." );
+                BGS_ASSERT( *ppPipeline == nullptr, "There is a valid pointer at the given address. Pipeline (*ppPipeline) must be nullptr." );
+
+                Pipeline* pPipeline = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pPipeline ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pPipeline->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pPipeline );
+                    return Results::FAIL;
+                }
+
+                ( *ppPipeline ) = pPipeline;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyPipeline( Pipeline** ppPipeline )
+            {
+                BGS_ASSERT( ppPipeline != nullptr, "Pipeline (ppPipeline) must be a valid address." );
+                BGS_ASSERT( *ppPipeline != nullptr, "Pipeline (*ppPipeline) must be a valid pointer." );
+
+                Pipeline* pPipeline = ( *ppPipeline );
+                pPipeline->Destroy();
+                Memory::FreeObject( m_pDefaultAllocator, &pPipeline );
+            }
+
+            RESULT RenderSystem::CreateSwapchain( const SwapchainDesc& desc, Swapchain** ppSwapchain )
+            {
+                BGS_ASSERT( ppSwapchain != nullptr, "Swapchain (ppSwapchain) must be a valid address." );
+                BGS_ASSERT( *ppSwapchain == nullptr, "There is a valid pointer at the given address. Swapchain (*ppSwapchain) must be nullptr." );
+
+                Swapchain* pSwapchain = nullptr;
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &pSwapchain ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+
+                if( BGS_FAILED( pSwapchain->Create( desc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &pSwapchain );
+                    return Results::FAIL;
+                }
+
+                ( *ppSwapchain ) = pSwapchain;
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroySwapchain( Swapchain** ppSwapchain )
+            {
+                BGS_ASSERT( ppSwapchain != nullptr, "Swapchain (ppSwapchain) must be a valid address." );
+                BGS_ASSERT( *ppSwapchain != nullptr, "Swapchain (*ppSwapchain) must be a valid pointer." );
+
+                Swapchain* pSwapchain = ( *ppSwapchain );
+                pSwapchain->Destroy();
+                Memory::FreeObject( m_pDefaultAllocator, &pSwapchain );
             }
 
             RESULT RenderSystem::CreateCamera( const CameraDesc& desc, Camera** ppCamera )
@@ -177,11 +397,6 @@ namespace BIGOS
                 m_pDefaultAllocator = pAllocator;
                 m_pParent           = pEngine;
 
-                if( BGS_FAILED( CreateFactory( desc.factoryDesc, &m_pFactory ) ) )
-                {
-                    return Results::FAIL;
-                }
-
                 if( BGS_FAILED( CreateShaderCompilerFactory( desc.compilerFactoryDesc, &m_pShaderCompilerFactory ) ) )
                 {
                     DestroyFactory( &m_pFactory );
@@ -201,27 +416,17 @@ namespace BIGOS
 
             void RenderSystem::Destroy()
             {
-                for( index_t ndx = 0; ndx < m_devices.size(); ++ndx )
-                {
-                    DestroyDevice( &m_devices[ ndx ] );
-                }
+                FreeDriver();
 
                 for( index_t ndx = 0; ndx < m_cameras.size(); ++ndx )
                 {
                     DestroyCamera( &m_cameras[ ndx ] );
                 }
 
-                if( m_pFactory != nullptr )
-                {
-                    DestroyFactory( &m_pFactory );
-                }
-
                 if( m_pShaderCompilerFactory != nullptr )
                 {
                     DestroyShaderCompilerFactory( &m_pShaderCompilerFactory );
                 }
-
-                m_devices.clear();
                 m_adapters.clear();
 
                 m_pDefaultAllocator = nullptr;
@@ -296,7 +501,7 @@ namespace BIGOS
 
                 if( ( ppFactory != nullptr ) && ( *ppFactory != nullptr ) && ( *ppFactory == m_pFactory ) )
                 {
-                    const Backend::API_TYPE apiType = m_desc.factoryDesc.apiType;
+                    const Backend::API_TYPE apiType = m_driverDesc.apiType;
                     if( apiType == Backend::APITypes::VULKAN )
                     {
                         Backend::VulkanFactory* pFactory = static_cast<Backend::VulkanFactory*>( *ppFactory );
@@ -315,6 +520,66 @@ namespace BIGOS
                     {
                         BGS_ASSERT( 0 );
                     }
+                }
+            }
+
+            RESULT RenderSystem::CreateContexts()
+            {
+                BGS_ASSERT( m_pDevice != nullptr );
+                BGS_ASSERT( m_pGraphicsContext == nullptr );
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &m_pGraphicsContext ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                if( BGS_FAILED( m_pGraphicsContext->Create( m_pDevice, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pGraphicsContext );
+                    return Results::FAIL;
+                }
+
+                BGS_ASSERT( m_pComputeContext == nullptr );
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &m_pComputeContext ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                if( BGS_FAILED( m_pComputeContext->Create( m_pDevice, this ) ) )
+                {
+                    DestroyContexts();
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pComputeContext );
+                    return Results::FAIL;
+                }
+
+                BGS_ASSERT( m_pCopyContext == nullptr );
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &m_pCopyContext ) ) )
+                {
+                    return Results::NO_MEMORY;
+                }
+                if( BGS_FAILED( m_pCopyContext->Create( m_pDevice, this ) ) )
+                {
+                    DestroyContexts();
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pCopyContext );
+                    return Results::FAIL;
+                }
+
+                return Results::OK;
+            }
+
+            void RenderSystem::DestroyContexts()
+            {
+                if( m_pGraphicsContext != nullptr )
+                {
+                    m_pGraphicsContext->Destroy();
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pGraphicsContext );
+                }
+                if( m_pComputeContext != nullptr )
+                {
+                    m_pComputeContext->Destroy();
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pComputeContext );
+                }
+                if( m_pCopyContext != nullptr )
+                {
+                    m_pCopyContext->Destroy();
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pCopyContext );
                 }
             }
 
@@ -358,6 +623,22 @@ namespace BIGOS
                 {
                     m_pShaderCompilerFactory->Destroy();
                     Memory::FreeObject( m_pDefaultAllocator, &m_pShaderCompilerFactory );
+                }
+            }
+
+            void RenderSystem::FreeDriver()
+            {
+                DestroyContexts();
+
+                // Free all the resources created on this device
+                if( m_pDevice != nullptr )
+                {
+                    m_pFactory->DestroyDevice( &m_pDevice );
+                }
+
+                if( m_pFactory != nullptr )
+                {
+                    DestroyFactory( &m_pFactory );
                 }
             }
 

@@ -1,6 +1,6 @@
 #include "Driver/Frontend/Buffer.h"
 
-#include "Driver/Frontend/RenderDevice.h"
+#include "Driver/Frontend/RenderSystem.h"
 
 namespace BIGOS
 {
@@ -25,7 +25,7 @@ namespace BIGOS
                 BGS_ASSERT( m_desc.usage & BGS_FLAG( Backend::ResourceUsageFlagBits::CONSTANT_BUFFER ),
                             "Unable to unmap buffer that is not constant buffer." );
 
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 BIGOS::Driver::Backend::MapResourceDesc mapConstant;
                 mapConstant.hResource          = m_hResource;
@@ -45,7 +45,7 @@ namespace BIGOS
                 BGS_ASSERT( m_desc.usage & BGS_FLAG( Backend::ResourceUsageFlagBits::CONSTANT_BUFFER ),
                             "Unable to unmap buffer that is not constant buffer." );
 
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 BIGOS::Driver::Backend::MapResourceDesc mapConstant;
                 mapConstant.hResource          = m_hResource;
@@ -55,12 +55,12 @@ namespace BIGOS
                 pAPIDevice->UnmapResource( mapConstant );
             }
 
-            RESULT Buffer::Create( const BufferDesc& desc, RenderDevice* pDevice )
+            RESULT Buffer::Create( const BufferDesc& desc, RenderSystem* pSystem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent                    = pDevice;
+                BGS_ASSERT( pSystem != nullptr, "Render system (pSystem) must be a valid pointer." );
+                m_pParent                    = pSystem;
                 m_desc                       = desc;
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 Backend::ResourceUsageFlags usage = m_desc.usage;
                 if( !( m_desc.usage & BGS_FLAG( Backend::ResourceUsageFlagBits::CONSTANT_BUFFER ) ) )
@@ -147,7 +147,7 @@ namespace BIGOS
 
             void Buffer::Destroy()
             {
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 if( m_hMemory != Backend::MemoryHandle() )
                 {

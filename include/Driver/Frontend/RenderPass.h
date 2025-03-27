@@ -11,19 +11,19 @@ namespace BIGOS
 
             class BGS_API RenderPass final
             {
-                friend class RenderDevice;
+                friend class RenderSystem;
 
             public:
                 RenderPass();
                 ~RenderPass() = default;
 
             protected:
-                RESULT Create( const RenderPassDesc& desc, RenderDevice* pDevice );
+                RESULT Create( const RenderPassDesc& desc, RenderSystem* pSystem );
                 void   Destroy();
 
             private:
                 RenderPassDesc m_desc;
-                RenderDevice*  m_pParent;
+                RenderSystem*  m_pParent;
             };
 
         } // namespace Frontend

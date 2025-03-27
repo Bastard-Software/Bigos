@@ -11,7 +11,7 @@ namespace BIGOS
 
             class BGS_API Shader final
             {
-                friend class RenderDevice;
+                friend class RenderSystem;
 
             public:
                 Shader();
@@ -21,7 +21,7 @@ namespace BIGOS
                 Backend::ShaderHandle GetHandle() const { return m_hShader; }
 
             protected:
-                RESULT Create( const ShaderDesc& desc, RenderDevice* pDevice );
+                RESULT Create( const ShaderDesc& desc, RenderSystem* pSystem );
                 void   Destroy();
 
             private:
@@ -30,7 +30,7 @@ namespace BIGOS
             private:
                 CompileShaderDesc     m_compileDesc;
                 Backend::ShaderHandle m_hShader;
-                RenderDevice*         m_pParent;
+                RenderSystem*         m_pParent;
                 ShaderCompilerOutput* m_pCompiledShader;
                 const char*           m_pEntryPoint;
                 Backend::SHADER_TYPE  m_type;

@@ -11,19 +11,19 @@ namespace BIGOS
 
             class BGS_API Texture final
             {
-                friend class RenderDevice;
+                friend class RenderSystem;
 
             public:
                 Texture();
                 ~Texture() = default;
 
             protected:
-                RESULT Create( const TextureDesc& desc, RenderDevice* pDevice );
+                RESULT Create( const TextureDesc& desc, RenderSystem* pSystem );
                 void   Destroy();
 
             private:
                 TextureDesc                 m_desc;
-                RenderDevice*               m_pParent;
+                RenderSystem*               m_pParent;
                 Backend::MemoryHandle       m_hMemory;
                 Backend::ResourceHandle     m_hResource;
                 Backend::ResourceViewHandle m_hSampleAccess;

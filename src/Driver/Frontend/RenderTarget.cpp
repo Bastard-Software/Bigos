@@ -1,7 +1,7 @@
 #include "Driver/Frontend/RenderTarget.h"
 
 #include "Driver/Backend/APICommon.h"
-#include "Driver/Frontend/RenderDevice.h"
+#include "Driver/Frontend/RenderSystem.h"
 
 namespace BIGOS
 {
@@ -20,12 +20,12 @@ namespace BIGOS
             {
             }
 
-            RESULT RenderTarget::Create( const RenderTargetDesc& desc, RenderDevice* pDevice )
+            RESULT RenderTarget::Create( const RenderTargetDesc& desc, RenderSystem* pSystem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent                    = pDevice;
+                BGS_ASSERT( pSystem != nullptr, "Render device (pSystem) must be a valid pointer." );
+                m_pParent                    = pSystem;
                 m_desc                       = desc;
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 const bool isDepthStencil = Backend::IsDepthStencilFormat( m_desc.format ) || Backend::IsDepthFormat( m_desc.format );
 
@@ -132,7 +132,7 @@ namespace BIGOS
 
             void RenderTarget::Destroy()
             {
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 if( m_hSampleView != Backend::ResourceViewHandle() )
                 {

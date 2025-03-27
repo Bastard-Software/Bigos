@@ -13,8 +13,6 @@ int Application::Run( Sample* pSample )
     }
 
     BIGOS::BigosEngineDesc frameworkDesc;
-    frameworkDesc.renderSystemDesc.factoryDesc.apiType = pSample->GetAPIType();
-    frameworkDesc.renderSystemDesc.factoryDesc.flags   = BGS_FLAG( BIGOS::Driver::Backend::FactoryFlagBits::ENABLE_DEBUG_LAYERS_IF_AVAILABLE );
     if( BGS_FAILED( CreateBigosEngine( frameworkDesc, &m_pFramework ) ) )
     {
         printf( "Framework initialization failed." );
