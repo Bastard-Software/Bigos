@@ -11,7 +11,7 @@ namespace BIGOS
 
             class BGS_API Buffer final
             {
-                friend class RenderDevice;
+                friend class RenderSystem;
 
             public:
                 Buffer();
@@ -21,12 +21,12 @@ namespace BIGOS
                 void   Unmap();
 
             protected:
-                RESULT Create( const BufferDesc& desc, RenderDevice* pDevice );
+                RESULT Create( const BufferDesc& desc, RenderSystem* pSystem );
                 void   Destroy();
 
             private:
                 BufferDesc                  m_desc;
-                RenderDevice*               m_pParent;
+                RenderSystem*               m_pParent;
                 Backend::MemoryHandle       m_hMemory;
                 Backend::ResourceHandle     m_hResource;
                 Backend::ResourceViewHandle m_hConstantAccess;

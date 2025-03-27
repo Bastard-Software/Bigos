@@ -2,7 +2,6 @@
 
 #include "Core/CoreTypes.h"
 
-#include "Driver/Frontend/RenderDevice.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/IShaderCompiler.h"
 
@@ -36,15 +35,15 @@ namespace BIGOS
             {
             }
 
-            RESULT Shader::Create( const ShaderDesc& desc, RenderDevice* pDevice )
+            RESULT Shader::Create( const ShaderDesc& desc, RenderSystem* pSystem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent                      = pDevice;
+                BGS_ASSERT( pSystem != nullptr, "Render device (pSystem) must be a valid pointer." );
+                m_pParent                      = pSystem;
                 m_type                         = desc.type;
-                Backend::IDevice*   pAPIDevice = m_pParent->GetNativeAPIDevice();
-                IShaderCompiler*    pCompiler  = m_pParent->GetParent()->GetDefaultCompiler();
+                Backend::IDevice*   pAPIDevice = m_pParent->GetDevice();
+                IShaderCompiler*    pCompiler  = m_pParent->GetDefaultCompiler();
                 const SHADER_FORMAT outputFormat =
-                    m_pParent->GetParent()->GetDesc().factoryDesc.apiType == Backend::APITypes::D3D12 ? ShaderFormats::DXIL : ShaderFormats::SPIRV;
+                    m_pParent->GetDriverDesc().apiType == Backend::APITypes::D3D12 ? ShaderFormats::DXIL : ShaderFormats::SPIRV;
                 m_pEntryPoint = GetShaderMainFromType( m_type );
 
                 m_compileDesc.type               = m_type;
@@ -76,11 +75,11 @@ namespace BIGOS
 
             void Shader::Destroy()
             {
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 if( m_pCompiledShader != nullptr )
                 {
-                    m_pParent->GetParent()->GetDefaultCompiler()->DestroyOutput( &m_pCompiledShader );
+                    m_pParent->GetDefaultCompiler()->DestroyOutput( &m_pCompiledShader );
                 }
                 if( m_hShader != Backend::ShaderHandle() )
                 {

@@ -1,7 +1,7 @@
 #include "Driver/Frontend/Swapchain.h"
 
-#include "Driver/Frontend/GraphicsContext.h"
-#include "Driver/Frontend/RenderDevice.h"
+#include "Driver/Frontend/Context.h"
+#include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/RenderTarget.h"
 
 namespace BIGOS
@@ -25,7 +25,7 @@ namespace BIGOS
             {
                 BGS_ASSERT( pWindow != nullptr, "Window (pWindow) must be a valid pointer." );
 
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 if( m_pSwapchain != nullptr )
                 {
@@ -41,10 +41,10 @@ namespace BIGOS
                 return pAPIDevice->CreateSwapchain( m_desc, &m_pSwapchain );
             }
 
-            RESULT Swapchain::Create( const SwapchainDesc& desc, RenderDevice* pDevice )
+            RESULT Swapchain::Create( const SwapchainDesc& desc, RenderSystem* pSystem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent = pDevice;
+                BGS_ASSERT( pSystem != nullptr, "Render system (pSystem) must be a valid pointer." );
+                m_pParent = pSystem;
 
                 m_desc.format          = desc.format;
                 m_desc.backBufferCount = desc.backBufferCount;
@@ -57,7 +57,7 @@ namespace BIGOS
                 }
 
                 // Create present primitives
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
                 m_hCpySemaphores.resize( m_desc.backBufferCount );
                 m_hCmdPools.resize( m_desc.backBufferCount );
                 m_pCmdBuffers.resize( m_desc.backBufferCount );
@@ -100,7 +100,7 @@ namespace BIGOS
 
             void Swapchain::Destroy()
             {
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 Backend::WaitForFencesDesc waitDesc;
                 waitDesc.fenceCount  = 1;
@@ -138,7 +138,7 @@ namespace BIGOS
 
             RESULT Swapchain::Present( RenderTarget* pRenderTarget )
             {
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 Backend::WaitForFencesDesc waitDesc;
                 waitDesc.fenceCount  = 1;

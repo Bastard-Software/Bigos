@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Driver/Frontend/RenderDevice.h"
 #include "Platform/Window/WindowSystem.h"
 #include "Sample.h"
 
@@ -33,7 +32,6 @@ private:
     } m_storageBufferData;
 
     // Core objects
-    Frontend::RenderDevice* m_pDevice;
     Backend::IDevice*       m_pAPIDevice;
     Backend::IQueue*        m_pQueue;
 

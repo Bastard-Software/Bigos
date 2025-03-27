@@ -12,10 +12,10 @@ namespace BIGOS
             {
             }
 
-            RESULT RenderPass::Create( const RenderPassDesc& desc, RenderDevice* pDevice )
+            RESULT RenderPass::Create( const RenderPassDesc& desc, RenderSystem* pSystem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent = pDevice;
+                BGS_ASSERT( pSystem != nullptr, "Render system (pSystem) must be a valid pointer." );
+                m_pParent = pSystem;
                 m_desc    = desc;
 
                 return Results::OK;

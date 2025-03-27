@@ -1,9 +1,6 @@
 #include "BIGOS/Renderer/Renderer.h"
 
-#include "Driver/Frontend/ComputeContext.h"
-#include "Driver/Frontend/CopyContext.h"
-#include "Driver/Frontend/GraphicsContext.h"
-#include "Driver/Frontend/RenderDevice.h"
+#include "Driver/Frontend/Context.h"
 #include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Swapchain.h"
 #include "Platform/Window/Window.h"
@@ -12,7 +9,6 @@ namespace BIGOS
 {
     Renderer::Renderer()
         : m_pRenderSystem( nullptr )
-        , m_pDevice( nullptr )
         , m_pGraphicsContext( nullptr )
         , m_pWindow( nullptr )
         , m_pSwapchain( nullptr )
@@ -41,14 +37,6 @@ namespace BIGOS
 
     void Renderer::Render()
     {
-        Driver::Frontend::RenderTarget* pCurrRT = m_pColorRTs[ m_frameNdx ];
-
-        m_pGraphicsContext->BeginFrame();
-        m_pGraphicsContext->SubmitFrame();
-
-        m_pGraphicsContext->Present( m_pSwapchain, pCurrRT );
-
-        m_frameNdx = ( m_frameNdx + 1 ) % m_frameCount;
     }
 
     RESULT Renderer::Create( Driver::Frontend::RenderSystem* pSystem, Platform::Window* pWindow )
@@ -57,14 +45,7 @@ namespace BIGOS
         m_pRenderSystem = pSystem;
         m_pWindow       = pWindow;
 
-        Driver::Frontend::RenderDeviceDesc devDesc;
-        devDesc.adapter.index              = 0;
-        devDesc.graphicsContext.frameCount = m_frameCount;
-        if( BGS_FAILED( m_pRenderSystem->CreateDevice( devDesc, &m_pDevice ) ) )
-        {
-            return Results::FAIL;
-        }
-        m_pGraphicsContext = m_pDevice->GetGraphicsContext();
+        m_pGraphicsContext = m_pRenderSystem->GetGraphicsContext();
 
         if( m_pWindow != nullptr )
         {
@@ -75,7 +56,7 @@ namespace BIGOS
             swapchainDesc.pWindow         = m_pWindow;
             swapchainDesc.backBufferCount = m_frameCount;
             swapchainDesc.format          = m_rtFormat;
-            if( BGS_FAILED( m_pDevice->CreateSwapchain( swapchainDesc, &m_pSwapchain ) ) )
+            if( BGS_FAILED( m_pRenderSystem->CreateSwapchain( swapchainDesc, &m_pSwapchain ) ) )
             {
                 Destroy();
                 return Results::FAIL;
@@ -91,26 +72,26 @@ namespace BIGOS
         Driver::Frontend::BufferDesc bufferDesc;
         bufferDesc.size  = 65536;
         bufferDesc.usage = BGS_FLAG( Driver::Backend::ResourceUsageFlagBits::VERTEX_BUFFER );
-        if( BGS_FAILED( m_pDevice->CreateBuffer( bufferDesc, &m_pVertexBuffer ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateBuffer( bufferDesc, &m_pVertexBuffer ) ) )
         {
             Destroy();
             return Results::FAIL;
         }
         bufferDesc.usage = BGS_FLAG( Driver::Backend::ResourceUsageFlagBits::INDEX_BUFFER );
-        if( BGS_FAILED( m_pDevice->CreateBuffer( bufferDesc, &m_pIndexBuffer ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateBuffer( bufferDesc, &m_pIndexBuffer ) ) )
         {
             Destroy();
             return Results::FAIL;
         }
         bufferDesc.usage = BGS_FLAG( Driver::Backend::ResourceUsageFlagBits::READ_WRITE_STORAGE_BUFFER );
-        if( BGS_FAILED( m_pDevice->CreateBuffer( bufferDesc, &m_pStorageBuffer ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateBuffer( bufferDesc, &m_pStorageBuffer ) ) )
         {
             Destroy();
             return Results::FAIL;
         }
         bufferDesc.size  = 256;
         bufferDesc.usage = BGS_FLAG( Driver::Backend::ResourceUsageFlagBits::CONSTANT_BUFFER );
-        if( BGS_FAILED( m_pDevice->CreateBuffer( bufferDesc, &m_pConstantBuffer ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateBuffer( bufferDesc, &m_pConstantBuffer ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -186,13 +167,13 @@ namespace BIGOS
         shaderDesc.type               = Driver::Backend::ShaderTypes::VERTEX;
         shaderDesc.source.pSourceCode = hlslShader.c_str();
         shaderDesc.source.sourceSize  = static_cast<uint32_t>( hlslShader.size() );
-        if( BGS_FAILED( m_pDevice->CreateShader( shaderDesc, &m_pVS ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateShader( shaderDesc, &m_pVS ) ) )
         {
             Destroy();
             return Results::FAIL;
         }
         shaderDesc.type = Driver::Backend::ShaderTypes::PIXEL;
-        if( BGS_FAILED( m_pDevice->CreateShader( shaderDesc, &m_pPS ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateShader( shaderDesc, &m_pPS ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -211,7 +192,7 @@ namespace BIGOS
         graphicsPipelineDesc.renderTargetCount                  = 1;
         graphicsPipelineDesc.pRenderTargetFormats               = &m_rtFormat;
         graphicsPipelineDesc.depthStencilFormat                 = m_dsFormat;
-        if( BGS_FAILED( m_pDevice->CreatePipeline( graphicsPipelineDesc, &m_pGraphicsPipeline ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreatePipeline( graphicsPipelineDesc, &m_pGraphicsPipeline ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -253,7 +234,7 @@ namespace BIGOS
         shaderDesc.type               = Driver::Backend::ShaderTypes::COMPUTE;
         shaderDesc.source.pSourceCode = compHlslShader.c_str();
         shaderDesc.source.sourceSize  = static_cast<uint32_t>( compHlslShader.size() );
-        if( BGS_FAILED( m_pDevice->CreateShader( shaderDesc, &m_pCS ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateShader( shaderDesc, &m_pCS ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -261,7 +242,7 @@ namespace BIGOS
 
         Driver::Frontend::ComputePipelineDesc compPipelineDesc;
         compPipelineDesc.pComputeShader = m_pCS;
-        if( BGS_FAILED( m_pDevice->CreatePipeline( compPipelineDesc, &m_pComputePipeline ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreatePipeline( compPipelineDesc, &m_pComputePipeline ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -275,7 +256,7 @@ namespace BIGOS
         texDesc.sampleCount     = Driver::Backend::SampleCount::COUNT_1;
         texDesc.type            = Driver::Frontend::TextureTypes::TEXTURE_1D;
         texDesc.usage = BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::STORAGE ) | BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::SAMPLED );
-        if( BGS_FAILED( m_pDevice->CreateTexture( texDesc, &m_pStorageTexture ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateTexture( texDesc, &m_pStorageTexture ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -285,7 +266,7 @@ namespace BIGOS
         texDesc.arrayLayerCount = 6;
         texDesc.type            = Driver::Frontend::TextureTypes::TEXTURE_CUBE;
         texDesc.usage           = BGS_FLAG( Driver::Frontend::TextureUsageFlagBits::SAMPLED );
-        if( BGS_FAILED( m_pDevice->CreateTexture( texDesc, &m_pSkyTexture ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateTexture( texDesc, &m_pSkyTexture ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -296,7 +277,7 @@ namespace BIGOS
         texDesc.arrayLayerCount = 16;
         texDesc.sampleCount     = Driver::Backend::SampleCount::COUNT_1;
         texDesc.type            = Driver::Frontend::TextureTypes::TEXTURE_2D;
-        if( BGS_FAILED( m_pDevice->CreateTexture( texDesc, &m_pSampledTexture ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateTexture( texDesc, &m_pSampledTexture ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -309,58 +290,58 @@ namespace BIGOS
     {
         if( m_pSwapchain != nullptr )
         {
-            m_pDevice->DestroySwapchain( &m_pSwapchain );
+            m_pRenderSystem->DestroySwapchain( &m_pSwapchain );
         }
 
         DestroyResizableResources();
 
         if( m_pVertexBuffer != nullptr )
         {
-            m_pDevice->DestroyBuffer( &m_pVertexBuffer );
+            m_pRenderSystem->DestroyBuffer( &m_pVertexBuffer );
         }
         if( m_pIndexBuffer != nullptr )
         {
-            m_pDevice->DestroyBuffer( &m_pIndexBuffer );
+            m_pRenderSystem->DestroyBuffer( &m_pIndexBuffer );
         }
         if( m_pConstantBuffer != nullptr )
         {
-            m_pDevice->DestroyBuffer( &m_pConstantBuffer );
+            m_pRenderSystem->DestroyBuffer( &m_pConstantBuffer );
         }
         if( m_pStorageBuffer != nullptr )
         {
-            m_pDevice->DestroyBuffer( &m_pStorageBuffer );
+            m_pRenderSystem->DestroyBuffer( &m_pStorageBuffer );
         }
         if( m_pComputePipeline != nullptr )
         {
-            m_pDevice->DestroyPipeline( &m_pComputePipeline );
+            m_pRenderSystem->DestroyPipeline( &m_pComputePipeline );
         }
         if( m_pGraphicsPipeline != nullptr )
         {
-            m_pDevice->DestroyPipeline( &m_pGraphicsPipeline );
+            m_pRenderSystem->DestroyPipeline( &m_pGraphicsPipeline );
         }
         if( m_pVS != nullptr )
         {
-            m_pDevice->DestroyShader( &m_pVS );
+            m_pRenderSystem->DestroyShader( &m_pVS );
         }
         if( m_pPS != nullptr )
         {
-            m_pDevice->DestroyShader( &m_pPS );
+            m_pRenderSystem->DestroyShader( &m_pPS );
         }
         if( m_pCS != nullptr )
         {
-            m_pDevice->DestroyShader( &m_pCS );
+            m_pRenderSystem->DestroyShader( &m_pCS );
         }
         if( m_pSampledTexture != nullptr )
         {
-            m_pDevice->DestroyTexture( &m_pSampledTexture );
+            m_pRenderSystem->DestroyTexture( &m_pSampledTexture );
         }
         if( m_pStorageTexture != nullptr )
         {
-            m_pDevice->DestroyTexture( &m_pStorageTexture );
+            m_pRenderSystem->DestroyTexture( &m_pStorageTexture );
         }
         if( m_pSkyTexture != nullptr )
         {
-            m_pDevice->DestroyTexture( &m_pSkyTexture );
+            m_pRenderSystem->DestroyTexture( &m_pSkyTexture );
         }
     }
 
@@ -388,7 +369,7 @@ namespace BIGOS
         rtDesc.sampleCount   = Driver::Backend::SampleCount::COUNT_1;
         for( index_t ndx = 0; ndx < static_cast<index_t>( m_frameCount ); ++ndx )
         {
-            if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pColorRTs[ ndx ] ) ) )
+            if( BGS_FAILED( m_pRenderSystem->CreateRenderTarget( rtDesc, &m_pColorRTs[ ndx ] ) ) )
             {
                 Destroy();
                 return Results::FAIL;
@@ -398,7 +379,7 @@ namespace BIGOS
         rtDesc.format       = m_dsFormat;
         rtDesc.allowCopying = BGS_FALSE;
         rtDesc.sampleCount  = Driver::Backend::SampleCount::COUNT_1;
-        if( BGS_FAILED( m_pDevice->CreateRenderTarget( rtDesc, &m_pDepthRT ) ) )
+        if( BGS_FAILED( m_pRenderSystem->CreateRenderTarget( rtDesc, &m_pDepthRT ) ) )
         {
             Destroy();
             return Results::FAIL;
@@ -413,13 +394,13 @@ namespace BIGOS
         {
             if( m_pColorRTs[ ndx ] != nullptr )
             {
-                m_pDevice->DestroyRenderTarget( &m_pColorRTs[ ndx ] );
+                m_pRenderSystem->DestroyRenderTarget( &m_pColorRTs[ ndx ] );
                 m_pColorRTs[ ndx ] = nullptr;
             }
         }
         if( m_pDepthRT != nullptr )
         {
-            m_pDevice->DestroyRenderTarget( &m_pDepthRT );
+            m_pRenderSystem->DestroyRenderTarget( &m_pDepthRT );
             m_pDepthRT = nullptr;
         }
     }

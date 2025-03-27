@@ -21,7 +21,6 @@ namespace BIGOS
         {
             class Camera;
             class RenderSystem;
-            class RenderDevice;
             class GraphicsContext;
             class ComputeContext;
             class CopyContext;
@@ -36,7 +35,6 @@ namespace BIGOS
             class ShaderCompilerFactory;
 
             using AdapterArray      = Backend::AdapterArray;
-            using RenderDeviceArray = HeapArray<RenderDevice*>; // Framework allows to create only one device for each adapter
             using CameraArray       = HeapArray<Camera*>;
 
             enum class AdapterTypes : uint8_t
@@ -165,32 +163,30 @@ namespace BIGOS
                 uint32_t                inputBindingCount;
             };
 
-            struct RenderSystemDesc
-            {
-                Backend::FactoryDesc      factoryDesc;
-                ShaderCompilerFactoryDesc compilerFactoryDesc;
-            };
-
             struct CameraDesc
             {
                 glm::mat4   projection;
                 CAMERA_TYPE type;
             };
 
-            struct RenderDeviceDesc
+            struct RenderSystemDesc
             {
-                struct
+                ShaderCompilerFactoryDesc compilerFactoryDesc;
+            };
+
+            struct DriverDesc
+            {
+                Backend::API_TYPE apiType;
+                bool              debug;
+
+                DriverDesc()
+                    : apiType( Backend::APITypes::_MAX_ENUM )
+                    , debug( false )
                 {
-                    uint8_t index = 0;
-                    /* TODO: Handle that better way
-                    ADAPTER_TYPE type  = AdapterTypes::FIRST_AVAILABLE;
-                    const char*  pText = nullptr;
-                    */
-                } adapter;
-                struct
-                {
-                    uint32_t frameCount = 3;
-                } graphicsContext;
+                }
+
+                bool operator==( const DriverDesc& other ) const { return apiType == other.apiType && debug == other.debug; }
+                bool operator!=( const DriverDesc& other ) const { return apiType == other.apiType || debug == other.debug; }
             };
 
             struct RenderTargetDesc

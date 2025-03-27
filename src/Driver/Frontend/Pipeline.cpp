@@ -2,7 +2,7 @@
 
 #include "Core/Utils/String.h"
 #include "Driver/Backend/APICommon.h"
-#include "Driver/Frontend/RenderDevice.h"
+#include "Driver/Frontend/RenderSystem.h"
 #include "Driver/Frontend/Shader/Shader.h"
 
 namespace BIGOS
@@ -99,12 +99,12 @@ namespace BIGOS
             {
             }
 
-            RESULT Pipeline::Create( const GraphicsPipelineDesc& desc, RenderDevice* pDevice )
+            RESULT Pipeline::Create( const GraphicsPipelineDesc& desc, RenderSystem* pSysytem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent = pDevice;
+                BGS_ASSERT( pSysytem != nullptr, "Render system (pSysytem) must be a valid pointer." );
+                m_pParent = pSysytem;
 
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 m_type = Backend::PipelineTypes::GRAPHICS;
                 if( BGS_FAILED(
@@ -174,12 +174,12 @@ namespace BIGOS
                 return Results::OK;
             }
 
-            RESULT Pipeline::Create( const ComputePipelineDesc& desc, RenderDevice* pDevice )
+            RESULT Pipeline::Create( const ComputePipelineDesc& desc, RenderSystem* pSysytem )
             {
-                BGS_ASSERT( pDevice != nullptr, "Render device (pDevice) must be a valid pointer." );
-                m_pParent = pDevice;
+                BGS_ASSERT( pSysytem != nullptr, "Render system (pSysytem) must be a valid pointer." );
+                m_pParent = pSysytem;
 
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 m_type = Backend::PipelineTypes::COMPUTE;
                 if( BGS_FAILED( CreateComputeLayout( desc.pComputeShader ) ) )
@@ -202,7 +202,7 @@ namespace BIGOS
 
             void Pipeline::Destroy()
             {
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 if( m_hPipeline != Backend::PipelineHandle() )
                 {
@@ -226,7 +226,7 @@ namespace BIGOS
             {
                 BGS_ASSERT( m_type == Backend::PipelineTypes::COMPUTE );
 
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 ShaderCompilerOutput* pOutput = pCS->GetCompiledShader();
 
@@ -293,7 +293,7 @@ namespace BIGOS
             {
                 BGS_ASSERT( m_type == Backend::PipelineTypes::GRAPHICS );
 
-                Backend::IDevice* pAPIDevice = m_pParent->GetNativeAPIDevice();
+                Backend::IDevice* pAPIDevice = m_pParent->GetDevice();
 
                 // Graphics pipeline requires vertex shader so we start getting bindings from it
                 // Input bindings

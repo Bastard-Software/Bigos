@@ -46,9 +46,15 @@ namespace BIGOS
     RESULT WindowedApplication::Create()
     {
         BigosEngineDesc frameworkDesc;
-        frameworkDesc.renderSystemDesc.factoryDesc.apiType = m_apiType;
-        frameworkDesc.renderSystemDesc.factoryDesc.flags   = BGS_FLAG( BIGOS::Driver::Backend::FactoryFlagBits::ENABLE_DEBUG_LAYERS_IF_AVAILABLE );
         if( BGS_FAILED( CreateBigosEngine( frameworkDesc, &g_pEngine ) ) )
+        {
+            return Results::FAIL;
+        }
+
+        BIGOS::Driver::Frontend::DriverDesc driverDesc;
+        driverDesc.apiType = m_apiType;
+        driverDesc.debug   = true;
+        if( BGS_FAILED( g_pEngine->GetRenderSystem().InitializeDriver( driverDesc ) ) )
         {
             return Results::FAIL;
         }

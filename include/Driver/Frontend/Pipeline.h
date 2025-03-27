@@ -11,15 +11,15 @@ namespace BIGOS
 
             class BGS_API Pipeline final
             {
-                friend class RenderDevice;
+                friend class RenderSystem;
 
             public:
                 Pipeline();
                 ~Pipeline() = default;
 
             protected:
-                RESULT Create( const GraphicsPipelineDesc& desc, RenderDevice* pDevice );
-                RESULT Create( const ComputePipelineDesc& desc, RenderDevice* pDevice );
+                RESULT Create( const GraphicsPipelineDesc& desc, RenderSystem* pSysytem );
+                RESULT Create( const ComputePipelineDesc& desc, RenderSystem* pSysytem );
                 void   Destroy();
 
             private:
@@ -29,7 +29,7 @@ namespace BIGOS
             private:
                 Backend::GraphicsPipelineDesc   m_graphicsDesc;
                 Backend::ComputePipelineDesc    m_computeDesc;
-                RenderDevice*                   m_pParent;
+                RenderSystem*                   m_pParent;
                 Backend::BindingSetLayoutHandle m_hShaderResourceLayout;
                 Backend::BindingSetLayoutHandle m_hSamplerLayout;
                 Backend::PipelineLayoutHandle   m_hPipelineLayout;
