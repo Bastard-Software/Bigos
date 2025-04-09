@@ -20,13 +20,15 @@ namespace BIGOS
                 ~GraphicsContext() = default;
 
             protected:
-                RESULT Create( Backend::IDevice* pDevice, RenderSystem* m_pSystem );
+                RESULT Create( Backend::IDevice* pDevice, RenderSystem* pSystem );
                 void   Destroy();
 
                 Backend::IQueue* GetQueue() { return m_pQueue; }
 
             private:
-                Backend::IQueue* m_pQueue;
+                RenderSystem*     m_pParent;
+                Backend::IDevice* m_pDevice;
+                Backend::IQueue*  m_pQueue;
             };
 
             class BGS_API ComputeContext final
@@ -38,13 +40,15 @@ namespace BIGOS
                 ~ComputeContext() = default;
 
             protected:
-                RESULT Create( Backend::IDevice* pDevice, RenderSystem* m_pSystem );
+                RESULT Create( Backend::IDevice* pDevice, RenderSystem* pSystem );
                 void   Destroy();
 
                 Backend::IQueue* GetQueue() { return m_pQueue; }
 
             private:
-                Backend::IQueue* m_pQueue;
+                RenderSystem*     m_pParent;
+                Backend::IDevice* m_pDevice;
+                Backend::IQueue*  m_pQueue;
             };
 
             class BGS_API CopyContext final
@@ -56,13 +60,15 @@ namespace BIGOS
                 ~CopyContext() = default;
 
             protected:
-                RESULT Create( Backend::IDevice* pDevice, RenderSystem* m_pSystem );
+                RESULT Create( Backend::IDevice* pDevice, RenderSystem* pSystem );
                 void   Destroy();
 
                 Backend::IQueue* GetQueue() { return m_pQueue; }
 
             private:
-                Backend::IQueue* m_pQueue;
+                RenderSystem*     m_pParent;
+                Backend::IDevice* m_pDevice;
+                Backend::IQueue*  m_pQueue;
             };
 
         } // namespace Frontend

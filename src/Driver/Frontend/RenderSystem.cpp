@@ -399,7 +399,7 @@ namespace BIGOS
 
                 if( BGS_FAILED( CreateShaderCompilerFactory( desc.compilerFactoryDesc, &m_pShaderCompilerFactory ) ) )
                 {
-                    DestroyFactory( &m_pFactory );
+                    Destroy();
                     return Results::FAIL;
                 }
 
@@ -407,8 +407,8 @@ namespace BIGOS
                 compDesc.type = CompilerTypes::DXC;
                 if( BGS_FAILED( m_pShaderCompilerFactory->CreateCompiler( compDesc, &m_pCompiler ) ) )
                 {
-                    DestroyShaderCompilerFactory( &m_pShaderCompilerFactory );
-                    DestroyFactory( &m_pFactory );
+                    Destroy();
+                    return Results::FAIL;
                 }
 
                 return Results::OK;
@@ -417,6 +417,7 @@ namespace BIGOS
             void RenderSystem::Destroy()
             {
                 FreeDriver();
+                DestroyContexts();
 
                 for( index_t ndx = 0; ndx < m_cameras.size(); ++ndx )
                 {
