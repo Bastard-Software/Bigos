@@ -21,6 +21,7 @@ namespace BIGOS
         {
             class Camera;
             class RenderSystem;
+            class SyncSystem;
             class GraphicsContext;
             class ComputeContext;
             class CopyContext;
@@ -34,8 +35,8 @@ namespace BIGOS
             class IShaderCompiler;
             class ShaderCompilerFactory;
 
-            using AdapterArray      = Backend::AdapterArray;
-            using CameraArray       = HeapArray<Camera*>;
+            using AdapterArray = Backend::AdapterArray;
+            using CameraArray  = HeapArray<Camera*>;
 
             enum class AdapterTypes : uint8_t
             {
@@ -282,6 +283,12 @@ namespace BIGOS
                 Platform::Window* pWindow;
                 uint32_t          backBufferCount;
                 Backend::FORMAT   format;
+            };
+
+            struct SyncSystemDesc
+            {
+                uint32_t syncPointCount;
+                bool_t   autoCleanup;
             };
 
         } // namespace Frontend
