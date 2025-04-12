@@ -22,6 +22,7 @@ namespace BIGOS
             class Camera;
             class RenderSystem;
             class SyncSystem;
+            class SyncPoint;
             class GraphicsContext;
             class ComputeContext;
             class CopyContext;
@@ -37,6 +38,9 @@ namespace BIGOS
 
             using AdapterArray = Backend::AdapterArray;
             using CameraArray  = HeapArray<Camera*>;
+
+            using ContextTypes = Backend::QueueTypes;
+            using CONTEXT_TYPE = Backend::QUEUE_TYPE;
 
             enum class AdapterTypes : uint8_t
             {
@@ -288,7 +292,6 @@ namespace BIGOS
             struct SyncSystemDesc
             {
                 uint32_t syncPointCount;
-                bool_t   autoCleanup;
             };
 
         } // namespace Frontend

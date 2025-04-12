@@ -44,6 +44,7 @@ namespace BIGOS
                 GraphicsContext* GetGraphicsContext() { return m_pGraphicsContext; }
                 ComputeContext*  GetComputeContext() { return m_pComputeContext; }
                 CopyContext*     GetCopyContext() { return m_pCopyContext; }
+                SyncSystem*      GetSyncSystem() { return m_pSyncSystem; }
 
                 const AdapterArray& GetAdapters() const { return m_adapters; } // Hide
                 Backend::IDevice*   GetDevice() const { return m_pDevice; }    // Hide
@@ -86,6 +87,7 @@ namespace BIGOS
                 GraphicsContext*       m_pGraphicsContext;
                 ComputeContext*        m_pComputeContext;
                 CopyContext*           m_pCopyContext;
+                SyncSystem*            m_pSyncSystem;
                 CameraArray            m_cameras; // Shaould be handled by resource manager
                 BigosEngine*           m_pParent;
                 ShaderCompilerFactory* m_pShaderCompilerFactory;

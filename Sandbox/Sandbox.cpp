@@ -6,7 +6,7 @@ class Sandbox : public BIGOS::WindowedApplication
 {
 public:
     Sandbox()
-        : WindowedApplication( "Sandbox", BIGOS::Driver::Backend::APITypes::VULKAN )
+        : WindowedApplication( "Sandbox", BIGOS::Driver::Backend::APITypes::D3D12 )
     {
     }
 

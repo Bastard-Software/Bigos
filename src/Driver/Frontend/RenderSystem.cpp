@@ -12,6 +12,7 @@
 #include "Driver/Frontend/RenderTarget.h"
 #include "Driver/Frontend/Shader/Shader.h"
 #include "Driver/Frontend/Swapchain.h"
+#include "Driver/Frontend/SyncSystem.h"
 #include "Driver/Frontend/Texture.h"
 #include "Shader/ShaderCompilerFactory.h"
 
@@ -31,6 +32,7 @@ namespace BIGOS
                 , m_pGraphicsContext( nullptr )
                 , m_pComputeContext( nullptr )
                 , m_pCopyContext( nullptr )
+                , m_pSyncSystem( nullptr )
                 , m_cameras()
                 , m_pParent( nullptr )
                 , m_pShaderCompilerFactory( nullptr )
@@ -65,8 +67,24 @@ namespace BIGOS
                     FreeDriver();
                     return Results::FAIL;
                 }
+
                 if( BGS_FAILED( CreateContexts() ) )
                 {
+                    FreeDriver();
+                    return Results::FAIL;
+                }
+
+                if( BGS_FAILED( Memory::AllocateObject( m_pDefaultAllocator, &m_pSyncSystem ) ) )
+                {
+                    FreeDriver();
+                    return Results::NO_MEMORY;
+                }
+
+                SyncSystemDesc syncDesc;
+                syncDesc.syncPointCount = 64;
+                if( BGS_FAILED( m_pSyncSystem->Create( syncDesc, this ) ) )
+                {
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pSyncSystem );
                     FreeDriver();
                     return Results::FAIL;
                 }
@@ -629,6 +647,13 @@ namespace BIGOS
 
             void RenderSystem::FreeDriver()
             {
+                // TODO: Wait all
+                if( m_pSyncSystem != nullptr )
+                {
+                    m_pSyncSystem->Destroy();
+                    Memory::FreeObject( m_pDefaultAllocator, &m_pSyncSystem );
+                }
+
                 DestroyContexts();
 
                 // Free all the resources created on this device
