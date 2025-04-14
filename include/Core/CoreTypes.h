@@ -106,6 +106,11 @@ namespace BIGOS
         using StackArray = std::array<T, S>;
 
         template<typename T>
+        using Atomic = std::atomic<T>;
+
+        using Mutex = std::mutex;
+
+        template<typename T>
         struct HandleTraits
         {
             using NativeHandleTypes = handle_t;

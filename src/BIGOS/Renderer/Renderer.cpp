@@ -2,6 +2,7 @@
 
 #include "Driver/Frontend/Context.h"
 #include "Driver/Frontend/RenderSystem.h"
+#include "Driver/Frontend/SyncSystem.h"
 #include "Driver/Frontend/Swapchain.h"
 #include "Platform/Window/Window.h"
 
@@ -282,6 +283,22 @@ namespace BIGOS
             Destroy();
             return Results::FAIL;
         }
+
+        Driver::Frontend::SyncSystem* pSyncSystem = m_pRenderSystem->GetSyncSystem();
+
+        Driver::Frontend::SyncPoint grapchicsSnc0 = pSyncSystem->CreateSyncPoint( Driver::Frontend::ContextTypes::GRAPHICS, "graphics_sync_0" );
+        Driver::Frontend::SyncPoint grapchicsSnc1 = pSyncSystem->CreateSyncPoint( Driver::Frontend::ContextTypes::GRAPHICS, "graphics_sync_1" );
+        Driver::Frontend::SyncPoint computeSnc   = pSyncSystem->CreateSyncPoint( Driver::Frontend::ContextTypes::COMPUTE, "compute_sync" );
+        Driver::Frontend::SyncPoint copySnc      = pSyncSystem->CreateSyncPoint( Driver::Frontend::ContextTypes::COPY, "copy_sync" );
+
+        RESULT syncRes = Results::FAIL;
+        syncRes = pSyncSystem->Signal( grapchicsSnc0 );
+        syncRes = pSyncSystem->Signal( grapchicsSnc1 );
+        syncRes = pSyncSystem->Signal( computeSnc );
+        syncRes = pSyncSystem->Signal( copySnc );
+
+        syncRes = pSyncSystem->Wait( grapchicsSnc0 );
+        syncRes = pSyncSystem->Wait( { grapchicsSnc0, computeSnc, copySnc } );
 
         return Results::OK;
     }

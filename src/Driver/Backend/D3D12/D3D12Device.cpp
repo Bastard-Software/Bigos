@@ -560,7 +560,6 @@ namespace BIGOS
                 }
 
                 D3D12Fence* pNativeFence = nullptr;
-                uint32_t    eventCnt     = 0;
                 HANDLE      events[ Config::Driver::Synchronization::MAX_FENCES_TO_WAIT_COUNT ];
                 for( index_t ndx = 0; ndx < static_cast<index_t>( desc.fenceCount ); ++ndx )
                 {
@@ -568,16 +567,12 @@ namespace BIGOS
                     {
                         return Results::FAIL;
                     }
-                    // Setting event only for fences which has lower internal value than wait value
                     pNativeFence = desc.pFences[ ndx ].GetNativeHandle();
-                    if( pNativeFence->pFence->GetCompletedValue() < desc.pWaitValues[ ndx ] )
-                    {
-                        pNativeFence->pFence->SetEventOnCompletion( desc.pWaitValues[ ndx ], pNativeFence->hEvent );
-                        events[ eventCnt++ ] = pNativeFence->hEvent;
-                    }
+                    pNativeFence->pFence->SetEventOnCompletion( desc.pWaitValues[ ndx ], pNativeFence->hEvent );
+                    events[ ndx++ ] = pNativeFence->hEvent;
                 }
                 // Waiting for necessary events
-                if( WaitForMultipleObjects( eventCnt, events, desc.waitAll, static_cast<DWORD>( timeout ) ) == WAIT_TIMEOUT )
+                if( WaitForMultipleObjects( desc.fenceCount, events, desc.waitAll, static_cast<DWORD>( timeout ) ) == WAIT_TIMEOUT )
                 {
                     return Results::TIMEOUT;
                 }
